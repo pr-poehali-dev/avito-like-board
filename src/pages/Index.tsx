@@ -109,6 +109,9 @@ export default function Index() {
   // "add to folder" picker for an ad
   const [addToFolderAdId, setAddToFolderAdId] = useState<number | null>(null);
   const [adFolderIds, setAdFolderIds] = useState<number[]>([]);
+  // my-ads folder filter
+  const [myAdsFilterFolder, setMyAdsFilterFolder] = useState<number | null>(null);
+  const [myAdsFolderMap, setMyAdsFolderMap] = useState<Record<number, number[]>>({});
 
   // Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -158,6 +161,17 @@ export default function Index() {
   useEffect(() => { loadAds(); }, []);
   useEffect(() => { if (user) loadMyAds(); }, [user]);
   useEffect(() => { if (section === "favorites" && user) loadFolders(); }, [section, user]);
+  useEffect(() => {
+    if (section === "my-ads" && user) {
+      loadFolders();
+      if (myAdsApi.length > 0) loadMyAdsFolderMap(myAdsApi.map((a) => a.id));
+    }
+  }, [section, user]);
+  useEffect(() => {
+    if (myAdsApi.length > 0 && user && section === "my-ads") {
+      loadMyAdsFolderMap(myAdsApi.map((a) => a.id));
+    }
+  }, [myAdsApi]);
 
   const openNewAd = () => {
     if (!user) { openAuth("login"); return; }
@@ -294,6 +308,21 @@ export default function Index() {
     });
     const d = await res.json();
     if (d.ok) setFavFolders(d.folders);
+  };
+
+  const loadMyAdsFolderMap = async (adIds: number[]) => {
+    if (!user || adIds.length === 0) return;
+    const map: Record<number, number[]> = {};
+    await Promise.all(adIds.map(async (adId) => {
+      const res = await fetch(FAV_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+        body: JSON.stringify({ action: "my_ad_folders", ad_id: adId }),
+      });
+      const d = await res.json();
+      if (d.ok) map[adId] = d.folder_ids;
+    }));
+    setMyAdsFolderMap(map);
   };
 
   const loadFolderAds = async (folderId: number) => {
@@ -700,7 +729,7 @@ export default function Index() {
         {/* MY ADS */}
         {section === "my-ads" && (
           <div className="animate-slide-up">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold">Мои объявления</h2>
                 <p className="text-[hsl(var(--muted-foreground))] mt-1">Управляйте своими публикациями</p>
@@ -710,6 +739,7 @@ export default function Index() {
                 Подать объявление
               </button>
             </div>
+
             {!user && (
               <div className="text-center py-16 text-[hsl(var(--muted-foreground))]">
                 <div className="text-5xl mb-4">🔐</div>
@@ -719,46 +749,119 @@ export default function Index() {
                 </div>
               </div>
             )}
-            {user && myAdsApi.length === 0 && (
-              <div className="text-center py-16 text-[hsl(var(--muted-foreground))]">
-                <div className="text-5xl mb-4">📋</div>
-                <p className="font-medium">У вас пока нет объявлений</p>
-                <button onClick={openNewAd} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">
-                  Подать первое объявление
-                </button>
-              </div>
-            )}
-            {user && myAdsApi.length > 0 && (
-              <div className="flex flex-col gap-3">
-                {myAdsApi.map((ad) => (
-                  <div key={ad.id} className="bg-white rounded-xl border border-border p-4 flex items-center gap-4">
-                    <div className="w-16 h-16 bg-[hsl(var(--muted))] rounded-lg flex items-center justify-center text-2xl shrink-0">📦</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{ad.title}</p>
-                      <p className="text-[hsl(var(--accent))] font-bold mt-0.5">{formatPrice(ad.price)}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ad.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                          {ad.status === "active" ? "Активно" : "В архиве"}
-                        </span>
-                        <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1">
-                          <Icon name="Eye" size={11} />
-                          {ad.views ?? 0} просмотров
-                        </span>
-                        <span className="text-xs text-[hsl(var(--muted-foreground))]">{ad.date}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
+
+            {user && (
+              <>
+                {/* Фильтр по папкам */}
+                {favFolders.length > 0 && (
+                  <div className="flex gap-2 flex-wrap mb-5">
+                    <button
+                      onClick={() => setMyAdsFilterFolder(null)}
+                      className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition-all ${
+                        myAdsFilterFolder === null
+                          ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
+                          : "border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--muted-foreground))]"
+                      }`}
+                    >
+                      Все
+                    </button>
+                    {favFolders.map((f) => (
                       <button
-                        onClick={() => toggleAdStatus(ad.id, ad.status || "active")}
-                        className="p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
-                        title={ad.status === "active" ? "В архив" : "Активировать"}
+                        key={f.id}
+                        onClick={() => setMyAdsFilterFolder(f.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border transition-all ${
+                          myAdsFilterFolder === f.id
+                            ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
+                            : "border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--muted-foreground))]"
+                        }`}
                       >
-                        <Icon name={ad.status === "active" ? "Archive" : "RefreshCw"} size={15} className="text-[hsl(var(--muted-foreground))]" />
+                        <Icon name="Folder" size={13} />
+                        {f.name}
+                        <span className="text-xs opacity-70">{f.count}</span>
                       </button>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+
+                {(() => {
+                  const filtered = myAdsFilterFolder === null
+                    ? myAdsApi
+                    : myAdsApi.filter((ad) => (myAdsFolderMap[ad.id] || []).includes(myAdsFilterFolder));
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-16 text-[hsl(var(--muted-foreground))]">
+                        <div className="text-5xl mb-4">{myAdsFilterFolder ? "📂" : "📋"}</div>
+                        <p className="font-medium">
+                          {myAdsFilterFolder
+                            ? `В папке «${favFolders.find((f) => f.id === myAdsFilterFolder)?.name}» нет объявлений`
+                            : "У вас пока нет объявлений"}
+                        </p>
+                        {!myAdsFilterFolder && (
+                          <button onClick={openNewAd} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">
+                            Подать первое объявление
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex flex-col gap-3">
+                      {filtered.map((ad) => {
+                        const adFolders = (myAdsFolderMap[ad.id] || [])
+                          .map((fid) => favFolders.find((f) => f.id === fid))
+                          .filter(Boolean) as FavFolder[];
+                        return (
+                          <div key={ad.id} className="bg-white rounded-xl border border-border p-4 flex items-center gap-4">
+                            <div className="w-16 h-16 bg-[hsl(var(--muted))] rounded-lg overflow-hidden shrink-0 flex items-center justify-center text-2xl">
+                              {ad.photos && ad.photos.length > 0
+                                ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover" />
+                                : "📦"}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold truncate">{ad.title}</p>
+                              <p className="text-[hsl(var(--accent))] font-bold mt-0.5">{formatPrice(ad.price)}</p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ad.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                  {ad.status === "active" ? "Активно" : "В архиве"}
+                                </span>
+                                <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1">
+                                  <Icon name="Eye" size={11} />
+                                  {ad.views ?? 0}
+                                </span>
+                                <span className="text-xs text-[hsl(var(--muted-foreground))]">{ad.date}</span>
+                                {adFolders.map((f) => (
+                                  <span key={f.id} className="flex items-center gap-1 text-xs bg-orange-50 text-[hsl(var(--accent))] px-2 py-0.5 rounded-full">
+                                    <Icon name="Folder" size={10} />
+                                    {f.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <button
+                                onClick={() => openAddToFolder(ad.id)}
+                                className="p-2 rounded-lg hover:bg-orange-50 transition-colors"
+                                title="Добавить в папку"
+                              >
+                                <Icon name="FolderPlus" size={15} className="text-[hsl(var(--accent))]" />
+                              </button>
+                              <button
+                                onClick={() => toggleAdStatus(ad.id, ad.status || "active")}
+                                className="p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+                                title={ad.status === "active" ? "В архив" : "Активировать"}
+                              >
+                                <Icon name={ad.status === "active" ? "Archive" : "RefreshCw"} size={15} className="text-[hsl(var(--muted-foreground))]" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </>
             )}
           </div>
         )}

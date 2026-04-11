@@ -1,7 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
+import { toast } from "sonner";
 
 const ADS_URL = "https://functions.poehali.dev/26941b84-1198-4969-8e13-07523f9f04d0";
+const FAV_URL = "https://functions.poehali.dev/47db8eb7-30bf-4234-9cbb-10b2e57a491c";
 
 const CATEGORIES = [
   { id: "realty", label: "Недвижимость" },
@@ -22,6 +24,12 @@ interface PhotoItem {
   data: string;
 }
 
+interface FavFolder {
+  id: number;
+  name: string;
+  count: number;
+}
+
 interface CreateAdProps {
   onBack: () => void;
   onSuccess: () => void;
@@ -38,6 +46,51 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Папки
+  const [folders, setFolders] = useState<FavFolder[]>([]);
+  const [selectedFolderIds, setSelectedFolderIds] = useState<number[]>([]);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
+
+  const sid = () => localStorage.getItem("session_id") || "";
+
+  useEffect(() => {
+    const s = sid();
+    if (!s) return;
+    fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": s },
+      body: JSON.stringify({ action: "folders" }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setFolders(d.folders); })
+      .catch(() => {});
+  }, []);
+
+  const createFolder = async () => {
+    if (!newFolderName.trim()) return;
+    const res = await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "create_folder", name: newFolderName.trim() }),
+    });
+    const d = await res.json();
+    if (d.ok) {
+      const newFolder = { id: d.id, name: newFolderName.trim(), count: 0 };
+      setFolders((prev) => [...prev, newFolder]);
+      setSelectedFolderIds((prev) => [...prev, d.id]);
+      setNewFolderName("");
+      setCreatingFolder(false);
+      toast.success("Папка создана");
+    }
+  };
+
+  const toggleFolder = (id: number) => {
+    setSelectedFolderIds((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+    );
+  };
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -79,11 +132,11 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
     if (!city.trim()) { setError("Укажите город"); return; }
 
     setLoading(true);
-    const sid = localStorage.getItem("session_id");
+    const s = sid();
     try {
       const res = await fetch(ADS_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Session-Id": sid || "" },
+        headers: { "Content-Type": "application/json", "X-Session-Id": s },
         body: JSON.stringify({
           action: "create",
           title,
@@ -98,9 +151,24 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.error || "Ошибка публикации");
-      } else {
-        onSuccess();
+        return;
       }
+
+      const adId = data.id;
+
+      // Добавляем в выбранные папки
+      if (selectedFolderIds.length > 0) {
+        await Promise.all(selectedFolderIds.map((fid) =>
+          fetch(FAV_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Session-Id": s },
+            body: JSON.stringify({ action: "add_item", folder_id: fid, ad_id: adId }),
+          })
+        ));
+      }
+
+      toast.success("Объявление опубликовано!");
+      onSuccess();
     } catch {
       setError("Нет соединения");
     } finally {
@@ -145,31 +213,21 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
                 )}
                 <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                   {idx > 0 && (
-                    <button
-                      onClick={() => movePhoto(idx, idx - 1)}
-                      className="w-6 h-6 bg-white rounded-full flex items-center justify-center"
-                    >
+                    <button onClick={() => movePhoto(idx, idx - 1)} className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
                       <Icon name="ChevronLeft" size={12} />
                     </button>
                   )}
-                  <button
-                    onClick={() => removePhoto(idx)}
-                    className="w-6 h-6 bg-white rounded-full flex items-center justify-center"
-                  >
+                  <button onClick={() => removePhoto(idx)} className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
                     <Icon name="X" size={12} className="text-red-500" />
                   </button>
                   {idx < photos.length - 1 && (
-                    <button
-                      onClick={() => movePhoto(idx, idx + 1)}
-                      className="w-6 h-6 bg-white rounded-full flex items-center justify-center"
-                    >
+                    <button onClick={() => movePhoto(idx, idx + 1)} className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
                       <Icon name="ChevronRight" size={12} />
                     </button>
                   )}
                 </div>
               </div>
             ))}
-
             {photos.length < 10 && (
               <button
                 onClick={() => fileRef.current?.click()}
@@ -181,24 +239,13 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
             )}
           </div>
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => handleFiles(e.target.files)}
-          />
-
-          <p className="text-xs text-[hsl(var(--muted-foreground))] mt-3">
-            До 10 фото. Первое фото — главное в объявлении. Перетащите для изменения порядка.
-          </p>
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+          <p className="text-xs text-[hsl(var(--muted-foreground))] mt-3">До 10 фото. Первое фото — главное.</p>
         </div>
 
         {/* Основная информация */}
         <div className="bg-white rounded-2xl border border-border p-5 flex flex-col gap-4">
           <h2 className="font-semibold">Основное</h2>
-
           <div>
             <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Название *</label>
             <input
@@ -210,7 +257,6 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
             />
             <div className="text-right text-[11px] text-[hsl(var(--muted-foreground))] mt-1">{title.length}/200</div>
           </div>
-
           <div>
             <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Описание</label>
             <textarea
@@ -226,7 +272,6 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
         {/* Категория и параметры */}
         <div className="bg-white rounded-2xl border border-border p-5 flex flex-col gap-4">
           <h2 className="font-semibold">Параметры</h2>
-
           <div>
             <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Категория *</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -245,7 +290,6 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
               ))}
             </div>
           </div>
-
           <div>
             <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Состояние</label>
             <div className="flex flex-wrap gap-2">
@@ -269,7 +313,6 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
         {/* Цена и город */}
         <div className="bg-white rounded-2xl border border-border p-5 flex flex-col gap-4">
           <h2 className="font-semibold">Цена и местоположение</h2>
-
           <div>
             <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Цена, ₽ *</label>
             <div className="relative">
@@ -283,7 +326,6 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] text-sm font-medium">₽</span>
             </div>
           </div>
-
           <div>
             <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Город *</label>
             <input
@@ -297,6 +339,62 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
               {CITIES.map((c) => <option key={c} value={c} />)}
             </datalist>
           </div>
+        </div>
+
+        {/* Папки избранного */}
+        <div className="bg-white rounded-2xl border border-border p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="font-semibold">Добавить в папку</h2>
+              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Необязательно. Объявление сразу попадёт в выбранные папки</p>
+            </div>
+          </div>
+
+          {folders.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {folders.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => toggleFolder(f.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-all ${
+                    selectedFolderIds.includes(f.id)
+                      ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
+                      : "border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--foreground))]"
+                  }`}
+                >
+                  <Icon name={selectedFolderIds.includes(f.id) ? "CheckSquare" : "Square"} size={14} />
+                  {f.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {creatingFolder ? (
+            <div className="flex gap-2">
+              <input
+                autoFocus
+                placeholder="Название папки"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") createFolder(); if (e.key === "Escape") setCreatingFolder(false); }}
+                className="flex-1 px-4 py-2.5 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0"
+              />
+              <button onClick={createFolder} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">
+                Создать
+              </button>
+              <button onClick={() => setCreatingFolder(false)} className="px-3 py-2.5 rounded-xl text-sm border border-border hover:bg-[hsl(var(--muted))] transition-colors">
+                <Icon name="X" size={15} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setCreatingFolder(true)}
+              className="flex items-center gap-2 text-sm font-medium text-[hsl(var(--accent))] hover:opacity-80 transition-opacity"
+            >
+              <Icon name="FolderPlus" size={16} />
+              Создать новую папку
+            </button>
+          )}
         </div>
 
         {error && (

@@ -675,7 +675,7 @@ export default function Index() {
                 <span className="text-2xl">🔧</span>
                 <div>
                   <p className="text-white font-bold text-sm leading-tight">Услуги</p>
-                  <p className="text-white/70 text-xs mt-0.5">Найди проверенного исполнителя</p>
+                  <p className="text-white/70 text-xs mt-0.5">Мастера и специалисты рядом</p>
                 </div>
               </div>
 
@@ -688,7 +688,7 @@ export default function Index() {
                 <span className="text-2xl">💸</span>
                 <div>
                   <p className="text-white font-bold text-sm leading-tight">Продай ненужное</p>
-                  <p className="text-white/70 text-xs mt-0.5">Подать объявление бесплатно</p>
+                  <p className="text-white/70 text-xs mt-0.5">Разместить объявление за 2 мин</p>
                 </div>
               </div>
 
@@ -701,7 +701,7 @@ export default function Index() {
                 <span className="text-2xl">🏢</span>
                 <div>
                   <p className="text-white font-bold text-sm leading-tight">Квартиры</p>
-                  <p className="text-white/70 text-xs mt-0.5">Снять или купить</p>
+                  <p className="text-white/70 text-xs mt-0.5">Аренда и продажа жилья</p>
                 </div>
               </div>
 
@@ -714,7 +714,7 @@ export default function Index() {
                 <span className="text-2xl">📱</span>
                 <div>
                   <p className="text-white font-bold text-sm leading-tight">Электроника</p>
-                  <p className="text-white/70 text-xs mt-0.5">Гаджеты и техника</p>
+                  <p className="text-white/70 text-xs mt-0.5">Телефоны, ноутбуки, ТВ</p>
                 </div>
               </div>
 
@@ -727,7 +727,33 @@ export default function Index() {
                 <span className="text-2xl">🚗</span>
                 <div>
                   <p className="text-white font-bold text-sm leading-tight">Запчасти и авто</p>
-                  <p className="text-white/70 text-xs mt-0.5">Посмотри, что рядом</p>
+                  <p className="text-white/70 text-xs mt-0.5">Авто и всё для ремонта</p>
+                </div>
+              </div>
+
+              {/* Животные */}
+              <div
+                className="relative rounded-2xl overflow-hidden min-h-[84px] flex flex-col justify-between p-4 cursor-pointer group hover:shadow-md transition-shadow"
+                style={{ background: "linear-gradient(135deg, #f472b6 0%, #ec4899 100%)" }}
+                onClick={() => { setSelectedCategory("animals"); setSection("categories"); }}
+              >
+                <span className="text-2xl">🐾</span>
+                <div>
+                  <p className="text-white font-bold text-sm leading-tight">Животные</p>
+                  <p className="text-white/70 text-xs mt-0.5">Питомцы и аксессуары</p>
+                </div>
+              </div>
+
+              {/* Мебель */}
+              <div
+                className="relative rounded-2xl overflow-hidden min-h-[84px] flex flex-col justify-between p-4 cursor-pointer group hover:shadow-md transition-shadow"
+                style={{ background: "linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)" }}
+                onClick={() => { setSelectedCategory("furniture"); setSection("categories"); }}
+              >
+                <span className="text-2xl">🛋️</span>
+                <div>
+                  <p className="text-white font-bold text-sm leading-tight">Мебель</p>
+                  <p className="text-white/70 text-xs mt-0.5">Для дома и офиса</p>
                 </div>
               </div>
             </div>

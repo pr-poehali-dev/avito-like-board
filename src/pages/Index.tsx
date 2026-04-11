@@ -1296,6 +1296,7 @@ export default function Index() {
                 </div>
               </div>
             ) : activeFolderId !== null ? (
+              /* ── Просмотр папки ── */
               <>
                 <div className="flex items-center gap-3 mb-6">
                   <button onClick={() => { setActiveFolderId(null); setFolderAds([]); }} className="p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors">
@@ -1312,21 +1313,22 @@ export default function Index() {
                   <div className="text-center py-16 text-[hsl(var(--muted-foreground))]">
                     <div className="text-5xl mb-3">📂</div>
                     <p className="font-medium">Папка пуста</p>
-                    <p className="text-sm mt-1">Добавляйте объявления через кнопку «В папку» в карточке</p>
+                    <p className="text-sm mt-1">Добавляйте объявления через кнопку ♥ в карточке</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {folderAds.map((ad) => (
-                      <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer">
-                        <div className="aspect-[4/3] bg-[hsl(var(--muted))] flex items-center justify-center text-4xl relative">
+                      <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer group">
+                        <div className="aspect-[4/3] bg-[hsl(var(--muted))] relative overflow-hidden">
                           {(ad.photos && ad.photos.length > 0)
                             ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover" />
-                            : "📦"}
+                            : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+                          {/* Кнопка управления папками этого объявления */}
                           <button
-                            onClick={() => { setActiveFolderId(null); setFolderAds([]); }}
-                            className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm"
+                            onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }}
+                            className="absolute top-2 right-2 z-10 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-110"
                           >
-                            <Icon name="FolderOpen" size={13} className="text-[hsl(var(--accent))]" />
+                            <Icon name="FolderPlus" size={13} className="text-[hsl(var(--accent))]" />
                           </button>
                         </div>
                         <div className="p-3">
@@ -1343,84 +1345,81 @@ export default function Index() {
                 )}
               </>
             ) : (
+              /* ── Список папок ── */
               <>
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-5">
                   <div>
                     <h2 className="text-2xl font-bold">Избранное</h2>
                     <p className="text-[hsl(var(--muted-foreground))] mt-0.5 text-sm">{favFolders.length} папок</p>
                   </div>
-                  <button
-                    onClick={() => { setNewFolderName(""); setNewFolderModal(true); }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity"
-                  >
-                    <Icon name="FolderPlus" size={15} />
-                    Новая папка
-                  </button>
                 </div>
 
-                {favFolders.length === 0 ? (
+                {/* Фильтр-полоса с папками + кнопка создания */}
+                <div className="flex gap-2 flex-wrap mb-6 items-center">
+                  {favFolders.map((folder) => (
+                    <div key={folder.id} className="relative group/chip flex items-center">
+                      <button
+                        onClick={() => { setActiveFolderId(folder.id); loadFolderAds(folder.id); }}
+                        className="flex items-center gap-1.5 pl-3 pr-7 py-1.5 rounded-xl text-sm font-medium border border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all"
+                      >
+                        <Icon name="Folder" size={13} className="text-[hsl(var(--accent))]" />
+                        {folder.name}
+                        <span className="text-xs opacity-60">{folder.count}</span>
+                      </button>
+                      <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover/chip:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => { setRenamingFolder(folder); setRenameName(folder.name); }}
+                          className="w-4 h-4 rounded-full bg-gray-100 hover:bg-orange-100 hover:text-[hsl(var(--accent))] flex items-center justify-center"
+                          title="Переименовать"
+                        >
+                          <Icon name="Pencil" size={8} />
+                        </button>
+                        <button
+                          onClick={() => deleteFolder(folder.id)}
+                          className="w-4 h-4 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-500 flex items-center justify-center"
+                          title="Удалить"
+                        >
+                          <Icon name="X" size={8} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {newFolderModal ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        autoFocus
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") createFolder(); if (e.key === "Escape") setNewFolderModal(false); }}
+                        placeholder="Название"
+                        className="px-3 py-1.5 rounded-xl text-sm border border-[hsl(var(--accent))] outline-none w-32"
+                      />
+                      <button onClick={createFolder} className="p-1.5 rounded-lg bg-[hsl(var(--accent))] text-white hover:opacity-90">
+                        <Icon name="Check" size={13} />
+                      </button>
+                      <button onClick={() => setNewFolderModal(false)} className="p-1.5 rounded-lg border border-border hover:bg-[hsl(var(--muted))]">
+                        <Icon name="X" size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setNewFolderName(""); setNewFolderModal(true); }}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-all"
+                    >
+                      <Icon name="FolderPlus" size={13} />
+                      Папка
+                    </button>
+                  )}
+                </div>
+
+                {favFolders.length === 0 && !newFolderModal && (
                   <div className="text-center py-20 text-[hsl(var(--muted-foreground))]">
                     <div className="text-5xl mb-4">📁</div>
                     <p className="font-medium">Нет папок</p>
-                    <p className="text-sm mt-1">Создайте папку, чтобы сохранять объявления</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {favFolders.map((folder) => (
-                      <div key={folder.id} className="bg-white rounded-xl border border-border p-4 hover:border-[hsl(var(--accent))] transition-colors group">
-                        <button
-                          className="w-full text-left"
-                          onClick={() => { setActiveFolderId(folder.id); loadFolderAds(folder.id); }}
-                        >
-                          <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-3">
-                            <Icon name="Folder" size={24} className="text-[hsl(var(--accent))]" />
-                          </div>
-                          <p className="font-semibold truncate">{folder.name}</p>
-                          <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{folder.count} объявлений · {folder.date}</p>
-                        </button>
-                        <div className="flex gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => { setRenamingFolder(folder); setRenameName(folder.name); }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[hsl(var(--muted))] hover:bg-orange-50 hover:text-[hsl(var(--accent))] transition-colors"
-                          >
-                            <Icon name="Pencil" size={12} />
-                            Переименовать
-                          </button>
-                          <button
-                            onClick={() => deleteFolder(folder.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[hsl(var(--muted))] hover:bg-red-50 hover:text-red-500 transition-colors"
-                          >
-                            <Icon name="Trash2" size={12} />
-                            Удалить
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                    <p className="text-sm mt-1">Нажмите «Папка», чтобы создать первую</p>
                   </div>
                 )}
               </>
-            )}
-
-            {/* Модал: новая папка */}
-            {newFolderModal && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setNewFolderModal(false)} />
-                <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-slide-up">
-                  <h3 className="font-bold text-lg mb-4">Новая папка</h3>
-                  <input
-                    autoFocus
-                    placeholder="Название папки"
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && createFolder()}
-                    className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0 mb-4"
-                  />
-                  <div className="flex gap-2">
-                    <button onClick={() => setNewFolderModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-border hover:bg-[hsl(var(--muted))] transition-colors">Отмена</button>
-                    <button onClick={createFolder} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Создать</button>
-                  </div>
-                </div>
-              </div>
             )}
 
             {/* Модал: переименование */}
@@ -1443,7 +1442,6 @@ export default function Index() {
                 </div>
               </div>
             )}
-
           </div>
         )}
 

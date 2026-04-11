@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import CreateAd from "@/pages/CreateAd";
+import EditAd from "@/pages/EditAd";
 import { toast } from "sonner";
 
 const AUTH_URL = "https://functions.poehali.dev/8b2cd80b-f20b-45b5-8696-018d10b4eb52";
@@ -96,6 +97,7 @@ export default function Index() {
   const [adsLoading, setAdsLoading] = useState(false);
 
   const [showCreateAd, setShowCreateAd] = useState(false);
+  const [editAdId, setEditAdId] = useState<number | null>(null);
 
   // Favorites
   const [favFolders, setFavFolders] = useState<FavFolder[]>([]);
@@ -413,6 +415,21 @@ export default function Index() {
         onBack={() => setShowCreateAd(false)}
         onSuccess={() => {
           setShowCreateAd(false);
+          loadAds();
+          loadMyAds();
+          setSection("my-ads");
+        }}
+      />
+    );
+  }
+
+  if (editAdId !== null) {
+    return (
+      <EditAd
+        adId={editAdId}
+        onBack={() => setEditAdId(null)}
+        onSuccess={() => {
+          setEditAdId(null);
           loadAds();
           loadMyAds();
           setSection("my-ads");
@@ -840,6 +857,13 @@ export default function Index() {
                               </div>
                             </div>
                             <div className="flex gap-1 shrink-0">
+                              <button
+                                onClick={() => setEditAdId(ad.id)}
+                                className="p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+                                title="Редактировать"
+                              >
+                                <Icon name="Pencil" size={15} className="text-[hsl(var(--muted-foreground))]" />
+                              </button>
                               <button
                                 onClick={() => openAddToFolder(ad.id)}
                                 className="p-2 rounded-lg hover:bg-orange-50 transition-colors"

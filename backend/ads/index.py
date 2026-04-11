@@ -204,6 +204,77 @@ def handler(event: dict, context) -> dict:
         ]
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "ads": ads})}
 
+    # update — редактировать объявление
+    if action == "update":
+        conn = get_conn()
+        cur = conn.cursor()
+        user_id = get_user_id(event, cur)
+        if not user_id:
+            conn.close()
+            return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Необходима авторизация"})}
+
+        ad_id = body.get("id")
+        title = (body.get("title") or "").strip()
+        description = (body.get("description") or "").strip()
+        price = body.get("price")
+        category = (body.get("category") or "").strip()
+        city = (body.get("city") or "").strip()
+        condition = (body.get("condition") or "Хорошее").strip()
+        photos_b64 = body.get("new_photos") or []      # base64 — новые фото
+        keep_urls = body.get("keep_photos") or []       # уже загруженные URL которые оставить
+
+        if not title or not price or not category or not city:
+            conn.close()
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Заполните обязательные поля"})}
+
+        try:
+            price = int(price)
+        except (ValueError, TypeError):
+            conn.close()
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Некорректная цена"})}
+
+        new_urls = upload_photos(photos_b64) if photos_b64 else []
+        all_photos = keep_urls + new_urls
+
+        cur.execute(
+            f"""UPDATE {SCHEMA}.ads
+                SET title=%s, description=%s, price=%s, category=%s, city=%s, condition=%s, photos=%s
+                WHERE id=%s AND user_id=%s""",
+            (title, description, price, category, city, condition, all_photos, ad_id, user_id)
+        )
+        conn.commit()
+        conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+
+    # get_one — получить одно объявление для редактирования
+    if action == "get_one":
+        ad_id = qs.get("id") or body.get("id")
+        conn = get_conn()
+        cur = conn.cursor()
+        user_id = get_user_id(event, cur)
+        if not user_id:
+            conn.close()
+            return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Необходима авторизация"})}
+
+        cur.execute(
+            f"""SELECT id, title, description, price, category, city, condition, photos
+                FROM {SCHEMA}.ads WHERE id=%s AND user_id=%s""",
+            (ad_id, user_id)
+        )
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "Объявление не найдено"})}
+
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({
+            "ok": True,
+            "ad": {
+                "id": row[0], "title": row[1], "description": row[2] or "",
+                "price": row[3], "category": row[4], "city": row[5],
+                "condition": row[6], "photos": list(row[7]) if row[7] else []
+            }
+        })}
+
     # archive — архивировать объявление
     if action == "archive":
         ad_id = body.get("id")

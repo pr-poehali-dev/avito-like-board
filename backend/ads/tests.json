@@ -16,6 +16,15 @@
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Необходима авторизация"}
+    },
+    {
+      "name": "POST update без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "update", "id": 1, "title": "Тест", "price": 1000, "category": "electronics", "city": "Москва"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Необходима авторизация"}
     }
   ]
 }

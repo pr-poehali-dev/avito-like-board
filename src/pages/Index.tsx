@@ -2,11 +2,25 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 
 const AUTH_URL = "https://functions.poehali.dev/8b2cd80b-f20b-45b5-8696-018d10b4eb52";
+const ADS_URL = "https://functions.poehali.dev/26941b84-1198-4969-8e13-07523f9f04d0";
 
 interface User {
   id: number;
   name: string;
   email: string;
+}
+
+interface Ad {
+  id: number;
+  title: string;
+  price: number;
+  category: string;
+  city: string;
+  condition: string;
+  date: string;
+  author?: string;
+  status?: string;
+  views?: number;
 }
 
 type Section = "home" | "categories" | "my-ads" | "profile" | "messages" | "favorites" | "contacts";
@@ -63,6 +77,22 @@ export default function Index() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Ads from API
+  const [apiAds, setApiAds] = useState<Ad[]>([]);
+  const [myAdsApi, setMyAdsApi] = useState<Ad[]>([]);
+  const [adsLoading, setAdsLoading] = useState(false);
+
+  // New ad form
+  const [newAdModal, setNewAdModal] = useState(false);
+  const [newAdTitle, setNewAdTitle] = useState("");
+  const [newAdDesc, setNewAdDesc] = useState("");
+  const [newAdPrice, setNewAdPrice] = useState("");
+  const [newAdCategory, setNewAdCategory] = useState("");
+  const [newAdCity, setNewAdCity] = useState("");
+  const [newAdCondition, setNewAdCondition] = useState("Хорошее");
+  const [newAdError, setNewAdError] = useState("");
+  const [newAdLoading, setNewAdLoading] = useState(false);
+
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [authModal, setAuthModal] = useState(false);
@@ -84,6 +114,89 @@ export default function Index() {
       .then((d) => { if (d.ok) setUser(d.user); })
       .catch(() => {});
   }, []);
+
+  // Загрузка объявлений с API
+  const loadAds = () => {
+    setAdsLoading(true);
+    fetch(ADS_URL)
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setApiAds(d.ads); })
+      .catch(() => {})
+      .finally(() => setAdsLoading(false));
+  };
+
+  const loadMyAds = () => {
+    const sid = localStorage.getItem("session_id");
+    if (!sid) return;
+    fetch(ADS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid },
+      body: JSON.stringify({ action: "my" }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setMyAdsApi(d.ads); })
+      .catch(() => {});
+  };
+
+  useEffect(() => { loadAds(); }, []);
+  useEffect(() => { if (user) loadMyAds(); }, [user]);
+
+  const openNewAd = () => {
+    if (!user) { openAuth("login"); return; }
+    setNewAdTitle(""); setNewAdDesc(""); setNewAdPrice("");
+    setNewAdCategory(""); setNewAdCity(""); setNewAdCondition("Хорошее");
+    setNewAdError("");
+    setNewAdModal(true);
+  };
+
+  const submitNewAd = async () => {
+    setNewAdError("");
+    if (!newAdTitle.trim()) { setNewAdError("Укажите название"); return; }
+    if (!newAdPrice || isNaN(Number(newAdPrice))) { setNewAdError("Укажите корректную цену"); return; }
+    if (!newAdCategory) { setNewAdError("Выберите категорию"); return; }
+    if (!newAdCity.trim()) { setNewAdError("Укажите город"); return; }
+    setNewAdLoading(true);
+    const sid = localStorage.getItem("session_id");
+    try {
+      const res = await fetch(ADS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Id": sid || "" },
+        body: JSON.stringify({
+          action: "create",
+          title: newAdTitle,
+          description: newAdDesc,
+          price: Number(newAdPrice),
+          category: newAdCategory,
+          city: newAdCity,
+          condition: newAdCondition,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setNewAdError(data.error || "Ошибка");
+      } else {
+        setNewAdModal(false);
+        loadAds();
+        loadMyAds();
+      }
+    } catch {
+      setNewAdError("Нет соединения");
+    } finally {
+      setNewAdLoading(false);
+    }
+  };
+
+  const toggleAdStatus = async (id: number, currentStatus: string) => {
+    const sid = localStorage.getItem("session_id");
+    const action = currentStatus === "active" ? "archive" : "activate";
+    await fetch(ADS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid || "" },
+      body: JSON.stringify({ action, id }),
+    });
+    loadMyAds();
+    loadAds();
+  };
 
   const openAuth = (mode: "login" | "register") => {
     setAuthMode(mode);
@@ -173,7 +286,10 @@ export default function Index() {
     setSection("home");
   };
 
-  const filteredAds = MOCK_ADS.filter((ad) => {
+  // Объединяем API + MOCK (MOCK показываем только если API пустой)
+  const allAds: Ad[] = apiAds.length > 0 ? apiAds : MOCK_ADS;
+
+  const filteredAds = allAds.filter((ad) => {
     const matchQuery = ad.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchCategory = selectedCategory === "all" || ad.category === selectedCategory;
     const matchCity = selectedCity === "Все города" || ad.city === selectedCity;
@@ -183,7 +299,7 @@ export default function Index() {
     return matchQuery && matchCategory && matchCity && matchFrom && matchTo && matchCondition;
   });
 
-  const favoriteAds = MOCK_ADS.filter((ad) => favorites.includes(ad.id));
+  const favoriteAds = allAds.filter((ad) => favorites.includes(ad.id));
 
   const toggleFavorite = (id: number) => {
     setFavorites((prev) => prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]);
@@ -250,6 +366,13 @@ export default function Index() {
           </button>
 
           <div className="hidden md:flex items-center gap-2 shrink-0">
+            <button
+              onClick={openNewAd}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-[hsl(var(--accent))] text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors"
+            >
+              <Icon name="Plus" size={15} />
+              Подать объявление
+            </button>
             {user ? (
               <button
                 onClick={() => setSection("profile")}
@@ -475,39 +598,61 @@ export default function Index() {
                 <h2 className="text-2xl font-bold">Мои объявления</h2>
                 <p className="text-[hsl(var(--muted-foreground))] mt-1">Управляйте своими публикациями</p>
               </div>
-              <button className="flex items-center gap-2 bg-[hsl(var(--accent))] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+              <button onClick={openNewAd} className="flex items-center gap-2 bg-[hsl(var(--accent))] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
                 <Icon name="Plus" size={15} />
-                Подать
+                Подать объявление
               </button>
             </div>
-            <div className="flex flex-col gap-3">
-              {MY_ADS.map((ad) => (
-                <div key={ad.id} className="bg-white rounded-xl border border-border p-4 flex items-center gap-4">
-                  <div className="w-16 h-16 bg-[hsl(var(--muted))] rounded-lg flex items-center justify-center text-2xl shrink-0">📦</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{ad.title}</p>
-                    <p className="text-[hsl(var(--accent))] font-bold mt-0.5">{formatPrice(ad.price)}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ad.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                        {ad.status === "active" ? "Активно" : "В архиве"}
-                      </span>
-                      <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1">
-                        <Icon name="Eye" size={11} />
-                        {ad.views} просмотров
-                      </span>
+            {!user && (
+              <div className="text-center py-16 text-[hsl(var(--muted-foreground))]">
+                <div className="text-5xl mb-4">🔐</div>
+                <p className="font-medium">Войдите, чтобы управлять объявлениями</p>
+                <div className="flex gap-2 justify-center mt-4">
+                  <button onClick={() => openAuth("login")} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Войти</button>
+                </div>
+              </div>
+            )}
+            {user && myAdsApi.length === 0 && (
+              <div className="text-center py-16 text-[hsl(var(--muted-foreground))]">
+                <div className="text-5xl mb-4">📋</div>
+                <p className="font-medium">У вас пока нет объявлений</p>
+                <button onClick={openNewAd} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">
+                  Подать первое объявление
+                </button>
+              </div>
+            )}
+            {user && myAdsApi.length > 0 && (
+              <div className="flex flex-col gap-3">
+                {myAdsApi.map((ad) => (
+                  <div key={ad.id} className="bg-white rounded-xl border border-border p-4 flex items-center gap-4">
+                    <div className="w-16 h-16 bg-[hsl(var(--muted))] rounded-lg flex items-center justify-center text-2xl shrink-0">📦</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{ad.title}</p>
+                      <p className="text-[hsl(var(--accent))] font-bold mt-0.5">{formatPrice(ad.price)}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ad.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                          {ad.status === "active" ? "Активно" : "В архиве"}
+                        </span>
+                        <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1">
+                          <Icon name="Eye" size={11} />
+                          {ad.views ?? 0} просмотров
+                        </span>
+                        <span className="text-xs text-[hsl(var(--muted-foreground))]">{ad.date}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => toggleAdStatus(ad.id, ad.status || "active")}
+                        className="p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+                        title={ad.status === "active" ? "В архив" : "Активировать"}
+                      >
+                        <Icon name={ad.status === "active" ? "Archive" : "RefreshCw"} size={15} className="text-[hsl(var(--muted-foreground))]" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button className="p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors">
-                      <Icon name="Pencil" size={15} className="text-[hsl(var(--muted-foreground))]" />
-                    </button>
-                    <button className="p-2 rounded-lg hover:bg-red-50 transition-colors">
-                      <Icon name="Trash2" size={15} className="text-[hsl(var(--muted-foreground))]" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -859,6 +1004,117 @@ export default function Index() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* New Ad Modal */}
+      {newAdModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setNewAdModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-slide-up max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setNewAdModal(false)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors">
+              <Icon name="X" size={16} className="text-[hsl(var(--muted-foreground))]" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-8 h-8 bg-[hsl(var(--accent))] rounded-lg flex items-center justify-center">
+                <Icon name="Plus" size={16} className="text-white" />
+              </div>
+              <span className="font-semibold text-base">Новое объявление</span>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Название *</label>
+                <input
+                  placeholder="Например: iPhone 15 Pro 256GB"
+                  value={newAdTitle}
+                  onChange={(e) => setNewAdTitle(e.target.value)}
+                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Описание</label>
+                <textarea
+                  rows={3}
+                  placeholder="Расскажите подробнее о товаре..."
+                  value={newAdDesc}
+                  onChange={(e) => setNewAdDesc(e.target.value)}
+                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Цена, ₽ *</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={newAdPrice}
+                    onChange={(e) => setNewAdPrice(e.target.value)}
+                    className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Состояние</label>
+                  <select
+                    value={newAdCondition}
+                    onChange={(e) => setNewAdCondition(e.target.value)}
+                    className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all text-[hsl(var(--foreground))]"
+                  >
+                    <option>Новый</option>
+                    <option>Отличное</option>
+                    <option>Хорошее</option>
+                    <option>Удовлетворительное</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Категория *</label>
+                <select
+                  value={newAdCategory}
+                  onChange={(e) => setNewAdCategory(e.target.value)}
+                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all text-[hsl(var(--foreground))]"
+                >
+                  <option value="">Выберите категорию</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Город *</label>
+                <input
+                  placeholder="Москва"
+                  value={newAdCity}
+                  onChange={(e) => setNewAdCity(e.target.value)}
+                  list="cities-list"
+                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all"
+                />
+                <datalist id="cities-list">
+                  {CITIES.filter((c) => c !== "Все города").map((c) => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+
+              {newAdError && (
+                <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-2.5 rounded-xl text-sm">
+                  <Icon name="AlertCircle" size={15} />
+                  {newAdError}
+                </div>
+              )}
+
+              <button
+                onClick={submitNewAd}
+                disabled={newAdLoading}
+                className="w-full bg-[hsl(var(--accent))] text-white py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+              >
+                {newAdLoading ? "Публикуем..." : "Опубликовать объявление"}
+              </button>
+            </div>
           </div>
         </div>
       )}

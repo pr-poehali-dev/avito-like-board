@@ -1,7 +1,7 @@
 """
-Избранное: папки и объявления в них.
-Действия: folders (список), create_folder, rename_folder, delete_folder,
-          add_item, remove_item, folder_items.
+Избранное и папки «Мои объявления»: CRUD папок с разделением по типу (favorites / my_ads).
+Действия: folders, create_folder, rename_folder, delete_folder,
+          add_item, remove_item, folder_items, my_ad_folders.
 """
 import json
 import os
@@ -15,6 +15,8 @@ CORS = {
     "Access-Control-Allow-Headers": "Content-Type, X-Session-Id",
     "Content-Type": "application/json",
 }
+
+VALID_TYPES = ("favorites", "my_ads")
 
 
 def get_conn():
@@ -49,22 +51,24 @@ def handler(event: dict, context) -> dict:
     qs = event.get("queryStringParameters") or {}
     action = qs.get("action") or body.get("action") or ""
 
-    # folders — список папок пользователя с количеством объявлений
+    # folders — список папок пользователя по типу
     if action == "folders":
+        folder_type = body.get("folder_type") or qs.get("folder_type") or "favorites"
+        if folder_type not in VALID_TYPES:
+            folder_type = "favorites"
         conn = get_conn()
         cur = conn.cursor()
         uid, err = require_auth(event, cur, conn)
         if err:
             return err
         cur.execute(
-            f"""SELECT f.id, f.name, f.created_at,
-                       COUNT(i.id) as cnt
+            f"""SELECT f.id, f.name, f.created_at, COUNT(i.id) as cnt
                 FROM {SCHEMA}.favorite_folders f
                 LEFT JOIN {SCHEMA}.favorite_items i ON i.folder_id = f.id
-                WHERE f.user_id = %s
+                WHERE f.user_id = %s AND f.folder_type = %s
                 GROUP BY f.id, f.name, f.created_at
                 ORDER BY f.created_at ASC""",
-            (uid,)
+            (uid, folder_type)
         )
         rows = cur.fetchall()
         conn.close()
@@ -74,6 +78,9 @@ def handler(event: dict, context) -> dict:
     # create_folder — создать папку
     if action == "create_folder":
         name = (body.get("name") or "").strip()
+        folder_type = body.get("folder_type") or "favorites"
+        if folder_type not in VALID_TYPES:
+            folder_type = "favorites"
         if not name:
             return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите название папки"})}
         conn = get_conn()
@@ -82,8 +89,8 @@ def handler(event: dict, context) -> dict:
         if err:
             return err
         cur.execute(
-            f"INSERT INTO {SCHEMA}.favorite_folders (user_id, name) VALUES (%s, %s) RETURNING id",
-            (uid, name)
+            f"INSERT INTO {SCHEMA}.favorite_folders (user_id, name, folder_type) VALUES (%s, %s, %s) RETURNING id",
+            (uid, name, folder_type)
         )
         fid = cur.fetchone()[0]
         conn.commit()
@@ -109,7 +116,7 @@ def handler(event: dict, context) -> dict:
         conn.close()
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
-    # delete_folder — удалить папку (объявления не удаляются)
+    # delete_folder — удалить папку
     if action == "delete_folder":
         fid = body.get("folder_id")
         conn = get_conn()
@@ -118,7 +125,7 @@ def handler(event: dict, context) -> dict:
         if err:
             return err
         cur.execute(
-            f"UPDATE {SCHEMA}.favorite_folders SET name = name WHERE id = %s AND user_id = %s RETURNING id",
+            f"SELECT id FROM {SCHEMA}.favorite_folders WHERE id = %s AND user_id = %s",
             (fid, uid)
         )
         if cur.fetchone():
@@ -210,9 +217,10 @@ def handler(event: dict, context) -> dict:
         ]
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "ads": ads})}
 
-    # my_ad_folders — в каких папках находится объявление (для показа галочек)
+    # my_ad_folders — в каких папках (по типу) находится объявление
     if action == "my_ad_folders":
         ad_id = qs.get("ad_id") or body.get("ad_id")
+        folder_type = body.get("folder_type") or qs.get("folder_type") or "favorites"
         conn = get_conn()
         cur = conn.cursor()
         uid, err = require_auth(event, cur, conn)
@@ -221,8 +229,8 @@ def handler(event: dict, context) -> dict:
         cur.execute(
             f"""SELECT i.folder_id FROM {SCHEMA}.favorite_items i
                 JOIN {SCHEMA}.favorite_folders f ON f.id = i.folder_id
-                WHERE f.user_id = %s AND i.ad_id = %s""",
-            (uid, ad_id)
+                WHERE f.user_id = %s AND i.ad_id = %s AND f.folder_type = %s""",
+            (uid, ad_id, folder_type)
         )
         folder_ids = [r[0] for r in cur.fetchall()]
         conn.close()

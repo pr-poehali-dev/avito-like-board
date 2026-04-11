@@ -99,7 +99,7 @@ export default function Index() {
   const [showCreateAd, setShowCreateAd] = useState(false);
   const [editAdId, setEditAdId] = useState<number | null>(null);
 
-  // Favorites
+  // Favorites (type=favorites)
   const [favFolders, setFavFolders] = useState<FavFolder[]>([]);
   const [activeFolderId, setActiveFolderId] = useState<number | null>(null);
   const [folderAds, setFolderAds] = useState<Ad[]>([]);
@@ -108,12 +108,17 @@ export default function Index() {
   const [newFolderName, setNewFolderName] = useState("");
   const [renamingFolder, setRenamingFolder] = useState<FavFolder | null>(null);
   const [renameName, setRenameName] = useState("");
-  // "add to folder" picker for an ad
+  // "add to folder" picker for an ad (favorites)
   const [addToFolderAdId, setAddToFolderAdId] = useState<number | null>(null);
   const [adFolderIds, setAdFolderIds] = useState<number[]>([]);
-  // my-ads folder filter
+  // my-ads folders (type=my_ads) — отдельные от избранного
+  const [myAdsFolders, setMyAdsFolders] = useState<FavFolder[]>([]);
   const [myAdsFilterFolder, setMyAdsFilterFolder] = useState<number | null>(null);
   const [myAdsFolderMap, setMyAdsFolderMap] = useState<Record<number, number[]>>({});
+  const [myAdsNewFolderName, setMyAdsNewFolderName] = useState("");
+  const [myAdsCreatingFolder, setMyAdsCreatingFolder] = useState(false);
+  // picker «в папку» для my_ads
+  const [myAdsPickerAdId, setMyAdsPickerAdId] = useState<number | null>(null);
 
   // Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -165,7 +170,7 @@ export default function Index() {
   useEffect(() => { if (section === "favorites" && user) loadFolders(); }, [section, user]);
   useEffect(() => {
     if (section === "my-ads" && user) {
-      loadFolders();
+      loadMyAdsFolders();
       if (myAdsApi.length > 0) loadMyAdsFolderMap(myAdsApi.map((a) => a.id));
     }
   }, [section, user]);
@@ -301,30 +306,16 @@ export default function Index() {
 
   const sid = () => localStorage.getItem("session_id") || "";
 
+  // --- Папки «Избранное» (folder_type=favorites) ---
   const loadFolders = async () => {
     if (!user) return;
     const res = await fetch(FAV_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-      body: JSON.stringify({ action: "folders" }),
+      body: JSON.stringify({ action: "folders", folder_type: "favorites" }),
     });
     const d = await res.json();
     if (d.ok) setFavFolders(d.folders);
-  };
-
-  const loadMyAdsFolderMap = async (adIds: number[]) => {
-    if (!user || adIds.length === 0) return;
-    const map: Record<number, number[]> = {};
-    await Promise.all(adIds.map(async (adId) => {
-      const res = await fetch(FAV_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-        body: JSON.stringify({ action: "my_ad_folders", ad_id: adId }),
-      });
-      const d = await res.json();
-      if (d.ok) map[adId] = d.folder_ids;
-    }));
-    setMyAdsFolderMap(map);
   };
 
   const loadFolderAds = async (folderId: number) => {
@@ -344,7 +335,7 @@ export default function Index() {
     await fetch(FAV_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-      body: JSON.stringify({ action: "create_folder", name: newFolderName.trim() }),
+      body: JSON.stringify({ action: "create_folder", name: newFolderName.trim(), folder_type: "favorites" }),
     });
     setNewFolderModal(false);
     setNewFolderName("");
@@ -379,7 +370,7 @@ export default function Index() {
     const res = await fetch(FAV_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-      body: JSON.stringify({ action: "my_ad_folders", ad_id: adId }),
+      body: JSON.stringify({ action: "my_ad_folders", ad_id: adId, folder_type: "favorites" }),
     });
     const d = await res.json();
     if (d.ok) setAdFolderIds(d.folder_ids);
@@ -395,6 +386,75 @@ export default function Index() {
     });
     setAdFolderIds((prev) => inFolder ? prev.filter((id) => id !== folderId) : [...prev, folderId]);
     loadFolders();
+    if (inFolder) {
+      toast("Убрано из папки", { description: folderName, icon: "📂" });
+    } else {
+      toast.success("Добавлено в папку", { description: folderName });
+    }
+  };
+
+  // --- Папки «Мои объявления» (folder_type=my_ads) ---
+  const loadMyAdsFolders = async () => {
+    if (!user) return;
+    const res = await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "folders", folder_type: "my_ads" }),
+    });
+    const d = await res.json();
+    if (d.ok) setMyAdsFolders(d.folders);
+  };
+
+  const createMyAdsFolder = async () => {
+    if (!myAdsNewFolderName.trim()) return;
+    await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "create_folder", name: myAdsNewFolderName.trim(), folder_type: "my_ads" }),
+    });
+    setMyAdsCreatingFolder(false);
+    setMyAdsNewFolderName("");
+    loadMyAdsFolders();
+  };
+
+  const deleteMyAdsFolder = async (folderId: number) => {
+    await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "delete_folder", folder_id: folderId }),
+    });
+    if (myAdsFilterFolder === folderId) setMyAdsFilterFolder(null);
+    loadMyAdsFolders();
+  };
+
+  const loadMyAdsFolderMap = async (adIds: number[]) => {
+    if (!user || adIds.length === 0) return;
+    const map: Record<number, number[]> = {};
+    await Promise.all(adIds.map(async (adId) => {
+      const res = await fetch(FAV_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+        body: JSON.stringify({ action: "my_ad_folders", ad_id: adId, folder_type: "my_ads" }),
+      });
+      const d = await res.json();
+      if (d.ok) map[adId] = d.folder_ids;
+    }));
+    setMyAdsFolderMap(map);
+  };
+
+  const toggleAdInMyAdsFolder = async (folderId: number, adId: number) => {
+    const inFolder = (myAdsFolderMap[adId] || []).includes(folderId);
+    await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: inFolder ? "remove_item" : "add_item", folder_id: folderId, ad_id: adId }),
+    });
+    setMyAdsFolderMap((prev) => {
+      const cur = prev[adId] || [];
+      return { ...prev, [adId]: inFolder ? cur.filter((id) => id !== folderId) : [...cur, folderId] };
+    });
+    loadMyAdsFolders();
+    const folderName = myAdsFolders.find((f) => f.id === folderId)?.name || "папку";
     if (inFolder) {
       toast("Убрано из папки", { description: folderName, icon: "📂" });
     } else {
@@ -770,23 +830,22 @@ export default function Index() {
             {user && (
               <>
                 {/* Фильтр по папкам */}
-                {favFolders.length > 0 && (
-                  <div className="flex gap-2 flex-wrap mb-5">
-                    <button
-                      onClick={() => setMyAdsFilterFolder(null)}
-                      className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition-all ${
-                        myAdsFilterFolder === null
-                          ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
-                          : "border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--muted-foreground))]"
-                      }`}
-                    >
-                      Все
-                    </button>
-                    {favFolders.map((f) => (
+                <div className="flex gap-2 flex-wrap mb-5 items-center">
+                  <button
+                    onClick={() => setMyAdsFilterFolder(null)}
+                    className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition-all ${
+                      myAdsFilterFolder === null
+                        ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
+                        : "border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--muted-foreground))]"
+                    }`}
+                  >
+                    Все
+                  </button>
+                  {myAdsFolders.map((f) => (
+                    <div key={f.id} className="relative group/folder flex items-center">
                       <button
-                        key={f.id}
                         onClick={() => setMyAdsFilterFolder(f.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border transition-all ${
+                        className={`flex items-center gap-1.5 pl-3 pr-7 py-1.5 rounded-xl text-sm font-medium border transition-all ${
                           myAdsFilterFolder === f.id
                             ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
                             : "border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--muted-foreground))]"
@@ -796,9 +855,41 @@ export default function Index() {
                         {f.name}
                         <span className="text-xs opacity-70">{f.count}</span>
                       </button>
-                    ))}
-                  </div>
-                )}
+                      <button
+                        onClick={() => deleteMyAdsFolder(f.id)}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-500 flex items-center justify-center opacity-0 group-hover/folder:opacity-100 transition-opacity"
+                      >
+                        <Icon name="X" size={9} />
+                      </button>
+                    </div>
+                  ))}
+                  {myAdsCreatingFolder ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        autoFocus
+                        value={myAdsNewFolderName}
+                        onChange={(e) => setMyAdsNewFolderName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") createMyAdsFolder(); if (e.key === "Escape") setMyAdsCreatingFolder(false); }}
+                        placeholder="Название"
+                        className="px-3 py-1.5 rounded-xl text-sm border border-[hsl(var(--accent))] outline-none w-32"
+                      />
+                      <button onClick={createMyAdsFolder} className="p-1.5 rounded-lg bg-[hsl(var(--accent))] text-white hover:opacity-90">
+                        <Icon name="Check" size={13} />
+                      </button>
+                      <button onClick={() => setMyAdsCreatingFolder(false)} className="p-1.5 rounded-lg border border-border hover:bg-[hsl(var(--muted))]">
+                        <Icon name="X" size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setMyAdsNewFolderName(""); setMyAdsCreatingFolder(true); }}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-all"
+                    >
+                      <Icon name="FolderPlus" size={13} />
+                      Папка
+                    </button>
+                  )}
+                </div>
 
                 {(() => {
                   const filtered = myAdsFilterFolder === null
@@ -811,7 +902,7 @@ export default function Index() {
                         <div className="text-5xl mb-4">{myAdsFilterFolder ? "📂" : "📋"}</div>
                         <p className="font-medium">
                           {myAdsFilterFolder
-                            ? `В папке «${favFolders.find((f) => f.id === myAdsFilterFolder)?.name}» нет объявлений`
+                            ? `В папке «${myAdsFolders.find((f) => f.id === myAdsFilterFolder)?.name}» нет объявлений`
                             : "У вас пока нет объявлений"}
                         </p>
                         {!myAdsFilterFolder && (
@@ -827,7 +918,7 @@ export default function Index() {
                     <div className="flex flex-col gap-3">
                       {filtered.map((ad) => {
                         const adFolders = (myAdsFolderMap[ad.id] || [])
-                          .map((fid) => favFolders.find((f) => f.id === fid))
+                          .map((fid) => myAdsFolders.find((f) => f.id === fid))
                           .filter(Boolean) as FavFolder[];
                         return (
                           <div key={ad.id} className="bg-white rounded-xl border border-border p-4 flex items-center gap-4">
@@ -865,7 +956,7 @@ export default function Index() {
                                 <Icon name="Pencil" size={15} className="text-[hsl(var(--muted-foreground))]" />
                               </button>
                               <button
-                                onClick={() => openAddToFolder(ad.id)}
+                                onClick={() => { loadMyAdsFolders(); setMyAdsPickerAdId(ad.id); }}
                                 className="p-2 rounded-lg hover:bg-orange-50 transition-colors"
                                 title="Добавить в папку"
                               >
@@ -886,6 +977,55 @@ export default function Index() {
                   );
                 })()}
               </>
+            )}
+
+            {/* Picker: добавить объявление в папку my_ads */}
+            {myAdsPickerAdId !== null && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMyAdsPickerAdId(null)} />
+                <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-slide-up">
+                  <button onClick={() => setMyAdsPickerAdId(null)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[hsl(var(--muted))]">
+                    <Icon name="X" size={16} />
+                  </button>
+                  <h3 className="font-bold text-lg mb-1">Добавить в папку</h3>
+                  <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Папки «Мои объявления»</p>
+                  <div className="flex flex-col gap-2 max-h-56 overflow-y-auto mb-3">
+                    {myAdsFolders.map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => toggleAdInMyAdsFolder(f.id, myAdsPickerAdId)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all text-left ${
+                          (myAdsFolderMap[myAdsPickerAdId] || []).includes(f.id)
+                            ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
+                            : "border-border hover:border-[hsl(var(--accent))]"
+                        }`}
+                      >
+                        <Icon name={(myAdsFolderMap[myAdsPickerAdId] || []).includes(f.id) ? "CheckSquare" : "Square"} size={16} />
+                        <span className="flex-1 truncate">{f.name}</span>
+                        <span className="text-xs opacity-60">{f.count}</span>
+                      </button>
+                    ))}
+                    {myAdsFolders.length === 0 && (
+                      <p className="text-sm text-center text-[hsl(var(--muted-foreground))] py-4">Нет папок — создайте первую</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="Новая папка..."
+                      value={myAdsNewFolderName}
+                      onChange={(e) => setMyAdsNewFolderName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && createMyAdsFolder()}
+                      className="flex-1 px-3 py-2.5 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0"
+                    />
+                    <button onClick={createMyAdsFolder} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">
+                      Создать
+                    </button>
+                  </div>
+                  <button onClick={() => setMyAdsPickerAdId(null)} className="w-full mt-3 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">
+                    Готово
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}

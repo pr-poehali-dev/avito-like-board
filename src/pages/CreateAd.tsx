@@ -61,7 +61,7 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
     fetch(FAV_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Session-Id": s },
-      body: JSON.stringify({ action: "folders" }),
+      body: JSON.stringify({ action: "folders", folder_type: "my_ads" }),
     })
       .then((r) => r.json())
       .then((d) => { if (d.ok) setFolders(d.folders); })
@@ -73,7 +73,7 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
     const res = await fetch(FAV_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-      body: JSON.stringify({ action: "create_folder", name: newFolderName.trim() }),
+      body: JSON.stringify({ action: "create_folder", name: newFolderName.trim(), folder_type: "my_ads" }),
     });
     const d = await res.json();
     if (d.ok) {

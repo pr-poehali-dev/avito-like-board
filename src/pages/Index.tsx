@@ -77,6 +77,7 @@ export default function Index() {
   const [favorites, setFavorites] = useState<number[]>([2, 5]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Ads from API
   const [apiAds, setApiAds] = useState<Ad[]>([]);
@@ -337,15 +338,47 @@ export default function Index() {
               Подать объявление
             </button>
             {user ? (
-              <button
-                onClick={() => setSection("profile")}
-                className="p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
-                title={user.name}
-              >
-                <div className="w-8 h-8 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold">
-                  {user.name[0].toUpperCase()}
-                </div>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+                >
+                  <div className="w-7 h-7 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
+                    {user.name[0].toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
+                  <Icon name={userMenuOpen ? "ChevronUp" : "ChevronDown"} size={14} className="text-[hsl(var(--muted-foreground))]" />
+                </button>
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-white rounded-xl shadow-lg border border-border py-1.5 animate-fade-in">
+                      <button
+                        onClick={() => { setSection("profile"); setUserMenuOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left"
+                      >
+                        <Icon name="User" size={15} className="text-[hsl(var(--muted-foreground))]" />
+                        Личный кабинет
+                      </button>
+                      <button
+                        onClick={() => { setSection("favorites"); setUserMenuOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left"
+                      >
+                        <Icon name="Heart" size={15} className="text-[hsl(var(--muted-foreground))]" />
+                        Избранное
+                      </button>
+                      <div className="my-1 border-t border-border" />
+                      <button
+                        onClick={() => { logout(); setUserMenuOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 transition-colors text-left"
+                      >
+                        <Icon name="LogOut" size={15} />
+                        Выйти
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             ) : (
               <>
                 <button onClick={() => openAuth("login")} className="px-4 py-2 rounded-lg text-sm font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors">

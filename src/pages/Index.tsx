@@ -756,6 +756,19 @@ export default function Index() {
                   <p className="text-white/70 text-xs mt-0.5">Для дома и офиса</p>
                 </div>
               </div>
+
+              {/* Одежда */}
+              <div
+                className="relative rounded-2xl overflow-hidden min-h-[84px] flex flex-col justify-between p-4 cursor-pointer group hover:shadow-md transition-shadow"
+                style={{ background: "linear-gradient(135deg, #fb7185 0%, #e11d48 100%)" }}
+                onClick={() => { setSelectedCategory("clothes"); setSection("categories"); }}
+              >
+                <span className="text-2xl">👗</span>
+                <div>
+                  <p className="text-white font-bold text-sm leading-tight">Одежда</p>
+                  <p className="text-white/70 text-xs mt-0.5">Стиль по выгодной цене</p>
+                </div>
+              </div>
             </div>
 
             {/* Filters */}

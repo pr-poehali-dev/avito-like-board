@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
+import CreateAd from "@/pages/CreateAd";
 
 const AUTH_URL = "https://functions.poehali.dev/8b2cd80b-f20b-45b5-8696-018d10b4eb52";
 const ADS_URL = "https://functions.poehali.dev/26941b84-1198-4969-8e13-07523f9f04d0";
@@ -82,16 +83,7 @@ export default function Index() {
   const [myAdsApi, setMyAdsApi] = useState<Ad[]>([]);
   const [adsLoading, setAdsLoading] = useState(false);
 
-  // New ad form
-  const [newAdModal, setNewAdModal] = useState(false);
-  const [newAdTitle, setNewAdTitle] = useState("");
-  const [newAdDesc, setNewAdDesc] = useState("");
-  const [newAdPrice, setNewAdPrice] = useState("");
-  const [newAdCategory, setNewAdCategory] = useState("");
-  const [newAdCity, setNewAdCity] = useState("");
-  const [newAdCondition, setNewAdCondition] = useState("Хорошее");
-  const [newAdError, setNewAdError] = useState("");
-  const [newAdLoading, setNewAdLoading] = useState(false);
+  const [showCreateAd, setShowCreateAd] = useState(false);
 
   // Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -143,47 +135,7 @@ export default function Index() {
 
   const openNewAd = () => {
     if (!user) { openAuth("login"); return; }
-    setNewAdTitle(""); setNewAdDesc(""); setNewAdPrice("");
-    setNewAdCategory(""); setNewAdCity(""); setNewAdCondition("Хорошее");
-    setNewAdError("");
-    setNewAdModal(true);
-  };
-
-  const submitNewAd = async () => {
-    setNewAdError("");
-    if (!newAdTitle.trim()) { setNewAdError("Укажите название"); return; }
-    if (!newAdPrice || isNaN(Number(newAdPrice))) { setNewAdError("Укажите корректную цену"); return; }
-    if (!newAdCategory) { setNewAdError("Выберите категорию"); return; }
-    if (!newAdCity.trim()) { setNewAdError("Укажите город"); return; }
-    setNewAdLoading(true);
-    const sid = localStorage.getItem("session_id");
-    try {
-      const res = await fetch(ADS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Session-Id": sid || "" },
-        body: JSON.stringify({
-          action: "create",
-          title: newAdTitle,
-          description: newAdDesc,
-          price: Number(newAdPrice),
-          category: newAdCategory,
-          city: newAdCity,
-          condition: newAdCondition,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setNewAdError(data.error || "Ошибка");
-      } else {
-        setNewAdModal(false);
-        loadAds();
-        loadMyAds();
-      }
-    } catch {
-      setNewAdError("Нет соединения");
-    } finally {
-      setNewAdLoading(false);
-    }
+    setShowCreateAd(true);
   };
 
   const toggleAdStatus = async (id: number, currentStatus: string) => {
@@ -314,6 +266,20 @@ export default function Index() {
     { id: "contacts", label: "Контакты", icon: "Phone" },
     { id: "profile", label: "Кабинет", icon: "User" },
   ];
+
+  if (showCreateAd) {
+    return (
+      <CreateAd
+        onBack={() => setShowCreateAd(false)}
+        onSuccess={() => {
+          setShowCreateAd(false);
+          loadAds();
+          loadMyAds();
+          setSection("my-ads");
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[hsl(var(--background))] font-golos">
@@ -1008,116 +974,6 @@ export default function Index() {
         </div>
       )}
 
-      {/* New Ad Modal */}
-      {newAdModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setNewAdModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-slide-up max-h-[90vh] overflow-y-auto">
-            <button onClick={() => setNewAdModal(false)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors">
-              <Icon name="X" size={16} className="text-[hsl(var(--muted-foreground))]" />
-            </button>
-
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-[hsl(var(--accent))] rounded-lg flex items-center justify-center">
-                <Icon name="Plus" size={16} className="text-white" />
-              </div>
-              <span className="font-semibold text-base">Новое объявление</span>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Название *</label>
-                <input
-                  placeholder="Например: iPhone 15 Pro 256GB"
-                  value={newAdTitle}
-                  onChange={(e) => setNewAdTitle(e.target.value)}
-                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Описание</label>
-                <textarea
-                  rows={3}
-                  placeholder="Расскажите подробнее о товаре..."
-                  value={newAdDesc}
-                  onChange={(e) => setNewAdDesc(e.target.value)}
-                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Цена, ₽ *</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={newAdPrice}
-                    onChange={(e) => setNewAdPrice(e.target.value)}
-                    className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Состояние</label>
-                  <select
-                    value={newAdCondition}
-                    onChange={(e) => setNewAdCondition(e.target.value)}
-                    className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all text-[hsl(var(--foreground))]"
-                  >
-                    <option>Новый</option>
-                    <option>Отличное</option>
-                    <option>Хорошее</option>
-                    <option>Удовлетворительное</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Категория *</label>
-                <select
-                  value={newAdCategory}
-                  onChange={(e) => setNewAdCategory(e.target.value)}
-                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all text-[hsl(var(--foreground))]"
-                >
-                  <option value="">Выберите категорию</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Город *</label>
-                <input
-                  placeholder="Москва"
-                  value={newAdCity}
-                  onChange={(e) => setNewAdCity(e.target.value)}
-                  list="cities-list"
-                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all"
-                />
-                <datalist id="cities-list">
-                  {CITIES.filter((c) => c !== "Все города").map((c) => <option key={c} value={c} />)}
-                </datalist>
-              </div>
-
-              {newAdError && (
-                <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-2.5 rounded-xl text-sm">
-                  <Icon name="AlertCircle" size={15} />
-                  {newAdError}
-                </div>
-              )}
-
-              <button
-                onClick={submitNewAd}
-                disabled={newAdLoading}
-                className="w-full bg-[hsl(var(--accent))] text-white py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
-              >
-                {newAdLoading ? "Публикуем..." : "Опубликовать объявление"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

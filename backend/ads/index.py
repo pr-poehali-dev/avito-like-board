@@ -1,10 +1,13 @@
 """
-Объявления: создание, получение списка, получение своих, удаление, архивация.
+Объявления: создание (с загрузкой фото в S3), получение списка, мои объявления, архивация.
 Роутинг через поле action в теле запроса или query-параметр action.
 """
 import json
 import os
+import uuid
+import base64
 import psycopg2
+import boto3
 
 SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "t_p72465170_avito_like_board")
 
@@ -15,9 +18,20 @@ CORS = {
     "Content-Type": "application/json",
 }
 
+MIME_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
+
 
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
+
+
+def get_s3():
+    return boto3.client(
+        "s3",
+        endpoint_url="https://bucket.poehali.dev",
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+    )
 
 
 def get_user_id(event, cur):
@@ -25,11 +39,29 @@ def get_user_id(event, cur):
     if not sid:
         return None
     cur.execute(
-        f"""SELECT user_id FROM {SCHEMA}.sessions WHERE id = %s AND expires_at > NOW()""",
+        f"SELECT user_id FROM {SCHEMA}.sessions WHERE id = %s AND expires_at > NOW()",
         (sid,)
     )
     row = cur.fetchone()
     return row[0] if row else None
+
+
+def upload_photos(photos_b64: list) -> list:
+    s3 = get_s3()
+    key_id = os.environ["AWS_ACCESS_KEY_ID"]
+    urls = []
+    for item in photos_b64[:10]:
+        mime = item.get("mime", "image/jpeg")
+        data_b64 = item.get("data", "")
+        if not data_b64:
+            continue
+        ext = MIME_EXT.get(mime, "jpg")
+        key = f"ads/{uuid.uuid4().hex}.{ext}"
+        binary = base64.b64decode(data_b64)
+        s3.put_object(Bucket="files", Key=key, Body=binary, ContentType=mime)
+        url = f"https://cdn.poehali.dev/projects/{key_id}/bucket/{key}"
+        urls.append(url)
+    return urls
 
 
 def handler(event: dict, context) -> dict:
@@ -81,7 +113,7 @@ def handler(event: dict, context) -> dict:
         where = " AND ".join(filters)
         cur.execute(
             f"""SELECT a.id, a.title, a.price, a.category, a.city, a.condition,
-                       a.created_at, u.name as author
+                       a.created_at, u.name as author, a.photos
                 FROM {SCHEMA}.ads a
                 JOIN {SCHEMA}.users u ON u.id = a.user_id
                 WHERE {where}
@@ -96,13 +128,14 @@ def handler(event: dict, context) -> dict:
             {
                 "id": r[0], "title": r[1], "price": r[2],
                 "category": r[3], "city": r[4], "condition": r[5],
-                "date": r[6].strftime("%d.%m.%Y"), "author": r[7]
+                "date": r[6].strftime("%d.%m.%Y"), "author": r[7],
+                "photos": list(r[8]) if r[8] else []
             }
             for r in rows
         ]
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "ads": ads})}
 
-    # create — создать объявление
+    # create — создать объявление с фотографиями
     if action == "create":
         conn = get_conn()
         cur = conn.cursor()
@@ -117,6 +150,7 @@ def handler(event: dict, context) -> dict:
         category = (body.get("category") or "").strip()
         city = (body.get("city") or "").strip()
         condition = (body.get("condition") or "Хорошее").strip()
+        photos_b64 = body.get("photos") or []
 
         if not title or not price or not category or not city:
             conn.close()
@@ -128,10 +162,12 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Некорректная цена"})}
 
+        photo_urls = upload_photos(photos_b64) if photos_b64 else []
+
         cur.execute(
-            f"""INSERT INTO {SCHEMA}.ads (user_id, title, description, price, category, city, condition)
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
-            (user_id, title, description, price, category, city, condition)
+            f"""INSERT INTO {SCHEMA}.ads (user_id, title, description, price, category, city, condition, photos)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+            (user_id, title, description, price, category, city, condition, photo_urls)
         )
         ad_id = cur.fetchone()[0]
         conn.commit()
@@ -149,7 +185,7 @@ def handler(event: dict, context) -> dict:
             return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Необходима авторизация"})}
 
         cur.execute(
-            f"""SELECT id, title, price, category, city, condition, status, views, created_at
+            f"""SELECT id, title, price, category, city, condition, status, views, created_at, photos
                 FROM {SCHEMA}.ads WHERE user_id = %s ORDER BY created_at DESC""",
             (user_id,)
         )
@@ -161,7 +197,8 @@ def handler(event: dict, context) -> dict:
                 "id": r[0], "title": r[1], "price": r[2],
                 "category": r[3], "city": r[4], "condition": r[5],
                 "status": r[6], "views": r[7],
-                "date": r[8].strftime("%d.%m.%Y")
+                "date": r[8].strftime("%d.%m.%Y"),
+                "photos": list(r[9]) if r[9] else []
             }
             for r in rows
         ]

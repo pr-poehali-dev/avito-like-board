@@ -119,6 +119,8 @@ export default function Index() {
   const [myAdsCreatingFolder, setMyAdsCreatingFolder] = useState(false);
   // picker «в папку» для my_ads
   const [myAdsPickerAdId, setMyAdsPickerAdId] = useState<number | null>(null);
+  // карусель фото в карточках
+  const [carouselIndex, setCarouselIndex] = useState<Record<number, number>>({});
 
   // Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -647,9 +649,87 @@ export default function Index() {
         {/* HOME */}
         {section === "home" && (
           <div className="animate-slide-up">
-            <div className="mb-8 text-center">
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Найдите всё, что нужно</h1>
-              <p className="text-[hsl(var(--muted-foreground))]">Тысячи объявлений от реальных людей рядом с вами</p>
+            {/* Hero blocks */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+              {/* Большой блок — 2 колонки */}
+              <div
+                className="col-span-2 row-span-2 relative rounded-2xl overflow-hidden min-h-[180px] flex flex-col justify-end p-6 cursor-pointer group"
+                style={{ background: "linear-gradient(135deg, hsl(var(--accent)) 0%, #ff8c42 100%)" }}
+                onClick={() => {}}
+              >
+                <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 70% 30%, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+                <div className="relative z-10">
+                  <p className="text-white/80 text-sm font-medium mb-1">Доска объявлений</p>
+                  <h2 className="text-white text-2xl md:text-3xl font-bold leading-tight mb-2">Найдётся всё,<br />что нужно</h2>
+                  <p className="text-white/80 text-sm">Тысячи объявлений от реальных людей рядом с вами</p>
+                </div>
+                <div className="absolute right-4 bottom-4 text-6xl opacity-20 group-hover:opacity-30 transition-opacity select-none">🛍️</div>
+              </div>
+
+              {/* Услуги */}
+              <div
+                className="relative rounded-2xl overflow-hidden min-h-[84px] flex flex-col justify-between p-4 cursor-pointer group hover:shadow-md transition-shadow"
+                style={{ background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" }}
+                onClick={() => { setSelectedCategory("services"); setSection("categories"); }}
+              >
+                <span className="text-2xl">🔧</span>
+                <div>
+                  <p className="text-white font-bold text-sm leading-tight">Услуги</p>
+                  <p className="text-white/70 text-xs mt-0.5">Найди проверенного исполнителя</p>
+                </div>
+              </div>
+
+              {/* Продай ненужное */}
+              <div
+                className="relative rounded-2xl overflow-hidden min-h-[84px] flex flex-col justify-between p-4 cursor-pointer group hover:shadow-md transition-shadow"
+                style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)" }}
+                onClick={openNewAd}
+              >
+                <span className="text-2xl">💸</span>
+                <div>
+                  <p className="text-white font-bold text-sm leading-tight">Продай ненужное</p>
+                  <p className="text-white/70 text-xs mt-0.5">Подать объявление бесплатно</p>
+                </div>
+              </div>
+
+              {/* Квартиры */}
+              <div
+                className="relative rounded-2xl overflow-hidden min-h-[84px] flex flex-col justify-between p-4 cursor-pointer group hover:shadow-md transition-shadow"
+                style={{ background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" }}
+                onClick={() => { setSelectedCategory("realty"); setSection("categories"); }}
+              >
+                <span className="text-2xl">🏢</span>
+                <div>
+                  <p className="text-white font-bold text-sm leading-tight">Квартиры</p>
+                  <p className="text-white/70 text-xs mt-0.5">Снять или купить</p>
+                </div>
+              </div>
+
+              {/* Электроника */}
+              <div
+                className="relative rounded-2xl overflow-hidden min-h-[84px] flex flex-col justify-between p-4 cursor-pointer group hover:shadow-md transition-shadow"
+                style={{ background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" }}
+                onClick={() => { setSelectedCategory("electronics"); setSection("categories"); }}
+              >
+                <span className="text-2xl">📱</span>
+                <div>
+                  <p className="text-white font-bold text-sm leading-tight">Электроника</p>
+                  <p className="text-white/70 text-xs mt-0.5">Гаджеты и техника</p>
+                </div>
+              </div>
+
+              {/* Запчасти / Авто */}
+              <div
+                className="relative rounded-2xl overflow-hidden min-h-[84px] flex flex-col justify-between p-4 cursor-pointer group hover:shadow-md transition-shadow"
+                style={{ background: "linear-gradient(135deg, #64748b 0%, #475569 100%)" }}
+                onClick={() => { setSelectedCategory("auto"); setSection("categories"); }}
+              >
+                <span className="text-2xl">🚗</span>
+                <div>
+                  <p className="text-white font-bold text-sm leading-tight">Запчасти и авто</p>
+                  <p className="text-white/70 text-xs mt-0.5">Посмотри, что рядом</p>
+                </div>
+              </div>
             </div>
 
             {/* Filters */}
@@ -728,52 +808,158 @@ export default function Index() {
               )}
             </div>
 
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                Найдено <span className="font-semibold text-[hsl(var(--foreground))]">{filteredAds.length}</span> объявлений
-              </p>
-              <button className="flex items-center gap-1 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
-                <Icon name="ArrowUpDown" size={13} />
-                По дате
-              </button>
-            </div>
+            {/* Основной контент + правая панель */}
+            <div className="flex gap-6 items-start">
+              {/* Список объявлений */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                    Найдено <span className="font-semibold text-[hsl(var(--foreground))]">{filteredAds.length}</span> объявлений
+                  </p>
+                  <button className="flex items-center gap-1 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
+                    <Icon name="ArrowUpDown" size={13} />
+                    По дате
+                  </button>
+                </div>
 
-            {filteredAds.length === 0 ? (
-              <div className="text-center py-20 text-[hsl(var(--muted-foreground))]">
-                <div className="text-5xl mb-4">🔍</div>
-                <p className="font-medium">Объявления не найдены</p>
-                <p className="text-sm mt-1">Попробуйте изменить параметры поиска</p>
+                {filteredAds.length === 0 ? (
+                  <div className="text-center py-20 text-[hsl(var(--muted-foreground))]">
+                    <div className="text-5xl mb-4">🔍</div>
+                    <p className="font-medium">Объявления не найдены</p>
+                    <p className="text-sm mt-1">Попробуйте изменить параметры поиска</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {filteredAds.map((ad) => {
+                      const photos = (ad.photos && ad.photos.length > 0) ? ad.photos.slice(0, 5) : [];
+                      const idx = carouselIndex[ad.id] ?? 0;
+                      return (
+                        <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer group">
+                          {/* Фото-карусель */}
+                          <div className="aspect-[4/3] bg-[hsl(var(--muted))] relative overflow-hidden">
+                            {photos.length > 0 ? (
+                              <>
+                                <img
+                                  src={photos[idx]}
+                                  alt={ad.title}
+                                  className="w-full h-full object-cover transition-opacity duration-200"
+                                />
+                                {photos.length > 1 && (
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setCarouselIndex((p) => ({ ...p, [ad.id]: (idx - 1 + photos.length) % photos.length })); }}
+                                      className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <Icon name="ChevronLeft" size={13} className="text-white" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setCarouselIndex((p) => ({ ...p, [ad.id]: (idx + 1) % photos.length })); }}
+                                      className="absolute right-8 top-1/2 -translate-y-1/2 w-6 h-6 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <Icon name="ChevronRight" size={13} className="text-white" />
+                                    </button>
+                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                      {photos.map((_, i) => (
+                                        <button
+                                          key={i}
+                                          onClick={(e) => { e.stopPropagation(); setCarouselIndex((p) => ({ ...p, [ad.id]: i })); }}
+                                          className={`w-1.5 h-1.5 rounded-full transition-all ${i === idx ? "bg-white scale-125" : "bg-white/50"}`}
+                                        />
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl">{ad.image || "📦"}</div>
+                            )}
+                            {/* Кнопка «в избранное» */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }}
+                              className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-110"
+                            >
+                              <Icon name="FolderPlus" size={13} className="text-[hsl(var(--accent))]" />
+                            </button>
+                          </div>
+                          <div className="p-3">
+                            <p className="font-semibold text-[hsl(var(--foreground))] text-sm leading-tight mb-1 line-clamp-2">{ad.title}</p>
+                            <p className="text-[hsl(var(--accent))] font-bold text-base">{formatPrice(ad.price)}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1">
+                                <Icon name="MapPin" size={10} />
+                                {ad.city}
+                              </span>
+                              <span className="text-xs text-[hsl(var(--muted-foreground))]">{ad.date}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredAds.map((ad) => (
-                  <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer">
-                    <div className="aspect-[4/3] bg-[hsl(var(--muted))] flex items-center justify-center text-4xl relative">
-                      {(ad.photos && ad.photos.length > 0)
-                        ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover" />
-                        : (ad.image || "📦")}
+
+              {/* Правая панель */}
+              <aside className="hidden lg:flex flex-col gap-4 w-72 shrink-0">
+                {/* Бесплатное объявление */}
+                <div className="rounded-2xl p-5 text-white" style={{ background: "linear-gradient(135deg, hsl(var(--accent)) 0%, #ff8c42 100%)" }}>
+                  <p className="font-bold text-lg leading-tight mb-1">Подай объявление</p>
+                  <p className="text-white/80 text-sm mb-4">Бесплатно и за 2 минуты</p>
+                  <button
+                    onClick={openNewAd}
+                    className="w-full bg-white text-[hsl(var(--accent))] font-bold py-2.5 rounded-xl text-sm hover:bg-orange-50 transition-colors"
+                  >
+                    Разместить
+                  </button>
+                </div>
+
+                {/* Популярные категории */}
+                <div className="bg-white rounded-2xl border border-border p-5">
+                  <p className="font-bold mb-3">Популярные категории</p>
+                  <div className="flex flex-col gap-1">
+                    {CATEGORIES.slice(0, 6).map((cat) => (
                       <button
-                        onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }}
-                        className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-110"
+                        key={cat.id}
+                        onClick={() => { setSelectedCategory(cat.id); }}
+                        className="flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left"
                       >
-                        <Icon name="FolderPlus" size={13} className="text-[hsl(var(--accent))]" />
-                      </button>
-                    </div>
-                    <div className="p-3">
-                      <p className="font-semibold text-[hsl(var(--foreground))] text-sm leading-tight mb-1 line-clamp-2">{ad.title}</p>
-                      <p className="text-[hsl(var(--accent))] font-bold text-base">{formatPrice(ad.price)}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1">
-                          <Icon name="MapPin" size={10} />
-                          {ad.city}
+                        <span className="flex items-center gap-2">
+                          <Icon name={cat.icon as "Home"} size={14} className="text-[hsl(var(--accent))]" />
+                          {cat.label}
                         </span>
-                        <span className="text-xs text-[hsl(var(--muted-foreground))]">{ad.date}</span>
-                      </div>
+                        <span className="text-xs text-[hsl(var(--muted-foreground))]">{cat.count.toLocaleString("ru")}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Безопасность */}
+                <div className="bg-white rounded-2xl border border-border p-5">
+                  <p className="font-bold mb-2">Советы по безопасности</p>
+                  <ul className="flex flex-col gap-2 text-sm text-[hsl(var(--muted-foreground))]">
+                    <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Встречайтесь в публичных местах</li>
+                    <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Проверяйте товар перед оплатой</li>
+                    <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Не переводите предоплату незнакомцам</li>
+                    <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Сохраняйте переписку</li>
+                  </ul>
+                </div>
+
+                {/* Статистика */}
+                <div className="bg-white rounded-2xl border border-border p-5">
+                  <p className="font-bold mb-3">Сегодня на платформе</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-[hsl(var(--muted))] rounded-xl p-3 text-center">
+                      <p className="text-2xl font-bold text-[hsl(var(--accent))]">{ads.length}</p>
+                      <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">объявлений</p>
+                    </div>
+                    <div className="bg-[hsl(var(--muted))] rounded-xl p-3 text-center">
+                      <p className="text-2xl font-bold text-[hsl(var(--accent))]">8</p>
+                      <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">категорий</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              </aside>
+            </div>
           </div>
         )}
 
@@ -1229,39 +1415,41 @@ export default function Index() {
                   </button>
                   <h3 className="font-bold text-lg mb-1">Сохранить в папку</h3>
                   <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Выберите папки</p>
-                  {favFolders.length === 0 ? (
-                    <div className="text-center py-4 text-[hsl(var(--muted-foreground))]">
-                      <p className="text-sm mb-3">Нет папок — создайте первую</p>
-                      <input
-                        placeholder="Название папки"
-                        value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
-                        className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0 mb-3"
-                      />
-                      <button onClick={createFolder} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Создать папку</button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
-                      {favFolders.map((f) => (
-                        <button
-                          key={f.id}
-                          onClick={() => toggleAdInFolder(f.id, addToFolderAdId)}
-                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all text-left ${
-                            adFolderIds.includes(f.id)
-                              ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
-                              : "border-border hover:border-[hsl(var(--accent))]"
-                          }`}
-                        >
-                          <Icon name={adFolderIds.includes(f.id) ? "CheckSquare" : "Square"} size={16} />
-                          <span className="flex-1 truncate">{f.name}</span>
-                          <span className="text-xs text-[hsl(var(--muted-foreground))]">{f.count}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <div className="flex flex-col gap-2 max-h-56 overflow-y-auto mb-3">
+                    {favFolders.length === 0 && (
+                      <p className="text-sm text-center text-[hsl(var(--muted-foreground))] py-3">Нет папок — создайте первую ниже</p>
+                    )}
+                    {favFolders.map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => toggleAdInFolder(f.id, addToFolderAdId)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all text-left ${
+                          adFolderIds.includes(f.id)
+                            ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
+                            : "border-border hover:border-[hsl(var(--accent))]"
+                        }`}
+                      >
+                        <Icon name={adFolderIds.includes(f.id) ? "CheckSquare" : "Square"} size={16} />
+                        <span className="flex-1 truncate">{f.name}</span>
+                        <span className="text-xs text-[hsl(var(--muted-foreground))]">{f.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      placeholder="Новая папка..."
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && createFolder()}
+                      className="flex-1 px-3 py-2.5 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0"
+                    />
+                    <button onClick={createFolder} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">
+                      +
+                    </button>
+                  </div>
                   <button
                     onClick={() => setAddToFolderAdId(null)}
-                    className="w-full mt-4 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity"
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity"
                   >
                     Готово
                   </button>

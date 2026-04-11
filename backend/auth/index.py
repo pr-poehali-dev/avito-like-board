@@ -1,11 +1,14 @@
 """
-Авторизация: регистрация, вход, выход, проверка сессии.
+Авторизация: регистрация с подтверждением email, вход, выход, проверка сессии.
 Роутинг через поле action в теле запроса или query-параметр action.
 """
 import json
 import os
 import hashlib
 import secrets
+import random
+import smtplib
+from email.mime.text import MIMEText
 import psycopg2
 
 SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "t_p72465170_avito_like_board")
@@ -30,6 +33,35 @@ def make_session_id() -> str:
     return secrets.token_hex(32)
 
 
+def make_code() -> str:
+    return str(random.randint(100000, 999999))
+
+
+def send_email(to: str, code: str):
+    host = os.environ["SMTP_HOST"]
+    port = int(os.environ["SMTP_PORT"])
+    user = os.environ["SMTP_USER"]
+    password = os.environ["SMTP_PASSWORD"]
+
+    msg = MIMEText(
+        f"Ваш код подтверждения: {code}\n\nКод действителен 10 минут.",
+        "plain", "utf-8"
+    )
+    msg["Subject"] = f"Код подтверждения: {code}"
+    msg["From"] = user
+    msg["To"] = to
+
+    if port == 465:
+        with smtplib.SMTP_SSL(host, port) as smtp:
+            smtp.login(user, password)
+            smtp.sendmail(user, [to], msg.as_string())
+    else:
+        with smtplib.SMTP(host, port) as smtp:
+            smtp.starttls()
+            smtp.login(user, password)
+            smtp.sendmail(user, [to], msg.as_string())
+
+
 def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
@@ -42,18 +74,12 @@ def handler(event: dict, context) -> dict:
     qs = event.get("queryStringParameters") or {}
     action = qs.get("action") or body.get("action") or ""
 
-    # register
-    if action == "register":
-        name = (body.get("name") or "").strip()
+    # send_code — шаг 1 регистрации: отправляем 6-значный код на email
+    if action == "send_code":
         email = (body.get("email") or "").strip().lower()
-        password = body.get("password") or ""
+        if not email or "@" not in email:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите корректный email"})}
 
-        if not name or not email or not password:
-            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Заполните все поля"})}
-        if len(password) < 6:
-            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Пароль минимум 6 символов"})}
-
-        pw_hash = hash_password(password)
         conn = get_conn()
         cur = conn.cursor()
         cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email = %s", (email,))
@@ -61,6 +87,53 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return {"statusCode": 409, "headers": CORS, "body": json.dumps({"error": "Email уже зарегистрирован"})}
 
+        code = make_code()
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.email_codes (email, code) VALUES (%s, %s)",
+            (email, code)
+        )
+        conn.commit()
+        conn.close()
+
+        send_email(email, code)
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+
+    # register — шаг 2: проверяем код и создаём аккаунт
+    if action == "register":
+        name = (body.get("name") or "").strip()
+        email = (body.get("email") or "").strip().lower()
+        password = body.get("password") or ""
+        code = (body.get("code") or "").strip()
+
+        if not name or not email or not password or not code:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Заполните все поля"})}
+        if len(password) < 6:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Пароль минимум 6 символов"})}
+
+        conn = get_conn()
+        cur = conn.cursor()
+
+        # Проверяем код
+        cur.execute(
+            f"""SELECT id FROM {SCHEMA}.email_codes
+                WHERE email = %s AND code = %s AND used = FALSE AND expires_at > NOW()
+                ORDER BY created_at DESC LIMIT 1""",
+            (email, code)
+        )
+        code_row = cur.fetchone()
+        if not code_row:
+            conn.close()
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Неверный или просроченный код"})}
+
+        # Помечаем код как использованный
+        cur.execute(f"UPDATE {SCHEMA}.email_codes SET used = TRUE WHERE id = %s", (code_row[0],))
+
+        cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email = %s", (email,))
+        if cur.fetchone():
+            conn.close()
+            return {"statusCode": 409, "headers": CORS, "body": json.dumps({"error": "Email уже зарегистрирован"})}
+
+        pw_hash = hash_password(password)
         cur.execute(
             f"INSERT INTO {SCHEMA}.users (name, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
             (name, email, pw_hash)

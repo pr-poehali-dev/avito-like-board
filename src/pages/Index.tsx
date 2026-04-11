@@ -949,7 +949,7 @@ export default function Index() {
                   <p className="font-bold mb-3">Сегодня на платформе</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-[hsl(var(--muted))] rounded-xl p-3 text-center">
-                      <p className="text-2xl font-bold text-[hsl(var(--accent))]">{ads.length}</p>
+                      <p className="text-2xl font-bold text-[hsl(var(--accent))]">{apiAds.length}</p>
                       <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">объявлений</p>
                     </div>
                     <div className="bg-[hsl(var(--muted))] rounded-xl p-3 text-center">

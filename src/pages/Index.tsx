@@ -1343,28 +1343,42 @@ export default function Index() {
                     <p className="text-sm mt-1">Добавляйте объявления через кнопку ♥ в карточке</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {folderAds.map((ad) => (
-                      <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer group">
-                        <div className="aspect-[4/3] bg-[hsl(var(--muted))] relative overflow-hidden">
+                      <div
+                        key={ad.id}
+                        className="bg-white rounded-2xl border border-border overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group"
+                        onClick={() => setViewAdId(ad.id)}
+                      >
+                        {/* Фото */}
+                        <div className="aspect-[16/9] bg-[hsl(var(--muted))] relative overflow-hidden">
                           {(ad.photos && ad.photos.length > 0)
-                            ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover" />
-                            : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
-                          {/* Кнопка управления папками этого объявления */}
+                            ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            : <div className="w-full h-full flex items-center justify-center text-5xl">📦</div>}
+                          {/* Кнопка сердечко */}
                           <button
                             onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }}
-                            className="absolute top-2 right-2 z-10 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-110"
+                            className="absolute top-2.5 right-2.5 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow transition-transform hover:scale-110"
                           >
-                            <Icon name="FolderPlus" size={13} className="text-[hsl(var(--accent))]" />
+                            <Icon name="Heart" size={14} className="text-red-500 fill-red-500" />
                           </button>
+                          {ad.photos && ad.photos.length > 1 && (
+                            <span className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md">
+                              +{ad.photos.length - 1}
+                            </span>
+                          )}
                         </div>
-                        <div className="p-3">
-                          <p className="font-semibold text-sm leading-tight mb-1 line-clamp-2">{ad.title}</p>
-                          <p className="text-[hsl(var(--accent))] font-bold">{formatPrice(ad.price)}</p>
-                          <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1 mt-2">
-                            <Icon name="MapPin" size={10} />
-                            {ad.city}
-                          </span>
+                        {/* Контент */}
+                        <div className="p-4">
+                          <p className="font-semibold text-[hsl(var(--foreground))] text-sm leading-snug mb-2 line-clamp-2">{ad.title}</p>
+                          <p className="text-[hsl(var(--accent))] font-bold text-lg leading-none mb-3">{formatPrice(ad.price)}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1">
+                              <Icon name="MapPin" size={10} />
+                              {ad.city}
+                            </span>
+                            <span className="text-xs text-[hsl(var(--muted-foreground))]">{ad.date}</span>
+                          </div>
                         </div>
                       </div>
                     ))}

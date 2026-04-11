@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "GET / без сессии — 401",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет сессии"}
+    },
+    {
+      "name": "POST register с пустыми полями — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "register", "name": "", "email": "", "password": ""},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Заполните все поля"}
+    },
+    {
+      "name": "POST login с неверными данными — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "login", "email": "nonexistent@example.com", "password": "wrongpass"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Неверный email или пароль"}
+    }
+  ]
+}

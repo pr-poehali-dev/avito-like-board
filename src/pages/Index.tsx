@@ -1,5 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
+
+const AUTH_URL = "https://functions.poehali.dev/8b2cd80b-f20b-45b5-8696-018d10b4eb52";
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
 
 type Section = "home" | "categories" | "my-ads" | "profile" | "messages" | "favorites" | "contacts";
 
@@ -54,6 +62,70 @@ export default function Index() {
   const [favorites, setFavorites] = useState<number[]>([2, 5]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Auth state
+  const [user, setUser] = useState<User | null>(null);
+  const [authModal, setAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authName, setAuthName] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  useEffect(() => {
+    const sid = localStorage.getItem("session_id");
+    if (!sid) return;
+    fetch(AUTH_URL, { headers: { "X-Session-Id": sid } })
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setUser(d.user); })
+      .catch(() => {});
+  }, []);
+
+  const openAuth = (mode: "login" | "register") => {
+    setAuthMode(mode);
+    setAuthError("");
+    setAuthName("");
+    setAuthEmail("");
+    setAuthPassword("");
+    setAuthModal(true);
+  };
+
+  const submitAuth = async () => {
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const body: Record<string, string> = { action: authMode, email: authEmail, password: authPassword };
+      if (authMode === "register") body.name = authName;
+      const res = await fetch(AUTH_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setAuthError(data.error || "Ошибка");
+      } else {
+        localStorage.setItem("session_id", data.session_id);
+        setUser(data.user);
+        setAuthModal(false);
+      }
+    } catch {
+      setAuthError("Нет соединения");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    const sid = localStorage.getItem("session_id");
+    if (sid) {
+      await fetch(AUTH_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sid }, body: JSON.stringify({ action: "logout" }) });
+      localStorage.removeItem("session_id");
+    }
+    setUser(null);
+    setSection("home");
+  };
 
   const filteredAds = MOCK_ADS.filter((ad) => {
     const matchQuery = ad.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -131,10 +203,28 @@ export default function Index() {
             <Icon name={mobileMenuOpen ? "X" : "Menu"} size={20} />
           </button>
 
-          <button className="hidden md:flex items-center gap-2 bg-[hsl(var(--accent))] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shrink-0">
-            <Icon name="Plus" size={15} />
-            Подать объявление
-          </button>
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            {user ? (
+              <button
+                onClick={() => setSection("profile")}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+              >
+                <div className="w-7 h-7 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  {user.name[0].toUpperCase()}
+                </div>
+                <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
+              </button>
+            ) : (
+              <>
+                <button onClick={() => openAuth("login")} className="px-4 py-2 rounded-lg text-sm font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors">
+                  Войти
+                </button>
+                <button onClick={() => openAuth("register")} className="px-4 py-2 rounded-lg text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">
+                  Регистрация
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {mobileMenuOpen && (
@@ -447,43 +537,59 @@ export default function Index() {
         {section === "profile" && (
           <div className="animate-slide-up max-w-lg">
             <h2 className="text-2xl font-bold mb-8">Личный кабинет</h2>
-            <div className="bg-white rounded-2xl border border-border p-6 mb-4">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-2xl font-bold">А</div>
-                <div>
-                  <p className="font-bold text-lg">Алексей Иванов</p>
-                  <p className="text-[hsl(var(--muted-foreground))] text-sm">alexey@mail.ru</p>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">На платформе с марта 2024</p>
+            {!user && (
+              <div className="bg-white rounded-2xl border border-border p-8 text-center mb-4">
+                <div className="w-16 h-16 bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Icon name="User" size={28} className="text-[hsl(var(--muted-foreground))]" />
+                </div>
+                <p className="font-semibold mb-1">Вы не авторизованы</p>
+                <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Войдите, чтобы управлять профилем</p>
+                <div className="flex gap-2 justify-center">
+                  <button onClick={() => openAuth("login")} className="px-5 py-2.5 rounded-xl text-sm font-medium border border-border hover:bg-[hsl(var(--muted))] transition-colors">Войти</button>
+                  <button onClick={() => openAuth("register")} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Регистрация</button>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 pb-6 border-b border-border">
-                {[{ label: "Объявлений", value: "3" }, { label: "Продаж", value: "12" }, { label: "Отзывов", value: "8" }].map((s) => (
-                  <div key={s.label} className="text-center">
-                    <p className="text-2xl font-bold">{s.value}</p>
-                    <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 flex flex-col gap-1">
-                {[
-                  { icon: "UserCog", label: "Редактировать профиль" },
-                  { icon: "Bell", label: "Уведомления" },
-                  { icon: "Shield", label: "Безопасность" },
-                  { icon: "CreditCard", label: "Способы оплаты" },
-                ].map((item) => (
-                  <button key={item.label} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-left">
-                    <div className="flex items-center gap-3">
-                      <Icon name={item.icon} size={18} className="text-[hsl(var(--muted-foreground))]" />
-                      <span className="text-sm font-medium">{item.label}</span>
+            )}
+            {user && (
+              <>
+                <div className="bg-white rounded-2xl border border-border p-6 mb-4">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-16 h-16 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-2xl font-bold">{user.name[0].toUpperCase()}</div>
+                    <div>
+                      <p className="font-bold text-lg">{user.name}</p>
+                      <p className="text-[hsl(var(--muted-foreground))] text-sm">{user.email}</p>
                     </div>
-                    <Icon name="ChevronRight" size={16} className="text-[hsl(var(--muted-foreground))]" />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button className="w-full py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors border border-red-100">
-              Выйти из аккаунта
-            </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 pb-6 border-b border-border">
+                    {[{ label: "Объявлений", value: "3" }, { label: "Продаж", value: "12" }, { label: "Отзывов", value: "8" }].map((s) => (
+                      <div key={s.label} className="text-center">
+                        <p className="text-2xl font-bold">{s.value}</p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 flex flex-col gap-1">
+                    {[
+                      { icon: "UserCog", label: "Редактировать профиль" },
+                      { icon: "Bell", label: "Уведомления" },
+                      { icon: "Shield", label: "Безопасность" },
+                      { icon: "CreditCard", label: "Способы оплаты" },
+                    ].map((item) => (
+                      <button key={item.label} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                        <div className="flex items-center gap-3">
+                          <Icon name={item.icon} size={18} className="text-[hsl(var(--muted-foreground))]" />
+                          <span className="text-sm font-medium">{item.label}</span>
+                        </div>
+                        <Icon name="ChevronRight" size={16} className="text-[hsl(var(--muted-foreground))]" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button onClick={logout} className="w-full py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors border border-red-100">
+                  Выйти из аккаунта
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -543,6 +649,103 @@ export default function Index() {
           </button>
         ))}
       </nav>
+
+      {/* Auth Modal */}
+      {authModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setAuthModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-slide-up">
+            {/* Close */}
+            <button onClick={() => setAuthModal(false)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors">
+              <Icon name="X" size={16} className="text-[hsl(var(--muted-foreground))]" />
+            </button>
+
+            {/* Logo */}
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-8 h-8 bg-[hsl(var(--accent))] rounded-lg flex items-center justify-center">
+                <Icon name="Tag" size={16} className="text-white" />
+              </div>
+              <span className="font-semibold text-base">Объявления</span>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-1 bg-[hsl(var(--muted))] p-1 rounded-xl mb-6">
+              <button
+                onClick={() => { setAuthMode("login"); setAuthError(""); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${authMode === "login" ? "bg-white shadow-sm text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]"}`}
+              >
+                Войти
+              </button>
+              <button
+                onClick={() => { setAuthMode("register"); setAuthError(""); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${authMode === "register" ? "bg-white shadow-sm text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]"}`}
+              >
+                Регистрация
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {authMode === "register" && (
+                <div>
+                  <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Ваше имя</label>
+                  <input
+                    placeholder="Алексей"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Email</label>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Пароль</label>
+                <input
+                  type="password"
+                  placeholder={authMode === "register" ? "Минимум 6 символов" : "Ваш пароль"}
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitAuth()}
+                  className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] transition-all"
+                />
+              </div>
+
+              {authError && (
+                <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-2.5 rounded-xl text-sm">
+                  <Icon name="AlertCircle" size={15} />
+                  {authError}
+                </div>
+              )}
+
+              <button
+                onClick={submitAuth}
+                disabled={authLoading}
+                className="w-full bg-[hsl(var(--accent))] text-white py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity mt-1 disabled:opacity-60"
+              >
+                {authLoading ? "Загрузка..." : authMode === "login" ? "Войти" : "Создать аккаунт"}
+              </button>
+            </div>
+
+            <p className="text-center text-xs text-[hsl(var(--muted-foreground))] mt-4">
+              {authMode === "login" ? "Нет аккаунта? " : "Уже есть аккаунт? "}
+              <button
+                onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(""); }}
+                className="text-[hsl(var(--accent))] font-medium hover:underline"
+              >
+                {authMode === "login" ? "Зарегистрироваться" : "Войти"}
+              </button>
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -262,9 +262,6 @@ export default function Index() {
     { id: "categories", label: "Категории", icon: "LayoutGrid" },
     { id: "my-ads", label: "Мои объявления", icon: "FileText" },
     { id: "messages", label: "Сообщения", icon: "MessageCircle" },
-    { id: "favorites", label: "Избранное", icon: "Heart" },
-    { id: "contacts", label: "Контакты", icon: "Phone" },
-    { id: "profile", label: "Кабинет", icon: "User" },
   ];
 
   if (showCreateAd) {
@@ -342,12 +339,12 @@ export default function Index() {
             {user ? (
               <button
                 onClick={() => setSection("profile")}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+                className="p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+                title={user.name}
               >
-                <div className="w-7 h-7 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold">
+                <div className="w-8 h-8 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold">
                   {user.name[0].toUpperCase()}
                 </div>
-                <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
               </button>
             ) : (
               <>

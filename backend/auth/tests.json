@@ -25,6 +25,24 @@
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Неверный email или пароль"}
+    },
+    {
+      "name": "POST update_profile без сессии — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "update_profile", "name": "Test"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет сессии"}
+    },
+    {
+      "name": "POST upload_photo без сессии — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "upload_photo", "type": "avatar", "data": ""},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет сессии"}
     }
   ]
 }

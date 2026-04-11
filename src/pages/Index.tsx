@@ -13,6 +13,10 @@ interface User {
   id: number;
   name: string;
   email: string;
+  avatar_url?: string | null;
+  cover_url?: string | null;
+  city?: string | null;
+  about?: string | null;
 }
 
 interface Ad {
@@ -139,6 +143,11 @@ export default function Index() {
   const [resendTimer, setResendTimer] = useState(0);
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [profileTab, setProfileTab] = useState<"ads" | "settings">("ads");
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editAbout, setEditAbout] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     const sid = localStorage.getItem("session_id");
@@ -290,6 +299,40 @@ export default function Index() {
     }
     setUser(null);
     setSection("home");
+  };
+
+  const uploadPhoto = async (file: File, type: "avatar" | "cover") => {
+    const reader = new FileReader();
+    return new Promise<string>((resolve, reject) => {
+      reader.onload = async (e) => {
+        const dataUrl = e.target?.result as string;
+        const res = await fetch(AUTH_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Session-Id": localStorage.getItem("session_id") || "" },
+          body: JSON.stringify({ action: "upload_photo", type, data: dataUrl }),
+        });
+        const d = await res.json();
+        if (d.ok) resolve(d.url);
+        else reject(d.error);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const saveProfile = async () => {
+    setEditSaving(true);
+    const res = await fetch(AUTH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": localStorage.getItem("session_id") || "" },
+      body: JSON.stringify({ action: "update_profile", name: editName, city: editCity, about: editAbout }),
+    });
+    const d = await res.json();
+    if (d.ok) {
+      setUser(d.user);
+      setEditProfileOpen(false);
+      toast.success("Профиль обновлён");
+    }
+    setEditSaving(false);
   };
 
   // Объединяем API + MOCK (MOCK показываем только если API пустой)
@@ -1508,50 +1551,69 @@ export default function Index() {
             )}
             {user && (
               <>
-                {/* Обложка */}
-                <div className="relative w-full h-48 md:h-64 bg-gradient-to-br from-[hsl(var(--accent))] to-orange-300 overflow-hidden group">
-                  {coverPhoto && <img src={coverPhoto} alt="обложка" className="w-full h-full object-cover" />}
-                  <label className="absolute inset-0 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
-                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm text-sm font-medium px-4 py-2 rounded-xl">
-                      <Icon name="Camera" size={16} />
-                      Изменить обложку
+                {/* Обложка с именем и статусом внутри */}
+                <div className="relative w-full h-52 md:h-72 bg-gradient-to-br from-[hsl(var(--accent))] to-orange-300 overflow-hidden group">
+                  {(user.cover_url || coverPhoto) && (
+                    <img src={user.cover_url || coverPhoto || ""} alt="обложка" className="w-full h-full object-cover" />
+                  )}
+                  {/* Затемнение снизу для читаемости текста */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+                  {/* Кнопка смены обложки */}
+                  <label className="absolute top-3 right-3 cursor-pointer z-10">
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-black/60 transition-colors">
+                      <Icon name="Camera" size={13} />
+                      Обложка
                     </div>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                       const f = e.target.files?.[0];
-                      if (f) setCoverPhoto(URL.createObjectURL(f));
+                      if (!f) return;
+                      setCoverPhoto(URL.createObjectURL(f));
+                      const url = await uploadPhoto(f, "cover");
+                      setUser((prev) => prev ? { ...prev, cover_url: url } : prev);
                     }} />
                   </label>
 
-                  {/* Аватар поверх обложки */}
-                  <div className="absolute -bottom-12 left-6 z-10">
-                    <div className="relative group/av">
-                      <div className="w-24 h-24 rounded-full border-4 border-white bg-[hsl(var(--accent))] flex items-center justify-center text-white text-3xl font-bold shadow-lg overflow-hidden">
-                        {user.name[0].toUpperCase()}
-                      </div>
-                      <label className="absolute inset-0 rounded-full cursor-pointer opacity-0 group-hover/av:opacity-100 transition-opacity bg-black/40 flex items-center justify-center">
-                        <Icon name="Camera" size={18} className="text-white" />
-                        <input type="file" accept="image/*" className="hidden" />
+                  {/* Аватар + имя + статус + сообщения — в нижней части обложки */}
+                  <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3 z-10">
+                    <div className="flex items-end gap-3">
+                      {/* Аватар */}
+                      <label className="cursor-pointer group/av shrink-0">
+                        <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full border-3 border-white bg-[hsl(var(--accent))] flex items-center justify-center text-white text-2xl md:text-3xl font-bold shadow-lg overflow-hidden">
+                          {user.avatar_url
+                            ? <img src={user.avatar_url} alt="аватар" className="w-full h-full object-cover" />
+                            : user.name[0].toUpperCase()}
+                          <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover/av:opacity-100 transition-opacity flex items-center justify-center">
+                            <Icon name="Camera" size={18} className="text-white" />
+                          </div>
+                        </div>
+                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          const url = await uploadPhoto(f, "avatar");
+                          setUser((prev) => prev ? { ...prev, avatar_url: url } : prev);
+                          toast.success("Аватар обновлён");
+                        }} />
                       </label>
+                      {/* Имя и статус */}
+                      <div className="pb-1">
+                        <h2 className="text-white font-bold text-lg md:text-xl drop-shadow leading-tight">{user.name}</h2>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="w-2 h-2 rounded-full bg-green-400 inline-block shadow"></span>
+                          <span className="text-xs text-green-300 font-medium">Онлайн</span>
+                        </div>
+                        {user.city && <p className="text-white/70 text-xs mt-0.5 flex items-center gap-1"><Icon name="MapPin" size={10} />{user.city}</p>}
+                      </div>
                     </div>
+                    {/* Кнопка сообщений */}
+                    <button
+                      onClick={() => setSection("messages")}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 backdrop-blur-sm text-white text-sm font-semibold hover:bg-white/30 transition-colors border border-white/30 shrink-0 mb-1"
+                    >
+                      <Icon name="MessageCircle" size={16} />
+                      <span className="hidden sm:inline">Сообщения</span>
+                    </button>
                   </div>
-                </div>
-
-                {/* Имя + онлайн + кнопка сообщений */}
-                <div className="px-6 pt-14 pb-4 flex items-start justify-between gap-4 bg-white border-b border-border">
-                  <div>
-                    <h2 className="text-xl font-bold leading-tight">{user.name}</h2>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
-                      <span className="text-xs text-green-600 font-medium">Онлайн</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSection("messages")}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--accent))] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0 mt-1"
-                  >
-                    <Icon name="MessageCircle" size={16} />
-                    Сообщения
-                  </button>
                 </div>
 
                 {/* Статистика */}
@@ -1588,11 +1650,16 @@ export default function Index() {
                   <aside className="w-64 shrink-0 hidden md:flex flex-col gap-3">
                     <div className="bg-white rounded-2xl border border-border p-4">
                       <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide mb-3 px-1">Аккаунт</p>
+                      <button
+                        onClick={() => { setEditName(user.name); setEditCity(user.city || ""); setEditAbout(user.about || ""); setEditProfileOpen(true); }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-left"
+                      >
+                        <Icon name="UserCog" size={17} className="text-[hsl(var(--muted-foreground))]" />
+                        <span className="text-sm font-medium">Редактировать профиль</span>
+                      </button>
                       {[
-                        { icon: "UserCog", label: "Редактировать профиль" },
                         { icon: "Bell", label: "Уведомления" },
                         { icon: "Shield", label: "Безопасность" },
-                        { icon: "CreditCard", label: "Способы оплаты" },
                       ].map((item) => (
                         <button key={item.label} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-left">
                           <Icon name={item.icon} size={17} className="text-[hsl(var(--muted-foreground))]" />
@@ -1601,11 +1668,17 @@ export default function Index() {
                       ))}
                     </div>
                     <div className="bg-white rounded-2xl border border-border p-4">
-                      <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide mb-3 px-1">Контакты</p>
+                      <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide mb-2 px-1">Контакты</p>
                       <div className="flex items-center gap-2 px-3 py-2 text-sm text-[hsl(var(--muted-foreground))]">
                         <Icon name="Mail" size={15} />
                         <span className="truncate">{user.email}</span>
                       </div>
+                      {user.city && (
+                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-[hsl(var(--muted-foreground))]">
+                          <Icon name="MapPin" size={15} />
+                          <span>{user.city}</span>
+                        </div>
+                      )}
                     </div>
                     <button onClick={logout} className="w-full py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors border border-red-100 flex items-center justify-center gap-2">
                       <Icon name="LogOut" size={15} />
@@ -1613,7 +1686,7 @@ export default function Index() {
                     </button>
                   </aside>
 
-                  {/* Правая панель — объявления */}
+                  {/* Правая панель */}
                   <div className="flex-1 min-w-0">
                     {profileTab === "ads" && (
                       <>
@@ -1673,12 +1746,17 @@ export default function Index() {
                       <div className="bg-white rounded-2xl border border-border p-6">
                         <h3 className="font-bold text-lg mb-6">Настройки профиля</h3>
                         <div className="flex flex-col gap-1">
-                          {[
-                            { icon: "UserCog", label: "Редактировать профиль" },
-                            { icon: "Bell", label: "Уведомления" },
-                            { icon: "Shield", label: "Безопасность" },
-                            { icon: "CreditCard", label: "Способы оплаты" },
-                          ].map((item) => (
+                          <button
+                            onClick={() => { setEditName(user.name); setEditCity(user.city || ""); setEditAbout(user.about || ""); setEditProfileOpen(true); }}
+                            className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Icon name="UserCog" size={18} className="text-[hsl(var(--muted-foreground))]" />
+                              <span className="text-sm font-medium">Редактировать профиль</span>
+                            </div>
+                            <Icon name="ChevronRight" size={16} className="text-[hsl(var(--muted-foreground))]" />
+                          </button>
+                          {[{ icon: "Bell", label: "Уведомления" }, { icon: "Shield", label: "Безопасность" }].map((item) => (
                             <button key={item.label} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-left">
                               <div className="flex items-center gap-3">
                                 <Icon name={item.icon} size={18} className="text-[hsl(var(--muted-foreground))]" />
@@ -1698,6 +1776,58 @@ export default function Index() {
                     )}
                   </div>
                 </div>
+
+                {/* Модал редактирования профиля */}
+                {editProfileOpen && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                        <h3 className="font-bold text-lg">Редактировать профиль</h3>
+                        <button onClick={() => setEditProfileOpen(false)} className="p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors">
+                          <Icon name="X" size={18} />
+                        </button>
+                      </div>
+                      <div className="p-6 flex flex-col gap-4">
+                        <div>
+                          <label className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide mb-1.5 block">Имя</label>
+                          <input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder="Ваше имя"
+                            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide mb-1.5 block">Город</label>
+                          <input
+                            value={editCity}
+                            onChange={(e) => setEditCity(e.target.value)}
+                            placeholder="Ваш город"
+                            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide mb-1.5 block">О себе</label>
+                          <textarea
+                            value={editAbout}
+                            onChange={(e) => setEditAbout(e.target.value)}
+                            placeholder="Расскажите о себе..."
+                            rows={3}
+                            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] resize-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-3 px-6 pb-6">
+                        <button onClick={() => setEditProfileOpen(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-[hsl(var(--muted))] transition-colors">
+                          Отмена
+                        </button>
+                        <button onClick={saveProfile} disabled={editSaving || !editName.trim()} className="flex-1 py-2.5 rounded-xl bg-[hsl(var(--accent))] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
+                          {editSaving ? "Сохраняю..." : "Сохранить"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

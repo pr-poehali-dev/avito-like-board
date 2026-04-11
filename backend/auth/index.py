@@ -1,6 +1,7 @@
 """
 Авторизация: регистрация с подтверждением email, вход, выход, проверка сессии.
-Роутинг через поле action в теле запроса или query-параметр action.
+update_profile — изменение имени, города, описания.
+upload_photo — загрузка аватара или обложки в S3.
 """
 import json
 import os
@@ -8,8 +9,11 @@ import hashlib
 import secrets
 import random
 import smtplib
+import base64
+import uuid
 from email.mime.text import MIMEText
 import psycopg2
+import boto3
 
 SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "t_p72465170_avito_like_board")
 
@@ -185,7 +189,10 @@ def handler(event: dict, context) -> dict:
         return {
             "statusCode": 200,
             "headers": CORS,
-            "body": json.dumps({"ok": True, "session_id": session_id, "user": {"id": user_id, "name": name, "email": user_email}})
+            "body": json.dumps({"ok": True, "session_id": session_id, "user": {
+                "id": user_id, "name": name, "email": user_email,
+                "avatar_url": None, "cover_url": None, "city": None, "about": None
+            }})
         }
 
     # me — проверка текущей сессии
@@ -207,11 +214,19 @@ def handler(event: dict, context) -> dict:
         if not row:
             return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Сессия не найдена"})}
 
-        user_id, name, email = row
+        cur.execute(
+            f"SELECT id, name, email, avatar_url, cover_url, city, about FROM {SCHEMA}.users WHERE id = %s",
+            (row[0],)
+        )
+        u = cur.fetchone()
+        conn.close()
         return {
             "statusCode": 200,
             "headers": CORS,
-            "body": json.dumps({"ok": True, "user": {"id": user_id, "name": name, "email": email}})
+            "body": json.dumps({"ok": True, "user": {
+                "id": u[0], "name": u[1], "email": u[2],
+                "avatar_url": u[3], "cover_url": u[4], "city": u[5], "about": u[6]
+            }})
         }
 
     # logout
@@ -225,5 +240,102 @@ def handler(event: dict, context) -> dict:
             conn.close()
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
+    # update_profile — обновление имени, города, описания
+    if action == "update_profile":
+        session_id = (event.get("headers") or {}).get("X-Session-Id") or (event.get("headers") or {}).get("x-session-id")
+        if not session_id:
+            return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Нет сессии"})}
 
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"""SELECT u.id FROM {SCHEMA}.sessions s JOIN {SCHEMA}.users u ON u.id = s.user_id
+                WHERE s.id = %s AND s.expires_at > NOW()""",
+            (session_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Сессия не найдена"})}
+
+        user_id = row[0]
+        name = (body.get("name") or "").strip()
+        city = (body.get("city") or "").strip()
+        about = (body.get("about") or "").strip()
+
+        if name:
+            cur.execute(f"UPDATE {SCHEMA}.users SET name = %s WHERE id = %s", (name, user_id))
+        cur.execute(f"UPDATE {SCHEMA}.users SET city = %s, about = %s WHERE id = %s", (city or None, about or None, user_id))
+        conn.commit()
+
+        cur.execute(f"SELECT id, name, email, avatar_url, cover_url, city, about FROM {SCHEMA}.users WHERE id = %s", (user_id,))
+        u = cur.fetchone()
+        conn.close()
+
+        return {
+            "statusCode": 200,
+            "headers": CORS,
+            "body": json.dumps({"ok": True, "user": {
+                "id": u[0], "name": u[1], "email": u[2],
+                "avatar_url": u[3], "cover_url": u[4], "city": u[5], "about": u[6]
+            }})
+        }
+
+    # upload_photo — загрузка аватара или обложки в S3
+    if action == "upload_photo":
+        session_id = (event.get("headers") or {}).get("X-Session-Id") or (event.get("headers") or {}).get("x-session-id")
+        if not session_id:
+            return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Нет сессии"})}
+
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"""SELECT u.id FROM {SCHEMA}.sessions s JOIN {SCHEMA}.users u ON u.id = s.user_id
+                WHERE s.id = %s AND s.expires_at > NOW()""",
+            (session_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Сессия не найдена"})}
+
+        user_id = row[0]
+        photo_type = body.get("type", "avatar")  # "avatar" или "cover"
+        data_url = body.get("data", "")
+
+        if not data_url:
+            conn.close()
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Нет данных фото"})}
+
+        if "," in data_url:
+            header, b64 = data_url.split(",", 1)
+            ext = "jpg"
+            if "png" in header:
+                ext = "png"
+            elif "webp" in header:
+                ext = "webp"
+        else:
+            b64, ext = data_url, "jpg"
+
+        img_bytes = base64.b64decode(b64)
+        key = f"profiles/{user_id}/{photo_type}_{uuid.uuid4().hex[:8]}.{ext}"
+
+        s3 = boto3.client(
+            "s3",
+            endpoint_url="https://bucket.poehali.dev",
+            aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+        )
+        s3.put_object(Bucket="files", Key=key, Body=img_bytes, ContentType=f"image/{ext}")
+
+        cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+
+        col = "avatar_url" if photo_type == "avatar" else "cover_url"
+        cur.execute(f"UPDATE {SCHEMA}.users SET {col} = %s WHERE id = %s", (cdn_url, user_id))
+        conn.commit()
+        conn.close()
+
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "url": cdn_url})}
+
+    # me — проверяем и возвращаем расширенный профиль
     return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите action"})}

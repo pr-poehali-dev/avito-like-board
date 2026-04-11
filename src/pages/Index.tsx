@@ -137,6 +137,8 @@ export default function Index() {
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
+  const [profileTab, setProfileTab] = useState<"ads" | "settings">("ads");
 
   useEffect(() => {
     const sid = localStorage.getItem("session_id");
@@ -1488,59 +1490,214 @@ export default function Index() {
 
         {/* PROFILE */}
         {section === "profile" && (
-          <div className="animate-slide-up max-w-lg">
-            <h2 className="text-2xl font-bold mb-8">Личный кабинет</h2>
+          <div className="animate-slide-up -mx-4 -mt-8">
             {!user && (
-              <div className="bg-white rounded-2xl border border-border p-8 text-center mb-4">
-                <div className="w-16 h-16 bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Icon name="User" size={28} className="text-[hsl(var(--muted-foreground))]" />
-                </div>
-                <p className="font-semibold mb-1">Вы не авторизованы</p>
-                <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Войдите, чтобы управлять профилем</p>
-                <div className="flex gap-2 justify-center">
-                  <button onClick={() => openAuth("login")} className="px-5 py-2.5 rounded-xl text-sm font-medium border border-border hover:bg-[hsl(var(--muted))] transition-colors">Войти</button>
-                  <button onClick={() => openAuth("register")} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Регистрация</button>
+              <div className="max-w-md mx-auto mt-16 px-4">
+                <div className="bg-white rounded-2xl border border-border p-8 text-center">
+                  <div className="w-16 h-16 bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Icon name="User" size={28} className="text-[hsl(var(--muted-foreground))]" />
+                  </div>
+                  <p className="font-semibold mb-1">Вы не авторизованы</p>
+                  <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Войдите, чтобы управлять профилем</p>
+                  <div className="flex gap-2 justify-center">
+                    <button onClick={() => openAuth("login")} className="px-5 py-2.5 rounded-xl text-sm font-medium border border-border hover:bg-[hsl(var(--muted))] transition-colors">Войти</button>
+                    <button onClick={() => openAuth("register")} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Регистрация</button>
+                  </div>
                 </div>
               </div>
             )}
             {user && (
               <>
-                <div className="bg-white rounded-2xl border border-border p-6 mb-4">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-2xl font-bold">{user.name[0].toUpperCase()}</div>
-                    <div>
-                      <p className="font-bold text-lg">{user.name}</p>
-                      <p className="text-[hsl(var(--muted-foreground))] text-sm">{user.email}</p>
+                {/* Обложка */}
+                <div className="relative w-full h-48 md:h-64 bg-gradient-to-br from-[hsl(var(--accent))] to-orange-300 overflow-hidden group">
+                  {coverPhoto && <img src={coverPhoto} alt="обложка" className="w-full h-full object-cover" />}
+                  <label className="absolute inset-0 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm text-sm font-medium px-4 py-2 rounded-xl">
+                      <Icon name="Camera" size={16} />
+                      Изменить обложку
+                    </div>
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setCoverPhoto(URL.createObjectURL(f));
+                    }} />
+                  </label>
+
+                  {/* Аватар поверх обложки */}
+                  <div className="absolute -bottom-12 left-6 z-10">
+                    <div className="relative group/av">
+                      <div className="w-24 h-24 rounded-full border-4 border-white bg-[hsl(var(--accent))] flex items-center justify-center text-white text-3xl font-bold shadow-lg overflow-hidden">
+                        {user.name[0].toUpperCase()}
+                      </div>
+                      <label className="absolute inset-0 rounded-full cursor-pointer opacity-0 group-hover/av:opacity-100 transition-opacity bg-black/40 flex items-center justify-center">
+                        <Icon name="Camera" size={18} className="text-white" />
+                        <input type="file" accept="image/*" className="hidden" />
+                      </label>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4 pb-6 border-b border-border">
-                    {[{ label: "Объявлений", value: "3" }, { label: "Продаж", value: "12" }, { label: "Отзывов", value: "8" }].map((s) => (
-                      <div key={s.label} className="text-center">
-                        <p className="text-2xl font-bold">{s.value}</p>
-                        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{s.label}</p>
-                      </div>
-                    ))}
+                </div>
+
+                {/* Имя + онлайн + кнопка сообщений */}
+                <div className="px-6 pt-14 pb-4 flex items-start justify-between gap-4 bg-white border-b border-border">
+                  <div>
+                    <h2 className="text-xl font-bold leading-tight">{user.name}</h2>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                      <span className="text-xs text-green-600 font-medium">Онлайн</span>
+                    </div>
                   </div>
-                  <div className="mt-6 flex flex-col gap-1">
-                    {[
-                      { icon: "UserCog", label: "Редактировать профиль" },
-                      { icon: "Bell", label: "Уведомления" },
-                      { icon: "Shield", label: "Безопасность" },
-                      { icon: "CreditCard", label: "Способы оплаты" },
-                    ].map((item) => (
-                      <button key={item.label} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-left">
-                        <div className="flex items-center gap-3">
-                          <Icon name={item.icon} size={18} className="text-[hsl(var(--muted-foreground))]" />
+                  <button
+                    onClick={() => setSection("messages")}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--accent))] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0 mt-1"
+                  >
+                    <Icon name="MessageCircle" size={16} />
+                    Сообщения
+                  </button>
+                </div>
+
+                {/* Статистика */}
+                <div className="grid grid-cols-3 divide-x divide-border bg-white border-b border-border">
+                  {[
+                    { label: "Объявлений", value: String(myAdsApi.length || 0) },
+                    { label: "Просмотров", value: String(myAdsApi.reduce((s, a) => s + (a.views ?? 0), 0)) },
+                    { label: "Отзывов", value: "0" },
+                  ].map((s) => (
+                    <div key={s.label} className="text-center py-4">
+                      <p className="text-xl font-bold">{s.value}</p>
+                      <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Вкладки */}
+                <div className="flex gap-1 px-4 py-2 bg-white border-b border-border">
+                  {([["ads", "Объявления"], ["settings", "Настройки"]] as const).map(([tab, label]) => (
+                    <button
+                      key={tab}
+                      onClick={() => setProfileTab(tab)}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${profileTab === tab ? "bg-[hsl(var(--accent))] text-white" : "hover:bg-[hsl(var(--muted))]"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Контент профиля */}
+                <div className="flex gap-6 px-4 pt-6 pb-24 md:pb-8 max-w-6xl mx-auto">
+
+                  {/* Левая панель */}
+                  <aside className="w-64 shrink-0 hidden md:flex flex-col gap-3">
+                    <div className="bg-white rounded-2xl border border-border p-4">
+                      <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide mb-3 px-1">Аккаунт</p>
+                      {[
+                        { icon: "UserCog", label: "Редактировать профиль" },
+                        { icon: "Bell", label: "Уведомления" },
+                        { icon: "Shield", label: "Безопасность" },
+                        { icon: "CreditCard", label: "Способы оплаты" },
+                      ].map((item) => (
+                        <button key={item.label} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                          <Icon name={item.icon} size={17} className="text-[hsl(var(--muted-foreground))]" />
                           <span className="text-sm font-medium">{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="bg-white rounded-2xl border border-border p-4">
+                      <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide mb-3 px-1">Контакты</p>
+                      <div className="flex items-center gap-2 px-3 py-2 text-sm text-[hsl(var(--muted-foreground))]">
+                        <Icon name="Mail" size={15} />
+                        <span className="truncate">{user.email}</span>
+                      </div>
+                    </div>
+                    <button onClick={logout} className="w-full py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors border border-red-100 flex items-center justify-center gap-2">
+                      <Icon name="LogOut" size={15} />
+                      Выйти
+                    </button>
+                  </aside>
+
+                  {/* Правая панель — объявления */}
+                  <div className="flex-1 min-w-0">
+                    {profileTab === "ads" && (
+                      <>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-bold text-lg">Мои объявления</h3>
+                          <button onClick={openNewAd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--accent))] text-white text-sm font-semibold hover:opacity-90 transition-opacity">
+                            <Icon name="Plus" size={15} />
+                            Добавить
+                          </button>
                         </div>
-                        <Icon name="ChevronRight" size={16} className="text-[hsl(var(--muted-foreground))]" />
-                      </button>
-                    ))}
+                        {myAdsApi.length === 0 ? (
+                          <div className="bg-white rounded-2xl border border-border p-12 text-center text-[hsl(var(--muted-foreground))]">
+                            <div className="text-5xl mb-4">📋</div>
+                            <p className="font-medium mb-1">Нет объявлений</p>
+                            <p className="text-sm mb-4">Разместите первое объявление прямо сейчас</p>
+                            <button onClick={openNewAd} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Подать объявление</button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {myAdsApi.map((ad) => (
+                              <div
+                                key={ad.id}
+                                className="bg-white rounded-2xl border border-border overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group"
+                                onClick={() => setViewAdId(ad.id)}
+                              >
+                                <div className="aspect-[16/9] bg-[hsl(var(--muted))] relative overflow-hidden">
+                                  {ad.photos && ad.photos.length > 0
+                                    ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                    : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+                                  <span className={`absolute top-2.5 left-2.5 text-xs px-2 py-0.5 rounded-full font-medium ${ad.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                    {ad.status === "active" ? "Активно" : "В архиве"}
+                                  </span>
+                                </div>
+                                <div className="p-4">
+                                  <p className="font-semibold text-sm leading-snug mb-1 line-clamp-2">{ad.title}</p>
+                                  <p className="text-[hsl(var(--accent))] font-bold text-base mb-2">{formatPrice(ad.price)}</p>
+                                  <div className="flex items-center justify-between text-xs text-[hsl(var(--muted-foreground))]">
+                                    <span className="flex items-center gap-1"><Icon name="Eye" size={11} />{ad.views ?? 0} просмотров</span>
+                                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                      <button onClick={() => setEditAdId(ad.id)} className="p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors" title="Редактировать">
+                                        <Icon name="Pencil" size={13} className="text-[hsl(var(--muted-foreground))]" />
+                                      </button>
+                                      <button onClick={() => toggleAdStatus(ad.id, ad.status || "active")} className="p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors" title={ad.status === "active" ? "В архив" : "Активировать"}>
+                                        <Icon name={ad.status === "active" ? "Archive" : "RefreshCw"} size={13} className="text-[hsl(var(--muted-foreground))]" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {profileTab === "settings" && (
+                      <div className="bg-white rounded-2xl border border-border p-6">
+                        <h3 className="font-bold text-lg mb-6">Настройки профиля</h3>
+                        <div className="flex flex-col gap-1">
+                          {[
+                            { icon: "UserCog", label: "Редактировать профиль" },
+                            { icon: "Bell", label: "Уведомления" },
+                            { icon: "Shield", label: "Безопасность" },
+                            { icon: "CreditCard", label: "Способы оплаты" },
+                          ].map((item) => (
+                            <button key={item.label} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                              <div className="flex items-center gap-3">
+                                <Icon name={item.icon} size={18} className="text-[hsl(var(--muted-foreground))]" />
+                                <span className="text-sm font-medium">{item.label}</span>
+                              </div>
+                              <Icon name="ChevronRight" size={16} className="text-[hsl(var(--muted-foreground))]" />
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mt-6 pt-6 border-t border-border">
+                          <button onClick={logout} className="flex items-center gap-2 text-sm font-medium text-red-500 hover:text-red-600 transition-colors">
+                            <Icon name="LogOut" size={16} />
+                            Выйти из аккаунта
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <button onClick={logout} className="w-full py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors border border-red-100">
-                  Выйти из аккаунта
-                </button>
               </>
             )}
           </div>

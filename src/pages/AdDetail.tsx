@@ -36,13 +36,14 @@ interface AdDetailProps {
   adId: number;
   onBack: () => void;
   onAddToFolder: (adId: number) => void;
+  isFavorited?: boolean;
 }
 
 function formatPrice(price: number) {
   return price.toLocaleString("ru-RU") + " ₽";
 }
 
-export default function AdDetail({ adId, onBack, onAddToFolder }: AdDetailProps) {
+export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = false }: AdDetailProps) {
   const [ad, setAd] = useState<AdDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -115,9 +116,9 @@ export default function AdDetail({ adId, onBack, onAddToFolder }: AdDetailProps)
         <button
           onClick={() => onAddToFolder(ad.id)}
           className="p-2 rounded-lg hover:bg-orange-50 transition-colors"
-          title="Добавить в избранное"
+          title={isFavorited ? "В избранном" : "Добавить в избранное"}
         >
-          <Icon name="Heart" size={20} className="text-[hsl(var(--accent))]" />
+          <Icon name="Heart" size={20} className={isFavorited ? "text-red-500 fill-red-500" : "text-[hsl(var(--accent))]"} />
         </button>
       </div>
 
@@ -127,10 +128,10 @@ export default function AdDetail({ adId, onBack, onAddToFolder }: AdDetailProps)
           <h1 className="text-xl md:text-2xl font-bold leading-tight flex-1">{ad.title}</h1>
           <button
             onClick={() => onAddToFolder(ad.id)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border hover:border-[hsl(var(--accent))] hover:bg-orange-50 transition-all shrink-0 text-sm font-medium"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all shrink-0 text-sm font-medium ${isFavorited ? "border-red-300 bg-red-50 text-red-500" : "border-border hover:border-[hsl(var(--accent))] hover:bg-orange-50"}`}
           >
-            <Icon name="Heart" size={15} className="text-[hsl(var(--accent))]" />
-            В избранное
+            <Icon name="Heart" size={15} className={isFavorited ? "text-red-500 fill-red-500" : "text-[hsl(var(--accent))]"} />
+            {isFavorited ? "В избранном" : "В избранное"}
           </button>
         </div>
 
@@ -270,10 +271,10 @@ export default function AdDetail({ adId, onBack, onAddToFolder }: AdDetailProps)
             {/* Д��бавить в избранное */}
             <button
               onClick={() => onAddToFolder(ad.id)}
-              className="w-full flex items-center justify-center gap-2 border border-border bg-white py-3 rounded-2xl text-sm font-semibold hover:border-[hsl(var(--accent))] hover:bg-orange-50 transition-all"
+              className={`w-full flex items-center justify-center gap-2 border py-3 rounded-2xl text-sm font-semibold transition-all ${isFavorited ? "border-red-300 bg-red-50 text-red-500" : "border-border bg-white hover:border-[hsl(var(--accent))] hover:bg-orange-50"}`}
             >
-              <Icon name="Heart" size={16} className="text-[hsl(var(--accent))]" />
-              Добавить в избранное
+              <Icon name="Heart" size={16} className={isFavorited ? "text-red-500 fill-red-500" : "text-[hsl(var(--accent))]"} />
+              {isFavorited ? "В избранном" : "Добавить в избранное"}
             </button>
           </div>
         </div>

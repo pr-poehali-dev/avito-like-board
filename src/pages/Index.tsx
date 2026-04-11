@@ -378,7 +378,12 @@ export default function Index() {
       body: JSON.stringify({ action: "my_ad_folders", ad_id: adId, folder_type: "favorites" }),
     });
     const d = await res.json();
-    if (d.ok) setAdFolderIds(d.folder_ids);
+    if (d.ok) {
+      setAdFolderIds(d.folder_ids);
+      if (d.folder_ids.length > 0) {
+        setFavorites((prev) => prev.includes(adId) ? prev : [...prev, adId]);
+      }
+    }
   };
 
   const toggleAdInFolder = async (folderId: number, adId: number) => {
@@ -389,7 +394,15 @@ export default function Index() {
       headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
       body: JSON.stringify({ action: inFolder ? "remove_item" : "add_item", folder_id: folderId, ad_id: adId }),
     });
-    setAdFolderIds((prev) => inFolder ? prev.filter((id) => id !== folderId) : [...prev, folderId]);
+    const newIds = inFolder
+      ? adFolderIds.filter((id) => id !== folderId)
+      : [...adFolderIds, folderId];
+    setAdFolderIds(newIds);
+    // обновляем глобальный список избранных ID
+    const nowInAnyFolder = newIds.length > 0;
+    setFavorites((prev) =>
+      nowInAnyFolder ? (prev.includes(adId) ? prev : [...prev, adId]) : prev.filter((id) => id !== adId)
+    );
     loadFolders();
     if (inFolder) {
       toast("Убрано из папки", { description: folderName, icon: "📂" });
@@ -503,12 +516,13 @@ export default function Index() {
     );
   }
 
-  if (viewAdId !== null) {
+  if (viewAdId !== null && addToFolderAdId === null) {
     return (
       <AdDetail
         adId={viewAdId}
         onBack={() => setViewAdId(null)}
-        onAddToFolder={(id) => { setViewAdId(null); openAddToFolder(id); }}
+        onAddToFolder={(id) => openAddToFolder(id)}
+        isFavorited={favorites.includes(viewAdId)}
       />
     );
   }
@@ -928,9 +942,9 @@ export default function Index() {
                             {/* Кнопка «в избранное» — всегда поверх */}
                             <button
                               onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }}
-                              className="absolute top-2 right-2 z-10 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-110"
+                              className={`absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all hover:scale-110 ${favorites.includes(ad.id) ? "bg-[hsl(var(--accent))]" : "bg-white"}`}
                             >
-                              <Icon name="FolderPlus" size={13} className="text-[hsl(var(--accent))]" />
+                              <Icon name="Heart" size={13} className={favorites.includes(ad.id) ? "text-white" : "text-[hsl(var(--accent))]"} />
                             </button>
                           </div>
                           <div className="p-3">

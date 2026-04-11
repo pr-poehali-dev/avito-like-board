@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import CreateAd from "@/pages/CreateAd";
+import { toast } from "sonner";
 
 const AUTH_URL = "https://functions.poehali.dev/8b2cd80b-f20b-45b5-8696-018d10b4eb52";
 const ADS_URL = "https://functions.poehali.dev/26941b84-1198-4969-8e13-07523f9f04d0";
@@ -355,6 +356,7 @@ export default function Index() {
 
   const toggleAdInFolder = async (folderId: number, adId: number) => {
     const inFolder = adFolderIds.includes(folderId);
+    const folderName = favFolders.find((f) => f.id === folderId)?.name || "папку";
     await fetch(FAV_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
@@ -362,6 +364,11 @@ export default function Index() {
     });
     setAdFolderIds((prev) => inFolder ? prev.filter((id) => id !== folderId) : [...prev, folderId]);
     loadFolders();
+    if (inFolder) {
+      toast("Убрано из папки", { description: folderName, icon: "📂" });
+    } else {
+      toast.success("Добавлено в папку", { description: folderName });
+    }
   };
 
   const navItems: { id: Section; label: string; icon: string }[] = [

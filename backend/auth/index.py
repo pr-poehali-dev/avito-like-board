@@ -225,4 +225,12 @@ def handler(event: dict, context) -> dict:
             conn.close()
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
+    # test_email — проверка SMTP настроек
+    if action == "test_email":
+        to = (body.get("email") or "").strip().lower()
+        if not to or "@" not in to:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите email для теста"})}
+        send_email(to, "123456")
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "message": f"Письмо отправлено на {to}"})}
+
     return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите action"})}

@@ -25,6 +25,14 @@
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Необходима авторизация"}
+    },
+    {
+      "name": "GET view несуществующего — 404",
+      "method": "GET",
+      "path": "/?action=view&id=999999",
+      "expectedStatus": 404,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Объявление не найдено"}
     }
   ]
 }

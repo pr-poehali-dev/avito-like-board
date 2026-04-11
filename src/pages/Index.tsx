@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import CreateAd from "@/pages/CreateAd";
 import EditAd from "@/pages/EditAd";
+import AdDetail from "@/pages/AdDetail";
 import { toast } from "sonner";
 
 const AUTH_URL = "https://functions.poehali.dev/8b2cd80b-f20b-45b5-8696-018d10b4eb52";
@@ -121,6 +122,8 @@ export default function Index() {
   const [myAdsPickerAdId, setMyAdsPickerAdId] = useState<number | null>(null);
   // карусель фото в карточках
   const [carouselIndex, setCarouselIndex] = useState<Record<number, number>>({});
+  // просмотр объявления
+  const [viewAdId, setViewAdId] = useState<number | null>(null);
 
   // Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -500,6 +503,16 @@ export default function Index() {
     );
   }
 
+  if (viewAdId !== null) {
+    return (
+      <AdDetail
+        adId={viewAdId}
+        onBack={() => setViewAdId(null)}
+        onAddToFolder={(id) => { setViewAdId(null); openAddToFolder(id); }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[hsl(var(--background))] font-golos">
       {/* Header */}
@@ -873,7 +886,7 @@ export default function Index() {
                       const photos = (ad.photos && ad.photos.length > 0) ? ad.photos.slice(0, 5) : [];
                       const idx = carouselIndex[ad.id] ?? 0;
                       return (
-                        <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer group">
+                        <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer group" onClick={() => setViewAdId(ad.id)}>
                           {/* Фото-карусель */}
                           <div className="aspect-[4/3] bg-[hsl(var(--muted))] relative overflow-hidden">
                             {photos.length > 0 ? (

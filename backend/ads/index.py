@@ -275,6 +275,47 @@ def handler(event: dict, context) -> dict:
             }
         })}
 
+    # view — публичный просмотр объявления + инкремент просмотров
+    if action == "view":
+        ad_id = qs.get("id") or body.get("id")
+        show_phone = (qs.get("show_phone") or body.get("show_phone")) == "1"
+        conn = get_conn()
+        cur = conn.cursor()
+
+        cur.execute(
+            f"""SELECT a.id, a.title, a.description, a.price, a.category, a.city,
+                       a.condition, a.status, a.views, a.created_at, a.photos,
+                       u.id as author_id, u.name as author_name, u.phone
+                FROM {SCHEMA}.ads a
+                JOIN {SCHEMA}.users u ON u.id = a.user_id
+                WHERE a.id = %s AND a.status = 'active'""",
+            (ad_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "Объявление не найдено"})}
+
+        cur.execute(
+            f"UPDATE {SCHEMA}.ads SET views = COALESCE(views,0) + 1 WHERE id = %s",
+            (ad_id,)
+        )
+        conn.commit()
+        conn.close()
+
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({
+            "ok": True,
+            "ad": {
+                "id": row[0], "title": row[1], "description": row[2] or "",
+                "price": row[3], "category": row[4], "city": row[5],
+                "condition": row[6], "status": row[7], "views": row[8],
+                "created_at": row[9].strftime("%d.%m.%Y %H:%M"),
+                "photos": list(row[10]) if row[10] else [],
+                "author_id": row[11], "author_name": row[12],
+                "phone": row[13] if show_phone else None
+            }
+        })}
+
     # archive — архивировать объявление
     if action == "archive":
         ad_id = body.get("id")

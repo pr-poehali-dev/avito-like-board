@@ -4,6 +4,7 @@ import CreateAd from "@/pages/CreateAd";
 
 const AUTH_URL = "https://functions.poehali.dev/8b2cd80b-f20b-45b5-8696-018d10b4eb52";
 const ADS_URL = "https://functions.poehali.dev/26941b84-1198-4969-8e13-07523f9f04d0";
+const FAV_URL = "https://functions.poehali.dev/47db8eb7-30bf-4234-9cbb-10b2e57a491c";
 
 interface User {
   id: number;
@@ -22,9 +23,18 @@ interface Ad {
   author?: string;
   status?: string;
   views?: number;
+  photos?: string[];
+  image?: string;
 }
 
 type Section = "home" | "categories" | "my-ads" | "profile" | "messages" | "favorites" | "contacts";
+
+interface FavFolder {
+  id: number;
+  name: string;
+  date: string;
+  count: number;
+}
 
 const CATEGORIES = [
   { id: "realty", label: "Недвижимость", icon: "Home", count: 1240 },
@@ -86,6 +96,19 @@ export default function Index() {
 
   const [showCreateAd, setShowCreateAd] = useState(false);
 
+  // Favorites
+  const [favFolders, setFavFolders] = useState<FavFolder[]>([]);
+  const [activeFolderId, setActiveFolderId] = useState<number | null>(null);
+  const [folderAds, setFolderAds] = useState<Ad[]>([]);
+  const [folderAdsLoading, setFolderAdsLoading] = useState(false);
+  const [newFolderModal, setNewFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [renamingFolder, setRenamingFolder] = useState<FavFolder | null>(null);
+  const [renameName, setRenameName] = useState("");
+  // "add to folder" picker for an ad
+  const [addToFolderAdId, setAddToFolderAdId] = useState<number | null>(null);
+  const [adFolderIds, setAdFolderIds] = useState<number[]>([]);
+
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [authModal, setAuthModal] = useState(false);
@@ -133,6 +156,7 @@ export default function Index() {
 
   useEffect(() => { loadAds(); }, []);
   useEffect(() => { if (user) loadMyAds(); }, [user]);
+  useEffect(() => { if (section === "favorites" && user) loadFolders(); }, [section, user]);
 
   const openNewAd = () => {
     if (!user) { openAuth("login"); return; }
@@ -256,6 +280,88 @@ export default function Index() {
 
   const toggleFavorite = (id: number) => {
     setFavorites((prev) => prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]);
+  };
+
+  const sid = () => localStorage.getItem("session_id") || "";
+
+  const loadFolders = async () => {
+    if (!user) return;
+    const res = await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "folders" }),
+    });
+    const d = await res.json();
+    if (d.ok) setFavFolders(d.folders);
+  };
+
+  const loadFolderAds = async (folderId: number) => {
+    setFolderAdsLoading(true);
+    const res = await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "folder_items", folder_id: folderId }),
+    });
+    const d = await res.json();
+    if (d.ok) setFolderAds(d.ads);
+    setFolderAdsLoading(false);
+  };
+
+  const createFolder = async () => {
+    if (!newFolderName.trim()) return;
+    await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "create_folder", name: newFolderName.trim() }),
+    });
+    setNewFolderModal(false);
+    setNewFolderName("");
+    loadFolders();
+  };
+
+  const renameFolder = async () => {
+    if (!renamingFolder || !renameName.trim()) return;
+    await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "rename_folder", folder_id: renamingFolder.id, name: renameName.trim() }),
+    });
+    setRenamingFolder(null);
+    loadFolders();
+  };
+
+  const deleteFolder = async (folderId: number) => {
+    await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "delete_folder", folder_id: folderId }),
+    });
+    if (activeFolderId === folderId) setActiveFolderId(null);
+    loadFolders();
+  };
+
+  const openAddToFolder = async (adId: number) => {
+    if (!user) { openAuth("login"); return; }
+    setAddToFolderAdId(adId);
+    await loadFolders();
+    const res = await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "my_ad_folders", ad_id: adId }),
+    });
+    const d = await res.json();
+    if (d.ok) setAdFolderIds(d.folder_ids);
+  };
+
+  const toggleAdInFolder = async (folderId: number, adId: number) => {
+    const inFolder = adFolderIds.includes(folderId);
+    await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: inFolder ? "remove_item" : "add_item", folder_id: folderId, ad_id: adId }),
+    });
+    setAdFolderIds((prev) => inFolder ? prev.filter((id) => id !== folderId) : [...prev, folderId]);
+    loadFolders();
   };
 
   const navItems: { id: Section; label: string; icon: string }[] = [
@@ -530,16 +636,14 @@ export default function Index() {
                 {filteredAds.map((ad) => (
                   <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer">
                     <div className="aspect-[4/3] bg-[hsl(var(--muted))] flex items-center justify-center text-4xl relative">
-                      {ad.image}
+                      {(ad.photos && ad.photos.length > 0)
+                        ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover" />
+                        : (ad.image || "📦")}
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleFavorite(ad.id); }}
+                        onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }}
                         className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-110"
                       >
-                        <Icon
-                          name="Heart"
-                          size={14}
-                          className={favorites.includes(ad.id) ? "text-red-500 fill-red-500" : "text-[hsl(var(--muted-foreground))]"}
-                        />
+                        <Icon name="FolderPlus" size={13} className="text-[hsl(var(--accent))]" />
                       </button>
                     </div>
                     <div className="p-3">
@@ -684,37 +788,210 @@ export default function Index() {
         {/* FAVORITES */}
         {section === "favorites" && (
           <div className="animate-slide-up">
-            <h2 className="text-2xl font-bold mb-2">Избранное</h2>
-            <p className="text-[hsl(var(--muted-foreground))] mb-8">{favoriteAds.length} сохранённых объявлений</p>
-            {favoriteAds.length === 0 ? (
+            {!user ? (
               <div className="text-center py-20 text-[hsl(var(--muted-foreground))]">
                 <div className="text-5xl mb-4">🤍</div>
-                <p className="font-medium">Пока ничего нет</p>
-                <p className="text-sm mt-1">Нажмите на сердечко, чтобы сохранить объявление</p>
+                <p className="font-medium">Войдите, чтобы сохранять объявления</p>
+                <div className="flex gap-2 justify-center mt-4">
+                  <button onClick={() => openAuth("login")} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Войти</button>
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {favoriteAds.map((ad) => (
-                  <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer">
-                    <div className="aspect-[4/3] bg-[hsl(var(--muted))] flex items-center justify-center text-4xl relative">
-                      {ad.image}
-                      <button
-                        onClick={() => toggleFavorite(ad.id)}
-                        className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm"
-                      >
-                        <Icon name="Heart" size={14} className="text-red-500 fill-red-500" />
-                      </button>
-                    </div>
-                    <div className="p-3">
-                      <p className="font-semibold text-sm leading-tight mb-1 line-clamp-2">{ad.title}</p>
-                      <p className="text-[hsl(var(--accent))] font-bold">{formatPrice(ad.price)}</p>
-                      <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1 mt-2">
-                        <Icon name="MapPin" size={10} />
-                        {ad.city}
-                      </span>
-                    </div>
+            ) : activeFolderId !== null ? (
+              <>
+                <div className="flex items-center gap-3 mb-6">
+                  <button onClick={() => { setActiveFolderId(null); setFolderAds([]); }} className="p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors">
+                    <Icon name="ArrowLeft" size={18} />
+                  </button>
+                  <div>
+                    <h2 className="text-xl font-bold">{favFolders.find((f) => f.id === activeFolderId)?.name}</h2>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))]">{folderAds.length} объявлений</p>
                   </div>
-                ))}
+                </div>
+                {folderAdsLoading ? (
+                  <div className="text-center py-16 text-[hsl(var(--muted-foreground))]">Загрузка...</div>
+                ) : folderAds.length === 0 ? (
+                  <div className="text-center py-16 text-[hsl(var(--muted-foreground))]">
+                    <div className="text-5xl mb-3">📂</div>
+                    <p className="font-medium">Папка пуста</p>
+                    <p className="text-sm mt-1">Добавляйте объявления через кнопку «В папку» в карточке</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {folderAds.map((ad) => (
+                      <div key={ad.id} className="bg-white rounded-xl border border-border overflow-hidden hover-lift cursor-pointer">
+                        <div className="aspect-[4/3] bg-[hsl(var(--muted))] flex items-center justify-center text-4xl relative">
+                          {(ad.photos && ad.photos.length > 0)
+                            ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover" />
+                            : "📦"}
+                          <button
+                            onClick={() => { setActiveFolderId(null); setFolderAds([]); }}
+                            className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm"
+                          >
+                            <Icon name="FolderOpen" size={13} className="text-[hsl(var(--accent))]" />
+                          </button>
+                        </div>
+                        <div className="p-3">
+                          <p className="font-semibold text-sm leading-tight mb-1 line-clamp-2">{ad.title}</p>
+                          <p className="text-[hsl(var(--accent))] font-bold">{formatPrice(ad.price)}</p>
+                          <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1 mt-2">
+                            <Icon name="MapPin" size={10} />
+                            {ad.city}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold">Избранное</h2>
+                    <p className="text-[hsl(var(--muted-foreground))] mt-0.5 text-sm">{favFolders.length} папок</p>
+                  </div>
+                  <button
+                    onClick={() => { setNewFolderName(""); setNewFolderModal(true); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity"
+                  >
+                    <Icon name="FolderPlus" size={15} />
+                    Новая папка
+                  </button>
+                </div>
+
+                {favFolders.length === 0 ? (
+                  <div className="text-center py-20 text-[hsl(var(--muted-foreground))]">
+                    <div className="text-5xl mb-4">📁</div>
+                    <p className="font-medium">Нет папок</p>
+                    <p className="text-sm mt-1">Создайте папку, чтобы сохранять объявления</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {favFolders.map((folder) => (
+                      <div key={folder.id} className="bg-white rounded-xl border border-border p-4 hover:border-[hsl(var(--accent))] transition-colors group">
+                        <button
+                          className="w-full text-left"
+                          onClick={() => { setActiveFolderId(folder.id); loadFolderAds(folder.id); }}
+                        >
+                          <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-3">
+                            <Icon name="Folder" size={24} className="text-[hsl(var(--accent))]" />
+                          </div>
+                          <p className="font-semibold truncate">{folder.name}</p>
+                          <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{folder.count} объявлений · {folder.date}</p>
+                        </button>
+                        <div className="flex gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => { setRenamingFolder(folder); setRenameName(folder.name); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[hsl(var(--muted))] hover:bg-orange-50 hover:text-[hsl(var(--accent))] transition-colors"
+                          >
+                            <Icon name="Pencil" size={12} />
+                            Переименовать
+                          </button>
+                          <button
+                            onClick={() => deleteFolder(folder.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[hsl(var(--muted))] hover:bg-red-50 hover:text-red-500 transition-colors"
+                          >
+                            <Icon name="Trash2" size={12} />
+                            Удалить
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Модал: новая папка */}
+            {newFolderModal && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setNewFolderModal(false)} />
+                <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-slide-up">
+                  <h3 className="font-bold text-lg mb-4">Новая папка</h3>
+                  <input
+                    autoFocus
+                    placeholder="Название папки"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && createFolder()}
+                    className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0 mb-4"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => setNewFolderModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-border hover:bg-[hsl(var(--muted))] transition-colors">Отмена</button>
+                    <button onClick={createFolder} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Создать</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Модал: переименование */}
+            {renamingFolder && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setRenamingFolder(null)} />
+                <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-slide-up">
+                  <h3 className="font-bold text-lg mb-4">Переименовать папку</h3>
+                  <input
+                    autoFocus
+                    value={renameName}
+                    onChange={(e) => setRenameName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && renameFolder()}
+                    className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0 mb-4"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => setRenamingFolder(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-border hover:bg-[hsl(var(--muted))] transition-colors">Отмена</button>
+                    <button onClick={renameFolder} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Сохранить</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Модал: добавить объявление в папку */}
+            {addToFolderAdId !== null && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setAddToFolderAdId(null)} />
+                <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-slide-up">
+                  <button onClick={() => setAddToFolderAdId(null)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[hsl(var(--muted))]">
+                    <Icon name="X" size={16} />
+                  </button>
+                  <h3 className="font-bold text-lg mb-1">Сохранить в папку</h3>
+                  <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Выберите папки</p>
+                  {favFolders.length === 0 ? (
+                    <div className="text-center py-4 text-[hsl(var(--muted-foreground))]">
+                      <p className="text-sm mb-3">Нет папок — создайте первую</p>
+                      <input
+                        placeholder="Название папки"
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        className="w-full px-4 py-3 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0 mb-3"
+                      />
+                      <button onClick={createFolder} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Создать папку</button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+                      {favFolders.map((f) => (
+                        <button
+                          key={f.id}
+                          onClick={() => toggleAdInFolder(f.id, addToFolderAdId)}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all text-left ${
+                            adFolderIds.includes(f.id)
+                              ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
+                              : "border-border hover:border-[hsl(var(--accent))]"
+                          }`}
+                        >
+                          <Icon name={adFolderIds.includes(f.id) ? "CheckSquare" : "Square"} size={16} />
+                          <span className="flex-1 truncate">{f.name}</span>
+                          <span className="text-xs text-[hsl(var(--muted-foreground))]">{f.count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setAddToFolderAdId(null)}
+                    className="w-full mt-4 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity"
+                  >
+                    Готово
+                  </button>
+                </div>
               </div>
             )}
           </div>

@@ -1,0 +1,22 @@
+{
+  "tests": [
+    {
+      "name": "GET folders без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "folders"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Необходима авторизация"}
+    },
+    {
+      "name": "create_folder без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "create_folder", "name": "Тест"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Необходима авторизация"}
+    }
+  ]
+}

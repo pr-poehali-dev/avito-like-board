@@ -26,6 +26,10 @@ interface HomeSectionProps {
   openNewAd: () => void;
   setSection: (v: string) => void;
   adsLoading: boolean;
+  adsTotal?: number;
+  hasMore?: boolean;
+  adsLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export function HomeSection({
@@ -33,6 +37,7 @@ export function HomeSection({
   selectedCategory, setSelectedCategory, selectedCity, setSelectedCity,
   priceFrom, setPriceFrom, priceTo, setPriceTo, condition, setCondition,
   filtersOpen, setFiltersOpen, apiAds, setViewAdId, openAddToFolder, openNewAd, setSection, adsLoading,
+  adsTotal = 0, hasMore = false, adsLoadingMore = false, onLoadMore,
 }: HomeSectionProps) {
   return (
     <div className="animate-slide-up">
@@ -126,8 +131,7 @@ export function HomeSection({
         {/* Список объявлений */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">Найдено <span className="font-semibold text-[hsl(var(--foreground))]">{filteredAds.length}</span> объявлений</p>
-            <button className="flex items-center gap-1 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"><Icon name="ArrowUpDown" size={13} />По дате</button>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">Найдено <span className="font-semibold text-[hsl(var(--foreground))]">{adsTotal || filteredAds.length}</span> объявлений</p>
           </div>
           {adsLoading ? (
             <div className="text-center py-20 text-[hsl(var(--muted-foreground))]"><div className="text-5xl mb-4">⏳</div><p>Загрузка...</p></div>
@@ -172,6 +176,19 @@ export function HomeSection({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Кнопка «Показать ещё» */}
+          {hasMore && !adsLoading && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={onLoadMore}
+                disabled={adsLoadingMore}
+                className="px-8 py-2.5 rounded-xl border border-border text-sm font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] transition-colors disabled:opacity-60"
+              >
+                {adsLoadingMore ? "Загрузка..." : `Показать ещё`}
+              </button>
             </div>
           )}
         </div>

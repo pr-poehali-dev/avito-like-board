@@ -35,6 +35,10 @@ export default function Index() {
 
   // Ads from API
   const [apiAds, setApiAds] = useState<Ad[]>([]);
+  const [adsPage, setAdsPage] = useState(1);
+  const [adsTotal, setAdsTotal] = useState(0);
+  const [adsPerPage, setAdsPerPage] = useState(40);
+  const [adsLoadingMore, setAdsLoadingMore] = useState(false);
   const [myAdsApi, setMyAdsApi] = useState<Ad[]>([]);
   const [adsLoading, setAdsLoading] = useState(false);
 
@@ -107,18 +111,35 @@ export default function Index() {
       .catch(() => {});
   };
 
-  // Загрузка объявлений с API
-  const loadAds = () => {
-    setAdsLoading(true);
+  // Загрузка объявлений с API (серверная пагинация + фильтры)
+  const loadAds = (page = 1, append = false) => {
+    if (page === 1) setAdsLoading(true); else setAdsLoadingMore(true);
+    const body: Record<string, unknown> = { action: "list", page };
+    if (selectedCategory !== "all") {
+      const dbCat = dbCategories.find((c) => String(c.id) === selectedCategory);
+      if (dbCat) body.category_id = dbCat.id; else body.category = selectedCategory;
+    }
+    if (selectedCity !== "Все города") body.city = selectedCity;
+    if (priceFrom) body.price_from = priceFrom;
+    if (priceTo) body.price_to = priceTo;
+    if (condition !== "all") body.condition = condition;
+    if (searchQuery) body.search = searchQuery;
     fetch(ADS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "list" }),
+      body: JSON.stringify(body),
     })
       .then((r) => r.json())
-      .then((d) => { if (d.ok) setApiAds(d.ads); })
+      .then((d) => {
+        if (d.ok) {
+          setApiAds((prev) => append ? [...prev, ...d.ads] : d.ads);
+          setAdsTotal(d.total ?? 0);
+          setAdsPerPage(d.per_page ?? 40);
+          setAdsPage(page);
+        }
+      })
       .catch(() => {})
-      .finally(() => setAdsLoading(false));
+      .finally(() => { setAdsLoading(false); setAdsLoadingMore(false); });
   };
 
   const loadMyAds = () => {
@@ -134,7 +155,8 @@ export default function Index() {
       .catch(() => {});
   };
 
-  useEffect(() => { loadAds(); loadCategories(); }, []);
+  useEffect(() => { loadCategories(); }, []);
+  useEffect(() => { loadAds(1, false); }, [selectedCategory, selectedCity, priceFrom, priceTo, condition, searchQuery]);
   useEffect(() => { if (user) loadMyAds(); }, [user]);
   useEffect(() => { if (section === "favorites" && user) loadFolders(); }, [section, user]);
   useEffect(() => {
@@ -284,21 +306,8 @@ export default function Index() {
     setEditSaving(false);
   };
 
-  const allAds: Ad[] = apiAds;
-
-  const filteredAds = allAds.filter((ad) => {
-    const matchQuery = !searchQuery || ad.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCategory = selectedCategory === "all" || (() => {
-      const dbCat = dbCategories.find((c) => String(c.id) === selectedCategory);
-      if (dbCat) return (ad as Ad & { category_id?: number }).category_id === dbCat.id || ad.category === dbCat.slug || ad.category === dbCat.name;
-      return ad.category === selectedCategory;
-    })();
-    const matchCity = selectedCity === "Все города" || ad.city === selectedCity;
-    const matchFrom = priceFrom === "" || ad.price >= Number(priceFrom);
-    const matchTo = priceTo === "" || ad.price <= Number(priceTo);
-    const matchCondition = condition === "all" || ad.condition.toLowerCase().includes(condition);
-    return matchQuery && matchCategory && matchCity && matchFrom && matchTo && matchCondition;
-  });
+  const filteredAds = apiAds;
+  const hasMore = apiAds.length < adsTotal;
 
   const toggleFavorite = (id: number) => {
     setFavorites((prev) => prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]);
@@ -803,6 +812,10 @@ export default function Index() {
             openNewAd={openNewAd}
             setSection={setSection}
             adsLoading={adsLoading}
+            adsTotal={adsTotal}
+            hasMore={hasMore}
+            adsLoadingMore={adsLoadingMore}
+            onLoadMore={() => loadAds(adsPage + 1, true)}
           />
         )}
 

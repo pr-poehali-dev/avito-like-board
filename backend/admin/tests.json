@@ -224,6 +224,27 @@
       "body": {"action": "group_create", "name": "Test"},
       "expectedStatus": 401, "bodyMatcher": "partial",
       "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "cat_list без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "cat_list"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "acf_list без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "acf_list"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "acf_folder_list без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "acf_folder_list"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
     }
   ]
 }

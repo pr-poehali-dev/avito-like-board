@@ -1,11 +1,12 @@
 """
 Административная панель API.
 Поддерживаемые action:
-  login, me, logout, stats, quick_links, ql_create, ql_update, ql_delete, ql_reorder
+  login, me, logout, stats, quick_links, ql_create/update/delete/reorder
   settings_get, settings_save, server_time, my_ip, logs
-  user_groups, group_create, group_update, group_remove
-  users_list, users_bulk
-  cf_list, cf_create, cf_update, cf_remove
+  user_groups, group_create/update/remove, users_list, users_bulk
+  cf_list/create/update/remove, cf_folder_list/create/update/remove
+  cat_list/create/update/remove/reorder
+  acf_folder_list/create/update/remove, acf_list/create/update/remove
 """
 import json
 import os
@@ -1142,6 +1143,389 @@ def handler(event: dict, context) -> dict:
             (int(fid),)
         )
         cur.execute(f"UPDATE {SCHEMA}.user_custom_field_folders SET sort_order=sort_order WHERE id=%s", (int(fid),))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── CATEGORIES ─────────────────────────────────────────────────────────────
+    if action == "cat_list":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT c.id, c.parent_id, c.name, c.alt_name, c.slug, c.meta_title,
+                   c.meta_description, c.short_description, c.sort_order, c.icon,
+                   c.show_in_menu,
+                   (SELECT COUNT(*) FROM {SCHEMA}.ads a WHERE a.category_id = c.id) AS ads_count
+            FROM {SCHEMA}.categories c ORDER BY c.sort_order, c.name
+        """)
+        rows = cur.fetchall()
+        conn.close()
+        cats = [{"id": r[0], "parent_id": r[1], "name": r[2], "alt_name": r[3],
+                 "slug": r[4], "meta_title": r[5], "meta_description": r[6],
+                 "short_description": r[7], "sort_order": r[8], "icon": r[9],
+                 "show_in_menu": r[10], "ads_count": r[11], "children": []}
+                for r in rows]
+        cat_map = {c["id"]: c for c in cats}
+        tree = []
+        for c in cats:
+            if c["parent_id"] and c["parent_id"] in cat_map:
+                cat_map[c["parent_id"]]["children"].append(c)
+            else:
+                tree.append(c)
+        return ok({"items": tree, "flat": cats})
+
+    if action == "cat_create":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название категории обязательно")
+        import re as _re
+        slug = str(body.get("slug") or "").strip()
+        if not slug:
+            slug = _re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-') or f"cat-{int(datetime.now().timestamp())}"
+        cur = conn.cursor()
+        cur.execute(f"SELECT 1 FROM {SCHEMA}.categories WHERE slug=%s", (slug,))
+        if cur.fetchone():
+            slug = f"{slug}-{int(datetime.now().timestamp())}"
+        parent_id = body.get("parent_id")
+        parent_id = int(parent_id) if parent_id else None
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.categories
+                (parent_id, name, alt_name, slug, meta_title, meta_description,
+                 short_description, sort_order, icon, show_in_menu, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
+            (parent_id, name,
+             body.get("alt_name") or None, slug,
+             body.get("meta_title") or None,
+             body.get("meta_description") or None,
+             body.get("short_description") or None,
+             int(body.get("sort_order") or 0),
+             body.get("icon") or None,
+             body.get("show_in_menu") is not False)
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": new_id, "slug": slug})
+
+    if action == "cat_update":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cid = body.get("id")
+        if not cid:
+            conn.close()
+            return err("Не указан id категории")
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название категории обязательно")
+        import re as _re
+        slug = str(body.get("slug") or "").strip()
+        if not slug:
+            slug = _re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-') or f"cat-{int(cid)}"
+        cur = conn.cursor()
+        cur.execute(f"SELECT 1 FROM {SCHEMA}.categories WHERE slug=%s AND id!=%s", (slug, int(cid)))
+        if cur.fetchone():
+            slug = f"{slug}-{int(cid)}"
+        parent_id = body.get("parent_id")
+        parent_id = int(parent_id) if parent_id else None
+        if parent_id == int(cid):
+            parent_id = None
+        cur.execute(
+            f"""UPDATE {SCHEMA}.categories SET parent_id=%s, name=%s, alt_name=%s, slug=%s,
+                meta_title=%s, meta_description=%s, short_description=%s,
+                sort_order=%s, icon=%s, show_in_menu=%s, updated_at=NOW() WHERE id=%s""",
+            (parent_id, name,
+             body.get("alt_name") or None, slug,
+             body.get("meta_title") or None,
+             body.get("meta_description") or None,
+             body.get("short_description") or None,
+             int(body.get("sort_order") or 0),
+             body.get("icon") or None,
+             body.get("show_in_menu") is not False,
+             int(cid))
+        )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    if action == "cat_remove":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cid = body.get("id")
+        if not cid:
+            conn.close()
+            return err("Не указан id категории")
+        cur = conn.cursor()
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.categories WHERE parent_id=%s", (int(cid),))
+        child_cnt = cur.fetchone()[0]
+        if child_cnt > 0:
+            conn.close()
+            return err(f"Нельзя удалить: в категории {child_cnt} подкатегорий. Сначала удалите их.")
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.ads WHERE category_id=%s", (int(cid),))
+        ads_cnt = cur.fetchone()[0]
+        if ads_cnt > 0:
+            conn.close()
+            return err(f"Нельзя удалить: в категории {ads_cnt} объявлений.")
+        cur.execute(f"UPDATE {SCHEMA}.categories SET updated_at=NOW() WHERE parent_id=%s", (int(cid),))
+        cur.execute(f"UPDATE {SCHEMA}.ad_custom_field_categories SET category_id=NULL WHERE category_id=%s", (int(cid),))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    if action == "cat_reorder":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        items = body.get("items") or []
+        cur = conn.cursor()
+        for item in items:
+            pid = item.get("parent_id")
+            pid = int(pid) if pid else None
+            cur.execute(
+                f"UPDATE {SCHEMA}.categories SET parent_id=%s, sort_order=%s, updated_at=NOW() WHERE id=%s",
+                (pid, int(item.get("sort_order") or 0), int(item["id"]))
+            )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── AD CUSTOM FIELD FOLDERS ────────────────────────────────────────────────
+    if action == "acf_folder_list":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cur = conn.cursor()
+        cur.execute(f"SELECT id, name, sort_order FROM {SCHEMA}.ad_custom_field_folders ORDER BY sort_order, id")
+        rows = cur.fetchall()
+        conn.close()
+        return ok({"items": [{"id": r[0], "name": r[1], "sort_order": r[2]} for r in rows]})
+
+    if action == "acf_folder_create":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название папки обязательно")
+        cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.ad_custom_field_folders (name, sort_order) VALUES (%s,%s) RETURNING id",
+            (name, int(body.get("sort_order") or 0))
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": new_id})
+
+    if action == "acf_folder_update":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        fid = body.get("id")
+        name = str(body.get("name") or "").strip()
+        if not fid or not name:
+            conn.close()
+            return err("Требуются id и name")
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.ad_custom_field_folders SET name=%s, sort_order=%s WHERE id=%s",
+            (name, int(body.get("sort_order") or 0), int(fid))
+        )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    if action == "acf_folder_remove":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        fid = body.get("id")
+        if not fid:
+            conn.close()
+            return err("Не указан id папки")
+        cur = conn.cursor()
+        cur.execute(f"UPDATE {SCHEMA}.ad_custom_fields SET folder_id=NULL WHERE folder_id=%s", (int(fid),))
+        cur.execute(f"UPDATE {SCHEMA}.ad_custom_field_folders SET sort_order=sort_order WHERE id=%s", (int(fid),))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── AD CUSTOM FIELDS ───────────────────────────────────────────────────────
+    if action == "acf_list":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        folder_filter = body.get("folder_id") or qs.get("folder_id")
+        cur = conn.cursor()
+        where = ""
+        params = []
+        if folder_filter is not None and folder_filter != "":
+            if str(folder_filter) == "0":
+                where = "WHERE f.folder_id IS NULL"
+            else:
+                where = "WHERE f.folder_id=%s"
+                params.append(int(folder_filter))
+        cur.execute(f"""
+            SELECT f.id, f.folder_id, fld.name AS folder_name, f.name, f.description,
+                   f.placeholder, f.field_type, f.options, f.is_optional, f.default_value, f.sort_order
+            FROM {SCHEMA}.ad_custom_fields f
+            LEFT JOIN {SCHEMA}.ad_custom_field_folders fld ON fld.id=f.folder_id
+            {where}
+            ORDER BY f.sort_order, f.id
+        """, params)
+        rows = cur.fetchall()
+        field_ids = [r[0] for r in rows]
+        cats_map = {}
+        add_groups_map = {}
+        view_groups_map = {}
+        if field_ids:
+            ph = ",".join(["%s"] * len(field_ids))
+            cur.execute(f"""SELECT fc.field_id, c.id, c.name
+                FROM {SCHEMA}.ad_custom_field_categories fc
+                JOIN {SCHEMA}.categories c ON c.id=fc.category_id
+                WHERE fc.field_id IN ({ph})""", field_ids)
+            for r in cur.fetchall():
+                cats_map.setdefault(r[0], []).append({"id": r[1], "name": r[2]})
+            cur.execute(f"""SELECT fg.field_id, g.id, g.name
+                FROM {SCHEMA}.ad_custom_field_add_groups fg
+                JOIN {SCHEMA}.user_groups g ON g.id=fg.group_id
+                WHERE fg.field_id IN ({ph})""", field_ids)
+            for r in cur.fetchall():
+                add_groups_map.setdefault(r[0], []).append({"id": r[1], "name": r[2]})
+            cur.execute(f"""SELECT fg.field_id, g.id, g.name
+                FROM {SCHEMA}.ad_custom_field_view_groups fg
+                JOIN {SCHEMA}.user_groups g ON g.id=fg.group_id
+                WHERE fg.field_id IN ({ph})""", field_ids)
+            for r in cur.fetchall():
+                view_groups_map.setdefault(r[0], []).append({"id": r[1], "name": r[2]})
+        conn.close()
+        return ok({"items": [
+            {"id": r[0], "folder_id": r[1], "folder_name": r[2], "name": r[3],
+             "description": r[4], "placeholder": r[5], "field_type": r[6],
+             "options": r[7], "is_optional": r[8], "default_value": r[9], "sort_order": r[10],
+             "categories": cats_map.get(r[0], []),
+             "add_groups": add_groups_map.get(r[0], []),
+             "view_groups": view_groups_map.get(r[0], [])}
+            for r in rows
+        ], "total": len(rows)})
+
+    if action in ("acf_create", "acf_update"):
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название поля обязательно")
+        ft = str(body.get("field_type") or "text")
+        if ft not in ("text", "textarea", "select", "boolean", "datetime"):
+            conn.close()
+            return err("Неверный тип поля")
+        folder_id = body.get("folder_id")
+        folder_id = int(folder_id) if folder_id else None
+        cur = conn.cursor()
+
+        if action == "acf_create":
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.ad_custom_fields
+                    (folder_id, name, description, placeholder, field_type, options,
+                     is_optional, default_value, sort_order, updated_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
+                (folder_id, name, body.get("description") or None,
+                 body.get("placeholder") or None, ft,
+                 body.get("options") or None,
+                 bool(body.get("is_optional")),
+                 body.get("default_value") or None,
+                 int(body.get("sort_order") or 0))
+            )
+            field_id = cur.fetchone()[0]
+        else:
+            field_id = body.get("id")
+            if not field_id:
+                conn.close()
+                return err("Не указан id поля")
+            field_id = int(field_id)
+            cur.execute(
+                f"""UPDATE {SCHEMA}.ad_custom_fields SET folder_id=%s, name=%s, description=%s,
+                    placeholder=%s, field_type=%s, options=%s, is_optional=%s,
+                    default_value=%s, sort_order=%s, updated_at=NOW() WHERE id=%s""",
+                (folder_id, name, body.get("description") or None,
+                 body.get("placeholder") or None, ft,
+                 body.get("options") or None,
+                 bool(body.get("is_optional")),
+                 body.get("default_value") or None,
+                 int(body.get("sort_order") or 0), field_id)
+            )
+            cur.execute(f"UPDATE {SCHEMA}.ad_custom_field_categories SET field_id=field_id WHERE field_id=%s", (field_id,))
+            cur.execute(f"UPDATE {SCHEMA}.ad_custom_field_add_groups SET field_id=field_id WHERE field_id=%s", (field_id,))
+            cur.execute(f"UPDATE {SCHEMA}.ad_custom_field_view_groups SET field_id=field_id WHERE field_id=%s", (field_id,))
+
+        category_ids = body.get("category_ids") or []
+        add_group_ids = body.get("add_group_ids") or []
+        view_group_ids = body.get("view_group_ids") or []
+
+        for cid in category_ids:
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.ad_custom_field_categories (field_id, category_id)
+                    VALUES (%s,%s) ON CONFLICT DO NOTHING""", (field_id, int(cid))
+            )
+        for gid in add_group_ids:
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.ad_custom_field_add_groups (field_id, group_id)
+                    VALUES (%s,%s) ON CONFLICT DO NOTHING""", (field_id, int(gid))
+            )
+        for gid in view_group_ids:
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.ad_custom_field_view_groups (field_id, group_id)
+                    VALUES (%s,%s) ON CONFLICT DO NOTHING""", (field_id, int(gid))
+            )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": field_id})
+
+    if action == "acf_remove":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        fid = body.get("id")
+        if not fid:
+            conn.close()
+            return err("Не указан id поля")
+        cur = conn.cursor()
+        cur.execute(f"UPDATE {SCHEMA}.ad_custom_fields SET updated_at=NOW() WHERE id=%s", (int(fid),))
         conn.commit()
         conn.close()
         return ok({"ok": True})

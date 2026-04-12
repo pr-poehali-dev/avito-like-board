@@ -74,4 +74,22 @@ export const adminApi = {
   cfFolderCreate: (data: Record<string, unknown>) => call({ action: "cf_folder_create", ...data }),
   cfFolderUpdate: (data: Record<string, unknown>) => call({ action: "cf_folder_update", ...data }),
   cfFolderRemove: (id: number) => call({ action: "cf_folder_remove", id }),
+
+  catList: () => call({ action: "cat_list" }),
+  catCreate: (data: Record<string, unknown>) => call({ action: "cat_create", ...data }),
+  catUpdate: (data: Record<string, unknown>) => call({ action: "cat_update", ...data }),
+  catRemove: (id: number) => call({ action: "cat_remove", id }),
+  catReorder: (items: { id: number; parent_id: number | null; sort_order: number }[]) =>
+    call({ action: "cat_reorder", items }),
+
+  acfFolderList: () => call({ action: "acf_folder_list" }),
+  acfFolderCreate: (data: Record<string, unknown>) => call({ action: "acf_folder_create", ...data }),
+  acfFolderUpdate: (data: Record<string, unknown>) => call({ action: "acf_folder_update", ...data }),
+  acfFolderRemove: (id: number) => call({ action: "acf_folder_remove", id }),
+
+  acfList: (folder_id?: number | null) =>
+    call({ action: "acf_list", ...(folder_id !== undefined ? { folder_id } : {}) }),
+  acfCreate: (data: Record<string, unknown>) => call({ action: "acf_create", ...data }),
+  acfUpdate: (data: Record<string, unknown>) => call({ action: "acf_update", ...data }),
+  acfRemove: (id: number) => call({ action: "acf_remove", id }),
 };

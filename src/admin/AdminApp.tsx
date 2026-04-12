@@ -8,6 +8,7 @@ import AdminSettings from "./pages/AdminSettings";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAds from "./pages/AdminAds";
 import AdminLogs from "./pages/AdminLogs";
+import AdminCategories from "./pages/AdminCategories";
 
 export default function AdminApp({ basePath = "/admin" }: { basePath?: string }) {
   return (
@@ -25,6 +26,7 @@ export default function AdminApp({ basePath = "/admin" }: { basePath?: string })
           <Route index element={<AdminDashboard />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="categories" element={<AdminCategories />} />
           <Route path="ads" element={<AdminAds />} />
           <Route path="logs" element={<AdminLogs />} />
         </Route>

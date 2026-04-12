@@ -4,6 +4,7 @@ import { useAdminAuth } from "../AdminAuthContext";
 const navItems = [
   { to: "/admin", label: "Главная", icon: "⊞", end: true },
   { to: "/admin/users", label: "Пользователи", icon: "👥", end: false },
+  { to: "/admin/categories", label: "Категории", icon: "🗂️", end: false },
   { to: "/admin/ads", label: "Объявления", icon: "📋", end: false },
   { to: "/admin/logs", label: "Журнал", icon: "📄", end: false },
   { to: "/admin/settings", label: "Настройки", icon: "⚙️", end: false },

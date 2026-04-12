@@ -1,0 +1,49 @@
+{
+  "tests": [
+    {
+      "name": "login без данных — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "login", "email": "", "password": ""},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Введите email и пароль"}
+    },
+    {
+      "name": "login неверные данные — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "login", "email": "fake@admin.com", "password": "wrongpass"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Неверный email или пароль"}
+    },
+    {
+      "name": "me без токена — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "me"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "stats без токена — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "stats"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "quick_links без токена — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "quick_links"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    }
+  ]
+}

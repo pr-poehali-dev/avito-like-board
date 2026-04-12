@@ -9,9 +9,10 @@
   ql_update     — обновить ссылку
   ql_delete     — удалить ссылку
   ql_reorder    — изменить порядок
-  settings_get  — получить настройки (group=general или все)
+  settings_get  — получить настройки (group=general|security или все)
   settings_save — сохранить настройки (объект ключ-значение)
   server_time   — текущее время сервера в заданном часовом поясе
+  my_ip         — IP-адрес текущего клиента
   logout        — выход
 """
 import json
@@ -289,15 +290,33 @@ def handler(event: dict, context) -> dict:
             return err("Нет доступа", 401)
 
         group = qs.get("group") or body.get("group") or ""
-        GENERAL_KEYS = {
-            "site_name", "site_url", "force_https", "redirect_www",
-            "meta_description", "meta_keywords", "site_short_name",
-            "timezone", "use_custom_404", "site_offline",
+
+        GROUP_KEYS = {
+            "general": {
+                "site_name", "site_url", "force_https", "redirect_www",
+                "meta_description", "meta_keywords", "site_short_name",
+                "timezone", "use_custom_404", "site_offline",
+            },
+            "security": {
+                "admin_filename", "display_php_errors", "block_iframe",
+                "allowed_admin_ips", "max_login_attempts", "login_block_timeout",
+                "admin_inactivity_timeout", "reset_auth_key_on_login",
+                "admin_logs_retention_days",
+            },
+        }
+
+        BOOL_KEYS = {
+            "force_https", "redirect_www", "use_custom_404", "site_offline",
+            "display_php_errors", "block_iframe", "reset_auth_key_on_login",
+        }
+        INT_KEYS = {
+            "max_login_attempts", "login_block_timeout",
+            "admin_inactivity_timeout", "admin_logs_retention_days",
         }
 
         cur = conn.cursor()
-        if group == "general":
-            keys_list = list(GENERAL_KEYS)
+        if group in GROUP_KEYS:
+            keys_list = list(GROUP_KEYS[group])
             placeholders = ", ".join(["%s"] * len(keys_list))
             cur.execute(
                 f"SELECT key, value FROM {SCHEMA}.settings WHERE key IN ({placeholders})",
@@ -309,11 +328,12 @@ def handler(event: dict, context) -> dict:
         rows = cur.fetchall()
         conn.close()
 
-        BOOL_KEYS = {"force_https", "redirect_www", "use_custom_404", "site_offline"}
         result = {}
         for k, v in rows:
             if k in BOOL_KEYS:
                 result[k] = v == "true"
+            elif k in INT_KEYS:
+                result[k] = int(v) if v and v.isdigit() else 0
             else:
                 result[k] = v or ""
         return ok(result)
@@ -332,13 +352,19 @@ def handler(event: dict, context) -> dict:
             return err("Нет данных для сохранения")
 
         VALID_KEYS = {
+            # general
             "site_name", "site_url", "force_https", "redirect_www",
             "meta_description", "meta_keywords", "site_short_name",
             "timezone", "use_custom_404", "site_offline",
+            # security
+            "admin_filename", "display_php_errors", "block_iframe",
+            "allowed_admin_ips", "max_login_attempts", "login_block_timeout",
+            "admin_inactivity_timeout", "reset_auth_key_on_login",
+            "admin_logs_retention_days",
         }
         validation_errors = {}
 
-        # Валидация
+        # ── Валидация general ──────────────────────────────────────────────────
         if "site_url" in data:
             url_val = str(data["site_url"]).strip()
             if not (url_val.startswith("http://") or url_val.startswith("https://")):
@@ -354,6 +380,39 @@ def handler(event: dict, context) -> dict:
             tz_val = str(data["timezone"]).strip()
             if tz_val not in pytz.all_timezones_set:
                 validation_errors["timezone"] = "Неверный часовой пояс"
+
+        # ── Валидация security ─────────────────────────────────────────────────
+        import re
+        if "admin_filename" in data:
+            fn = str(data["admin_filename"]).strip()
+            if not fn:
+                validation_errors["admin_filename"] = "Имя файла не может быть пустым"
+            elif not re.match(r'^[\w\-\.]+$', fn) or len(fn) > 100:
+                validation_errors["admin_filename"] = "Допустимы только буквы, цифры, -_. (макс. 100)"
+
+        for int_key, min_val in [
+            ("max_login_attempts", 0), ("login_block_timeout", 1),
+            ("admin_inactivity_timeout", 0), ("admin_logs_retention_days", 30),
+        ]:
+            if int_key in data:
+                try:
+                    v = int(data[int_key])
+                    if v < min_val:
+                        validation_errors[int_key] = f"Минимальное значение: {min_val}"
+                except (ValueError, TypeError):
+                    validation_errors[int_key] = "Должно быть целым числом"
+
+        if "allowed_admin_ips" in data:
+            raw_ips = str(data.get("allowed_admin_ips") or "").strip()
+            if raw_ips:
+                ip_pattern = re.compile(
+                    r'^(\d{1,3}|\*)\.(\d{1,3}|\*)\.(\d{1,3}|\*)\.(\d{1,3}|\*)$'
+                )
+                for line in raw_ips.splitlines():
+                    line = line.strip()
+                    if line and not ip_pattern.match(line):
+                        validation_errors["allowed_admin_ips"] = f"Неверный формат IP: {line}"
+                        break
 
         if validation_errors:
             conn.close()
@@ -384,5 +443,15 @@ def handler(event: dict, context) -> dict:
 
         now = datetime.now(pytz.utc).astimezone(tz)
         return ok({"datetime": now.strftime("%Y-%m-%d %H:%M:%S"), "timezone": tz_name})
+
+    # ── MY IP ──────────────────────────────────────────────────────────────────
+    if action == "my_ip":
+        ip = (
+            (event.get("requestContext") or {}).get("identity", {}).get("sourceIp")
+            or headers.get("X-Forwarded-For", "").split(",")[0].strip()
+            or headers.get("x-forwarded-for", "").split(",")[0].strip()
+            or "unknown"
+        )
+        return ok({"ip": ip})
 
     return err("Укажите action")

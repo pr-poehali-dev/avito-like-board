@@ -48,4 +48,7 @@ export const adminApi = {
 
   serverTime: (timezone: string) =>
     call({ action: "server_time", timezone }),
+
+  myIp: () =>
+    call({ action: "my_ip" }),
 };

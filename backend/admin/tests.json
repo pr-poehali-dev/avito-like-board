@@ -80,6 +80,33 @@
       "expectedStatus": 400,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Неверный часовой пояс"}
+    },
+    {
+      "name": "my_ip — 200",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "my_ip"},
+      "expectedStatus": 200,
+      "bodyMatcher": "partial",
+      "expectedBody": {}
+    },
+    {
+      "name": "settings_save security валидация admin_filename — 422",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "settings_save", "data": {"admin_filename": ""}},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_save security валидация logs_retention — без токена 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "settings_save", "data": {"admin_logs_retention_days": 10}},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
     }
   ]
 }

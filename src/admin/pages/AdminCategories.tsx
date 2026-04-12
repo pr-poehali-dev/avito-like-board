@@ -127,7 +127,7 @@ function BulkAddCategories({ flat, onDone, onCancel }: BulkAddProps) {
 
       const d = await adminApi.catCreate({
         name,
-        slug: `${slug}-${Date.now()}`,
+        slug,
         parent_id: parentId ? Number(parentId) : null,
         sort_order: i,
         show_in_menu: true,

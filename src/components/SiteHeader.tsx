@@ -23,10 +23,6 @@ interface SiteHeaderProps {
 
 const NAV_ITEMS = [
   { id: "home", label: "Главная", icon: "Home" },
-  { id: "my-ads", label: "Мои объявления", icon: "FileText" },
-  { id: "favorites", label: "Избранное", icon: "Heart" },
-  { id: "messages", label: "Сообщения", icon: "MessageCircle" },
-  { id: "contacts", label: "Контакты", icon: "Phone" },
 ];
 
 export default function SiteHeader({

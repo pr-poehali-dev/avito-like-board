@@ -471,8 +471,8 @@ export default function Index() {
     }
   };
 
-  const [catMenuOpen, setCatMenuOpen] = useState(false);
-  const [catPath, setCatPath] = useState<number[]>([]); // стек открытых уровней
+  const [openRootId, setOpenRootId] = useState<number | null>(null);
+  const [catPath, setCatPath] = useState<number[]>([]);
 
   const navItems: { id: Section; label: string; icon: string }[] = [
     { id: "home", label: "Главная", icon: "Home" },
@@ -627,125 +627,124 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Мега-меню категорий */}
-        <div className="hidden md:block border-t border-border">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="flex items-center gap-0 relative">
+        {/* Полоса категорий */}
+        {dbCategories.filter((c) => !c.parent_id).length > 0 && (
+          <div className="hidden md:block border-t border-border">
+            <div className="max-w-6xl mx-auto px-4">
+              <div className="flex items-center gap-0">
+                {dbCategories.filter((c) => !c.parent_id).map((root) => {
+                  const hasChildren = dbCategories.some((c) => c.parent_id === root.id);
+                  const isOpen = openRootId === root.id;
+                  const currentPathId = catPath.length > 0 ? catPath[catPath.length - 1] : root.id;
+                  const visibleItems = dbCategories.filter((c) =>
+                    catPath.length === 0 ? c.parent_id === root.id : c.parent_id === currentPathId
+                  );
 
-              {/* Кнопка «Все категории» */}
-              <button
-                onClick={() => { setCatMenuOpen((v) => !v); setCatPath([]); }}
-                className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 shrink-0 ${catMenuOpen ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"}`}
-              >
-                <Icon name="LayoutGrid" size={14} />
-                Все категории
-                <Icon name={catMenuOpen ? "ChevronUp" : "ChevronDown"} size={12} />
-              </button>
+                  return (
+                    <div key={root.id} className="relative shrink-0">
+                      {/* Кнопка корневой категории */}
+                      <button
+                        onClick={() => {
+                          if (isOpen) { setOpenRootId(null); setCatPath([]); }
+                          else { setOpenRootId(root.id); setCatPath([]); }
+                        }}
+                        className={`flex items-center gap-1 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 ${
+                          isOpen || (selectedCategory === String(root.id) && section === "home")
+                            ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]"
+                            : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                        }`}
+                      >
+                        {root.name}
+                        {hasChildren && <Icon name={isOpen ? "ChevronUp" : "ChevronDown"} size={12} className="opacity-60" />}
+                      </button>
 
-              {/* Корневые категории */}
-              {dbCategories.filter((c) => !c.parent_id).map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); setCatMenuOpen(false); }}
-                  className={`px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 shrink-0 ${
-                    selectedCategory === String(cat.id) && section === "home"
-                      ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]"
-                      : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              ))}
-
-              {/* Дроп-панель — одна колонка, клик по уровням */}
-              {catMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => { setCatMenuOpen(false); setCatPath([]); }} />
-                  <div className="absolute left-0 top-full z-50 bg-white border border-border border-t-0 shadow-2xl w-72 overflow-hidden">
-
-                    {/* Шапка: хлебные крошки + «назад» */}
-                    {catPath.length > 0 && (
-                      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-[hsl(var(--muted))]">
-                        <button
-                          onClick={() => setCatPath((p) => p.slice(0, -1))}
-                          className="p-1 rounded hover:bg-white transition-colors shrink-0"
-                        >
-                          <Icon name="ChevronLeft" size={15} className="text-[hsl(var(--foreground))]" />
-                        </button>
-                        <div className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] overflow-hidden">
-                          <button onClick={() => setCatPath([])} className="hover:text-[hsl(var(--accent))] shrink-0">Все</button>
-                          {catPath.map((id, i) => (
-                            <span key={id} className="flex items-center gap-1 shrink-0">
-                              <span>/</span>
-                              <button
-                                onClick={() => setCatPath((p) => p.slice(0, i + 1))}
-                                className="hover:text-[hsl(var(--accent))] truncate max-w-[90px]"
-                              >
-                                {dbCategories.find((c) => c.id === id)?.name}
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Текущий уровень — «Открыть всё» + список */}
-                    <div className="overflow-y-auto max-h-[60vh]">
-                      {catPath.length > 0 && (
+                      {/* Выпадающая панель */}
+                      {isOpen && hasChildren && (
                         <>
-                          <button
-                            onClick={() => {
-                              const currentId = catPath[catPath.length - 1];
-                              setSelectedCategory(String(currentId));
-                              setSection("home");
-                              setCatMenuOpen(false);
-                              setCatPath([]);
-                            }}
-                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors text-left"
-                          >
-                            <Icon name="LayoutGrid" size={14} />
-                            Все объявления раздела
-                          </button>
-                          <div className="border-t border-border" />
+                          <div className="fixed inset-0 z-40" onClick={() => { setOpenRootId(null); setCatPath([]); }} />
+                          <div className="absolute left-0 top-full z-50 bg-white border border-border border-t-0 shadow-2xl w-64 overflow-hidden">
+
+                            {/* Шапка с навигацией (когда зашли глубже) */}
+                            {catPath.length > 0 && (
+                              <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-[hsl(var(--muted))]">
+                                <button
+                                  onClick={() => setCatPath((p) => p.slice(0, -1))}
+                                  className="p-1 rounded hover:bg-white transition-colors shrink-0"
+                                >
+                                  <Icon name="ChevronLeft" size={14} className="text-[hsl(var(--foreground))]" />
+                                </button>
+                                <div className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] overflow-hidden">
+                                  <button onClick={() => setCatPath([])} className="hover:text-[hsl(var(--accent))] shrink-0 truncate">
+                                    {root.name}
+                                  </button>
+                                  {catPath.map((id, i) => (
+                                    <span key={id} className="flex items-center gap-1 shrink-0">
+                                      <span>/</span>
+                                      <button
+                                        onClick={() => setCatPath((p) => p.slice(0, i + 1))}
+                                        className="hover:text-[hsl(var(--accent))] truncate max-w-[80px]"
+                                      >
+                                        {dbCategories.find((c) => c.id === id)?.name}
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* «Все в разделе» */}
+                            <button
+                              onClick={() => {
+                                setSelectedCategory(String(currentPathId));
+                                setSection("home");
+                                setOpenRootId(null);
+                                setCatPath([]);
+                              }}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors text-left"
+                            >
+                              <Icon name="LayoutGrid" size={13} />
+                              Все в «{dbCategories.find((c) => c.id === currentPathId)?.name}»
+                            </button>
+                            <div className="border-t border-border" />
+
+                            {/* Список текущего уровня */}
+                            <div className="overflow-y-auto max-h-[60vh]">
+                              {visibleItems.map((cat) => {
+                                const hasSub = dbCategories.some((c) => c.parent_id === cat.id);
+                                return (
+                                  <button
+                                    key={cat.id}
+                                    onClick={() => {
+                                      if (hasSub) {
+                                        setCatPath((p) => [...p, cat.id]);
+                                      } else {
+                                        setSelectedCategory(String(cat.id));
+                                        setSection("home");
+                                        setOpenRootId(null);
+                                        setCatPath([]);
+                                      }
+                                    }}
+                                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--accent))] transition-colors text-left group"
+                                  >
+                                    <span>{cat.name}</span>
+                                    {hasSub
+                                      ? <Icon name="ChevronRight" size={13} className="shrink-0 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--accent))]" />
+                                      : <Icon name="ArrowRight" size={12} className="shrink-0 opacity-0 group-hover:opacity-40" />
+                                    }
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </>
                       )}
-
-                      {/* Список категорий текущего уровня */}
-                      {dbCategories
-                        .filter((c) => catPath.length === 0 ? !c.parent_id : c.parent_id === catPath[catPath.length - 1])
-                        .map((cat) => {
-                          const hasChildren = dbCategories.some((c) => c.parent_id === cat.id);
-                          return (
-                            <button
-                              key={cat.id}
-                              onClick={() => {
-                                if (hasChildren) {
-                                  setCatPath((p) => [...p, cat.id]);
-                                } else {
-                                  setSelectedCategory(String(cat.id));
-                                  setSection("home");
-                                  setCatMenuOpen(false);
-                                  setCatPath([]);
-                                }
-                              }}
-                              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--accent))] transition-colors text-left group"
-                            >
-                              <span>{cat.name}</span>
-                              {hasChildren
-                                ? <Icon name="ChevronRight" size={14} className="shrink-0 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--accent))]" />
-                                : <Icon name="ArrowRight" size={13} className="shrink-0 opacity-0 group-hover:opacity-40" />
-                              }
-                            </button>
-                          );
-                        })}
                     </div>
-                  </div>
-                </>
-              )}
-
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-border bg-white animate-fade-in">

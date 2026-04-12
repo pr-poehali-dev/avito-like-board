@@ -472,8 +472,7 @@ export default function Index() {
   };
 
   const [catMenuOpen, setCatMenuOpen] = useState(false);
-  const [hoveredRootId, setHoveredRootId] = useState<number | null>(null);
-  const [hoveredL2Id, setHoveredL2Id] = useState<number | null>(null);
+  const [catPath, setCatPath] = useState<number[]>([]); // стек открытых уровней
 
   const navItems: { id: Section; label: string; icon: string }[] = [
     { id: "home", label: "Главная", icon: "Home" },
@@ -631,125 +630,117 @@ export default function Index() {
         {/* Мега-меню категорий */}
         <div className="hidden md:block border-t border-border">
           <div className="max-w-6xl mx-auto px-4">
-            <div
-              className="flex items-center gap-0 relative"
-              onMouseLeave={() => { setCatMenuOpen(false); setHoveredRootId(null); setHoveredL2Id(null); }}
-            >
+            <div className="flex items-center gap-0 relative">
+
               {/* Кнопка «Все категории» */}
-              <div
-                className="relative shrink-0"
-                onMouseEnter={() => {
-                  setCatMenuOpen(true);
-                  const firstRoot = dbCategories.find((c) => !c.parent_id);
-                  if (firstRoot) { setHoveredRootId(firstRoot.id); setHoveredL2Id(null); }
-                }}
+              <button
+                onClick={() => { setCatMenuOpen((v) => !v); setCatPath([]); }}
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 shrink-0 ${catMenuOpen ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"}`}
               >
-                <button className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 ${catMenuOpen ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"}`}>
-                  <Icon name="LayoutGrid" size={14} />
-                  Все категории
-                  <Icon name={catMenuOpen ? "ChevronUp" : "ChevronDown"} size={12} />
-                </button>
-              </div>
+                <Icon name="LayoutGrid" size={14} />
+                Все категории
+                <Icon name={catMenuOpen ? "ChevronUp" : "ChevronDown"} size={12} />
+              </button>
 
               {/* Корневые категории */}
               {dbCategories.filter((c) => !c.parent_id).map((cat) => (
-                <div key={cat.id} className="shrink-0" onMouseEnter={() => setCatMenuOpen(false)}>
-                  <button
-                    onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); }}
-                    className={`px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 ${
-                      selectedCategory === String(cat.id) && section === "home"
-                        ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]"
-                        : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                </div>
+                <button
+                  key={cat.id}
+                  onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); setCatMenuOpen(false); }}
+                  className={`px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 shrink-0 ${
+                    selectedCategory === String(cat.id) && section === "home"
+                      ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]"
+                      : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                  }`}
+                >
+                  {cat.name}
+                </button>
               ))}
 
-              {/* Мега-панель 3 колонки */}
-              {catMenuOpen && dbCategories.length > 0 && (
-                <div
-                  className="absolute left-0 top-full z-50 bg-white border border-border border-t-0 shadow-2xl flex"
-                  style={{ width: "780px" }}
-                  onMouseEnter={() => setCatMenuOpen(true)}
-                >
-                  {/* Колонка 1: корневые категории */}
-                  <div className="w-52 border-r border-border py-2 overflow-y-auto max-h-[60vh] shrink-0">
-                    {dbCategories.filter((c) => !c.parent_id).map((root) => {
-                      const hasChildren = dbCategories.some((c) => c.parent_id === root.id);
-                      return (
-                        <button
-                          key={root.id}
-                          onMouseEnter={() => { setHoveredRootId(root.id); setHoveredL2Id(null); }}
-                          onClick={() => { setSelectedCategory(String(root.id)); setSection("home"); setCatMenuOpen(false); }}
-                          className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors text-left ${
-                            hoveredRootId === root.id
-                              ? "bg-orange-50 text-[hsl(var(--accent))] font-medium"
-                              : "text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"
-                          }`}
-                        >
-                          <span>{root.name}</span>
-                          {hasChildren && <Icon name="ChevronRight" size={13} className="shrink-0 opacity-50" />}
-                        </button>
-                      );
-                    })}
-                  </div>
+              {/* Дроп-панель — одна колонка, клик по уровням */}
+              {catMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => { setCatMenuOpen(false); setCatPath([]); }} />
+                  <div className="absolute left-0 top-full z-50 bg-white border border-border border-t-0 shadow-2xl w-72 overflow-hidden">
 
-                  {/* Колонка 2: подкатегории L2 */}
-                  {hoveredRootId && (
-                    <div className="w-56 border-r border-border py-2 overflow-y-auto max-h-[60vh] shrink-0">
-                      {/* Ссылка на всю корневую */}
-                      <button
-                        onClick={() => { setSelectedCategory(String(hoveredRootId)); setSection("home"); setCatMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-xs text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors text-left font-medium"
-                      >
-                        Все в «{dbCategories.find((c) => c.id === hoveredRootId)?.name}»
-                      </button>
-                      <div className="border-t border-border my-1" />
-                      {dbCategories.filter((c) => c.parent_id === hoveredRootId).map((l2) => {
-                        const hasChildren = dbCategories.some((c) => c.parent_id === l2.id);
-                        return (
+                    {/* Шапка: хлебные крошки + «назад» */}
+                    {catPath.length > 0 && (
+                      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-[hsl(var(--muted))]">
+                        <button
+                          onClick={() => setCatPath((p) => p.slice(0, -1))}
+                          className="p-1 rounded hover:bg-white transition-colors shrink-0"
+                        >
+                          <Icon name="ChevronLeft" size={15} className="text-[hsl(var(--foreground))]" />
+                        </button>
+                        <div className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] overflow-hidden">
+                          <button onClick={() => setCatPath([])} className="hover:text-[hsl(var(--accent))] shrink-0">Все</button>
+                          {catPath.map((id, i) => (
+                            <span key={id} className="flex items-center gap-1 shrink-0">
+                              <span>/</span>
+                              <button
+                                onClick={() => setCatPath((p) => p.slice(0, i + 1))}
+                                className="hover:text-[hsl(var(--accent))] truncate max-w-[90px]"
+                              >
+                                {dbCategories.find((c) => c.id === id)?.name}
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Текущий уровень — «Открыть всё» + список */}
+                    <div className="overflow-y-auto max-h-[60vh]">
+                      {catPath.length > 0 && (
+                        <>
                           <button
-                            key={l2.id}
-                            onMouseEnter={() => setHoveredL2Id(l2.id)}
-                            onClick={() => { setSelectedCategory(String(l2.id)); setSection("home"); setCatMenuOpen(false); }}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors text-left ${
-                              hoveredL2Id === l2.id
-                                ? "bg-orange-50 text-[hsl(var(--accent))] font-medium"
-                                : "text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"
-                            }`}
+                            onClick={() => {
+                              const currentId = catPath[catPath.length - 1];
+                              setSelectedCategory(String(currentId));
+                              setSection("home");
+                              setCatMenuOpen(false);
+                              setCatPath([]);
+                            }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors text-left"
                           >
-                            <span>{l2.name}</span>
-                            {hasChildren && <Icon name="ChevronRight" size={13} className="shrink-0 opacity-50" />}
+                            <Icon name="LayoutGrid" size={14} />
+                            Все объявления раздела
                           </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                          <div className="border-t border-border" />
+                        </>
+                      )}
 
-                  {/* Колонка 3: подкатегории L3 */}
-                  {hoveredL2Id && dbCategories.some((c) => c.parent_id === hoveredL2Id) && (
-                    <div className="flex-1 py-2 overflow-y-auto max-h-[60vh]">
-                      <button
-                        onClick={() => { setSelectedCategory(String(hoveredL2Id)); setSection("home"); setCatMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-xs text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors text-left font-medium"
-                      >
-                        Все в «{dbCategories.find((c) => c.id === hoveredL2Id)?.name}»
-                      </button>
-                      <div className="border-t border-border my-1" />
-                      {dbCategories.filter((c) => c.parent_id === hoveredL2Id).map((l3) => (
-                        <button
-                          key={l3.id}
-                          onClick={() => { setSelectedCategory(String(l3.id)); setSection("home"); setCatMenuOpen(false); }}
-                          className="w-full px-4 py-2.5 text-sm text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--accent))] transition-colors text-left"
-                        >
-                          {l3.name}
-                        </button>
-                      ))}
+                      {/* Список категорий текущего уровня */}
+                      {dbCategories
+                        .filter((c) => catPath.length === 0 ? !c.parent_id : c.parent_id === catPath[catPath.length - 1])
+                        .map((cat) => {
+                          const hasChildren = dbCategories.some((c) => c.parent_id === cat.id);
+                          return (
+                            <button
+                              key={cat.id}
+                              onClick={() => {
+                                if (hasChildren) {
+                                  setCatPath((p) => [...p, cat.id]);
+                                } else {
+                                  setSelectedCategory(String(cat.id));
+                                  setSection("home");
+                                  setCatMenuOpen(false);
+                                  setCatPath([]);
+                                }
+                              }}
+                              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--accent))] transition-colors text-left group"
+                            >
+                              <span>{cat.name}</span>
+                              {hasChildren
+                                ? <Icon name="ChevronRight" size={14} className="shrink-0 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--accent))]" />
+                                : <Icon name="ArrowRight" size={13} className="shrink-0 opacity-0 group-hover:opacity-40" />
+                              }
+                            </button>
+                          );
+                        })}
                     </div>
-                  )}
-                </div>
+                  </div>
+                </>
               )}
 
             </div>

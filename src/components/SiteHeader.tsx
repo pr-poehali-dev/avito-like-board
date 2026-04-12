@@ -193,10 +193,6 @@ export default function SiteHeader({
                     <button onClick={() => { handleNav("favorites"); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
                       <Icon name="Heart" size={15} className="text-[hsl(var(--muted-foreground))]" />Избранное
                     </button>
-                    <button onClick={() => { handleNav("messages"); setUserMenuOpen(false); }} className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
-                      <span className="flex items-center gap-2.5"><Icon name="MessageCircle" size={15} className="text-[hsl(var(--muted-foreground))]" />Сообщения</span>
-                      <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
-                    </button>
                     <div className="my-1 border-t border-border" />
                     <button onClick={() => { onLogout?.(); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 transition-colors text-left">
                       <Icon name="LogOut" size={15} />Выйти

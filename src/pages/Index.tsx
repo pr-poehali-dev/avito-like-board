@@ -813,6 +813,7 @@ export default function Index() {
             setSection={setSection}
             adsLoading={adsLoading}
             adsTotal={adsTotal}
+            adsPerPage={adsPerPage}
             hasMore={hasMore}
             adsLoadingMore={adsLoadingMore}
             onLoadMore={() => loadAds(adsPage + 1, true)}

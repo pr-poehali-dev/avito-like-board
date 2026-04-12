@@ -12,6 +12,7 @@ export default function CategoryPage() {
   const [adsLoading, setAdsLoading] = useState(false);
   const [adsLoadingMore, setAdsLoadingMore] = useState(false);
   const [adsTotal, setAdsTotal] = useState(0);
+  const [adsPerPage, setAdsPerPage] = useState(0);
   const [adsPage, setAdsPage] = useState(1);
   const [carouselIndex, setCarouselIndex] = useState<Record<number, number>>({});
 
@@ -42,6 +43,7 @@ export default function CategoryPage() {
         if (d.ok) {
           setAds((prev) => append ? [...prev, ...d.ads] : d.ads);
           setAdsTotal(d.total ?? 0);
+          setAdsPerPage(d.per_page ?? 0);
           setAdsPage(page);
         }
       })
@@ -108,7 +110,9 @@ export default function CategoryPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">{category?.name}</h1>
           {adsTotal > 0 && (
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">{adsTotal} объявлений</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
+              Показано <span className="font-semibold text-[hsl(var(--foreground))]">{ads.length}</span> из <span className="font-semibold text-[hsl(var(--foreground))]">{adsTotal}</span> объявлений
+            </p>
           )}
         </div>
 
@@ -197,7 +201,7 @@ export default function CategoryPage() {
                   disabled={adsLoadingMore}
                   className="px-10 py-2.5 rounded-xl border border-border text-sm font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] transition-colors disabled:opacity-60"
                 >
-                  {adsLoadingMore ? "Загрузка..." : `Показать ещё`}
+                  {adsLoadingMore ? "Загрузка..." : `Показать ещё ${adsPerPage ? adsPerPage : ""}`}
                 </button>
               </div>
             )}

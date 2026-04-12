@@ -27,6 +27,7 @@ interface HomeSectionProps {
   setSection: (v: string) => void;
   adsLoading: boolean;
   adsTotal?: number;
+  adsPerPage?: number;
   hasMore?: boolean;
   adsLoadingMore?: boolean;
   onLoadMore?: () => void;
@@ -37,7 +38,7 @@ export function HomeSection({
   selectedCategory, setSelectedCategory, selectedCity, setSelectedCity,
   priceFrom, setPriceFrom, priceTo, setPriceTo, condition, setCondition,
   filtersOpen, setFiltersOpen, apiAds, setViewAdId, openAddToFolder, openNewAd, setSection, adsLoading,
-  adsTotal = 0, hasMore = false, adsLoadingMore = false, onLoadMore,
+  adsTotal = 0, adsPerPage = 0, hasMore = false, adsLoadingMore = false, onLoadMore,
 }: HomeSectionProps) {
   return (
     <div className="animate-slide-up">
@@ -131,7 +132,9 @@ export function HomeSection({
         {/* Список объявлений */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">Найдено <span className="font-semibold text-[hsl(var(--foreground))]">{adsTotal || filteredAds.length}</span> объявлений</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              Показано <span className="font-semibold text-[hsl(var(--foreground))]">{filteredAds.length}</span> из <span className="font-semibold text-[hsl(var(--foreground))]">{adsTotal || filteredAds.length}</span> объявлений
+            </p>
           </div>
           {adsLoading ? (
             <div className="text-center py-20 text-[hsl(var(--muted-foreground))]"><div className="text-5xl mb-4">⏳</div><p>Загрузка...</p></div>
@@ -187,7 +190,7 @@ export function HomeSection({
                 disabled={adsLoadingMore}
                 className="px-8 py-2.5 rounded-xl border border-border text-sm font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] transition-colors disabled:opacity-60"
               >
-                {adsLoadingMore ? "Загрузка..." : `Показать ещё`}
+                {adsLoadingMore ? "Загрузка..." : `Показать ещё ${adsPerPage ? adsPerPage : ""}`}
               </button>
             </div>
           )}

@@ -10,6 +10,12 @@ interface AdRow {
   author_name: string; author_email: string; author_id: number;
 }
 
+interface AdDetail extends AdRow {
+  description: string; condition: string; updated_at: string | null;
+  photos: string[]; author_full_name: string | null;
+  custom_fields: { field_id: number; name: string; field_type: string; value: string }[];
+}
+
 interface CfField { id: number; name: string; field_type: string; folder_name: string | null; }
 
 // ─── Утилиты ──────────────────────────────────────────────────────────────────
@@ -66,6 +72,212 @@ function Sel({ value, onChange, options, className = "" }: {
   );
 }
 
+// ─── Модальная карточка объявления ────────────────────────────────────────────
+function AdModal({ adId, onClose, onSaved }: {
+  adId: number; onClose: () => void; onSaved: () => void;
+}) {
+  const [ad, setAd] = useState<AdDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [edit, setEdit] = useState(false);
+  const [form, setForm] = useState<Partial<AdDetail>>({});
+  const [cfEdit, setCfEdit] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    setLoading(true);
+    adminApi.adsGet(adId).then((d) => {
+      if (d.id) {
+        setAd(d as AdDetail);
+        setForm(d as AdDetail);
+        const cf: Record<number, string> = {};
+        (d.custom_fields as AdDetail["custom_fields"] || []).forEach((f) => { cf[f.field_id] = f.value; });
+        setCfEdit(cf);
+      } else toast.error(d.error || "Ошибка загрузки");
+      setLoading(false);
+    });
+  }, [adId]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const d = await adminApi.adsUpdate({
+      id: adId, title: form.title, description: form.description,
+      price: form.price, status: form.status, city: form.city,
+      category: form.category, condition: form.condition,
+      custom_fields: cfEdit,
+    });
+    setSaving(false);
+    if (d.ok) { toast.success("Сохранено"); setEdit(false); onSaved(); adminApi.adsGet(adId).then((d2) => { if (d2.id) setAd(d2 as AdDetail); }); }
+    else toast.error(d.error || "Ошибка сохранения");
+  };
+
+  const setF = (k: keyof AdDetail, v: unknown) => setForm((p) => ({ ...p, [k]: v }));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative w-full max-w-2xl h-full bg-gray-950 border-l border-gray-800 overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Шапка */}
+        <div className="sticky top-0 z-10 bg-gray-950 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-gray-800">
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 className="text-white font-semibold text-base">
+              {loading ? "Загрузка..." : `Объявление #${adId}`}
+            </h2>
+          </div>
+          {!loading && ad && (
+            <div className="flex items-center gap-2">
+              {edit ? (
+                <>
+                  <button onClick={() => setEdit(false)} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors">Отмена</button>
+                  <button onClick={handleSave} disabled={saving}
+                    className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+                    {saving && <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+                    Сохранить
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => setEdit(true)} className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors border border-gray-700">
+                  ✏️ Редактировать
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : ad ? (
+          <div className="p-6 flex flex-col gap-6">
+
+            {/* Статус + даты */}
+            <div className="flex flex-wrap gap-3 items-center">
+              {edit ? (
+                <Sel value={form.status || ""} onChange={(v) => setF("status", v)}
+                  options={[
+                    { value: "active", label: "Активно" }, { value: "pending", label: "На модерации" },
+                    { value: "rejected", label: "Отклонено" }, { value: "closed", label: "Закрыто" },
+                    { value: "archived", label: "Архив" },
+                  ]} />
+              ) : (
+                <StatusBadge status={ad.status} />
+              )}
+              <span className="text-gray-500 text-xs">Опубликовано: {fmtDate(ad.created_at)}</span>
+              {ad.updated_at && <span className="text-gray-500 text-xs">Изменено: {fmtDate(ad.updated_at)}</span>}
+              <span className="text-gray-500 text-xs ml-auto">👁 {ad.views} просмотров</span>
+            </div>
+
+            {/* Фото */}
+            {ad.photos && ad.photos.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {ad.photos.map((url, i) => (
+                  <img key={i} src={url} alt="" className="w-28 h-20 object-cover rounded-xl border border-gray-800 shrink-0" />
+                ))}
+              </div>
+            )}
+
+            {/* Заголовок */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-gray-500 text-xs uppercase tracking-wider">Заголовок</label>
+              {edit
+                ? <input value={form.title || ""} onChange={(e) => setF("title", e.target.value)}
+                    className="bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold" />
+                : <p className="text-white font-semibold text-lg">{ad.title}</p>}
+            </div>
+
+            {/* Описание */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-gray-500 text-xs uppercase tracking-wider">Описание</label>
+              {edit
+                ? <textarea value={form.description || ""} onChange={(e) => setF("description", e.target.value)}
+                    rows={5} className="bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+                : <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{ad.description || "—"}</p>}
+            </div>
+
+            {/* Основные поля */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-gray-500 text-xs uppercase tracking-wider">Цена</label>
+                {edit
+                  ? <input type="number" value={form.price ?? ""} onChange={(e) => setF("price", Number(e.target.value))}
+                      className="bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  : <p className="text-white font-semibold text-lg">{fmtPrice(ad.price)}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-gray-500 text-xs uppercase tracking-wider">Город</label>
+                {edit
+                  ? <input value={form.city || ""} onChange={(e) => setF("city", e.target.value)}
+                      className="bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  : <p className="text-gray-300">{ad.city || "—"}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-gray-500 text-xs uppercase tracking-wider">Категория</label>
+                {edit
+                  ? <input value={form.category || ""} onChange={(e) => setF("category", e.target.value)}
+                      className="bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  : <p className="text-gray-300">{ad.category || "—"}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-gray-500 text-xs uppercase tracking-wider">Состояние</label>
+                {edit
+                  ? <input value={form.condition || ""} onChange={(e) => setF("condition", e.target.value)}
+                      className="bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  : <p className="text-gray-300">{ad.condition || "—"}</p>}
+              </div>
+            </div>
+
+            {/* Дополнительные поля */}
+            {ad.custom_fields.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <label className="text-gray-500 text-xs uppercase tracking-wider">Дополнительные поля</label>
+                <div className="bg-gray-900 border border-gray-800 rounded-xl divide-y divide-gray-800">
+                  {ad.custom_fields.map((cf) => (
+                    <div key={cf.field_id} className="flex items-center gap-3 px-4 py-3">
+                      <span className="text-gray-400 text-sm w-36 shrink-0">{cf.name}</span>
+                      {edit
+                        ? cf.field_type === "boolean"
+                          ? <select value={cfEdit[cf.field_id] ?? cf.value}
+                              onChange={(e) => setCfEdit((p) => ({ ...p, [cf.field_id]: e.target.value }))}
+                              className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                              <option value="true">Да</option>
+                              <option value="false">Нет</option>
+                            </select>
+                          : <input value={cfEdit[cf.field_id] ?? cf.value}
+                              onChange={(e) => setCfEdit((p) => ({ ...p, [cf.field_id]: e.target.value }))}
+                              className="flex-1 bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        : <span className="text-white text-sm">{cf.value || "—"}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Автор */}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-4">
+              <div className="w-10 h-10 bg-indigo-600/30 rounded-full flex items-center justify-center text-indigo-300 font-semibold text-sm shrink-0">
+                {(ad.author_name || "?")[0].toUpperCase()}
+              </div>
+              <div>
+                <p className="text-white font-medium text-sm">{ad.author_full_name || ad.author_name || "—"}</p>
+                <p className="text-gray-500 text-xs">{ad.author_email}</p>
+              </div>
+              <span className="text-gray-600 text-xs ml-auto">ID #{ad.author_id}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center py-24 text-gray-500">Объявление не найдено</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Общая таблица объявлений ──────────────────────────────────────────────────
 interface AdsTableProps {
   forceStatus?: string; // если задан — скрыть фильтр статуса, зафиксировать
@@ -79,6 +291,7 @@ function AdsTable({ forceStatus }: AdsTableProps) {
   const [selected, setSelected] = useState<number[]>([]);
   const [bulkStatus, setBulkStatus] = useState("");
   const [applying, setApplying] = useState(false);
+  const [openAdId, setOpenAdId] = useState<number | null>(null);
 
   const [filter, setFilter] = useState({
     search: "", status: forceStatus || "", user_search: "",
@@ -266,13 +479,15 @@ function AdsTable({ forceStatus }: AdsTableProps) {
               </thead>
               <tbody>
                 {ads.map((ad) => (
-                  <tr key={ad.id} className={`border-b border-gray-800/50 hover:bg-gray-800/30 ${selected.includes(ad.id) ? "bg-indigo-900/10" : ""}`}>
-                    <td className="p-3">
+                  <tr key={ad.id}
+                    className={`border-b border-gray-800/50 hover:bg-gray-800/30 cursor-pointer ${selected.includes(ad.id) ? "bg-indigo-900/10" : ""}`}
+                    onClick={() => setOpenAdId(ad.id)}>
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selected.includes(ad.id)}
                         onChange={() => toggleSelect(ad.id)} className="rounded accent-indigo-600" />
                     </td>
                     <td className="p-3">
-                      <p className="text-white font-medium line-clamp-1">{ad.title}</p>
+                      <p className="text-white font-medium line-clamp-1 hover:text-indigo-300 transition-colors">{ad.title}</p>
                       <p className="text-gray-500 text-xs mt-0.5">
                         #{ad.id} · {ad.city}
                         {ad.category && <span className="ml-1 text-gray-600">· {ad.category}</span>}
@@ -327,6 +542,14 @@ function AdsTable({ forceStatus }: AdsTableProps) {
           </button>
           <button onClick={() => setSelected([])} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">Снять выбор</button>
         </div>
+      )}
+
+      {openAdId !== null && (
+        <AdModal
+          adId={openAdId}
+          onClose={() => setOpenAdId(null)}
+          onSaved={() => load(applied, cfFilter)}
+        />
       )}
     </div>
   );

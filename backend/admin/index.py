@@ -1147,6 +1147,93 @@ def handler(event: dict, context) -> dict:
         conn.close()
         return ok({"ok": True})
 
+    # ── ADS GET (одно объявление) ──────────────────────────────────────────────
+    if action == "ads_get":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        ad_id = body.get("id") or qs.get("id")
+        if not ad_id:
+            conn.close()
+            return err("Не указан id")
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT a.id, a.title, a.description, a.price, a.status, a.views,
+                   a.created_at, a.updated_at, a.category, a.category_id, a.city,
+                   a.condition, a.photos,
+                   COALESCE(u.username, u.name) AS uname, u.email, u.id AS uid, u.full_name
+            FROM {SCHEMA}.ads a
+            LEFT JOIN {SCHEMA}.users u ON u.id = a.user_id
+            WHERE a.id = %s
+        """, (int(ad_id),))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return err("Объявление не найдено", 404)
+        cur.execute(f"""
+            SELECT cv.field_id, f.name, f.field_type, cv.value
+            FROM {SCHEMA}.ad_custom_field_values cv
+            JOIN {SCHEMA}.ad_custom_fields f ON f.id = cv.field_id
+            WHERE cv.ad_id = %s
+        """, (int(ad_id),))
+        cf_vals = [{"field_id": r[0], "name": r[1], "field_type": r[2], "value": r[3]} for r in cur.fetchall()]
+        conn.close()
+        return ok({
+            "id": row[0], "title": row[1], "description": row[2], "price": row[3],
+            "status": row[4], "views": row[5],
+            "created_at": str(row[6]) if row[6] else None,
+            "updated_at": str(row[7]) if row[7] else None,
+            "category": row[8], "category_id": row[9], "city": row[10],
+            "condition": row[11], "photos": list(row[12] or []),
+            "author_name": row[13], "author_email": row[14], "author_id": row[15],
+            "author_full_name": row[16],
+            "custom_fields": cf_vals,
+        })
+
+    # ── ADS UPDATE (редактирование) ────────────────────────────────────────────
+    if action == "ads_update":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        ad_id = body.get("id")
+        if not ad_id:
+            conn.close()
+            return err("Не указан id")
+        title = str(body.get("title") or "").strip()
+        if not title:
+            conn.close()
+            return err("Заголовок обязателен")
+        cur = conn.cursor()
+        cur.execute(f"""
+            UPDATE {SCHEMA}.ads SET
+                title=%s, description=%s, price=%s, status=%s,
+                city=%s, category=%s, condition=%s, updated_at=NOW()
+            WHERE id=%s
+        """, (
+            title,
+            body.get("description") or "",
+            int(body.get("price") or 0),
+            str(body.get("status") or "active"),
+            str(body.get("city") or ""),
+            str(body.get("category") or ""),
+            str(body.get("condition") or ""),
+            int(ad_id),
+        ))
+        cf_values = body.get("custom_fields") or {}
+        for field_id_str, value in cf_values.items():
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ad_custom_field_values (ad_id, field_id, value)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (ad_id, field_id) DO UPDATE SET value=EXCLUDED.value
+            """, (int(ad_id), int(field_id_str), str(value)))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
     # ── ADS LIST ───────────────────────────────────────────────────────────────
     if action == "ads_list":
         conn = get_conn()

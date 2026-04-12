@@ -208,17 +208,17 @@ def handler(event: dict, context) -> dict:
         if is_owner:
             if status_filter == "all":
                 cur.execute(f"""
-                    SELECT id, title, price, photos, status, created_at, views_count
+                    SELECT id, title, price, photos, status, created_at, views
                     FROM {SCHEMA}.ads WHERE user_id=%s ORDER BY created_at DESC LIMIT 50
                 """, (int(target_id),))
             else:
                 cur.execute(f"""
-                    SELECT id, title, price, photos, status, created_at, views_count
+                    SELECT id, title, price, photos, status, created_at, views
                     FROM {SCHEMA}.ads WHERE user_id=%s AND status=%s ORDER BY created_at DESC LIMIT 50
                 """, (int(target_id), status_filter))
         else:
             cur.execute(f"""
-                SELECT id, title, price, photos, status, created_at, views_count
+                SELECT id, title, price, photos, status, created_at, views
                 FROM {SCHEMA}.ads WHERE user_id=%s AND status='active' ORDER BY created_at DESC LIMIT 50
             """, (int(target_id),))
 

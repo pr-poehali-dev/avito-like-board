@@ -749,7 +749,7 @@ export default function UserProfilePage() {
         </div>
       </main>
 
-      <AuthModal auth={auth} />
+      <AuthModal authModal={auth.authModal} setAuthModal={auth.setAuthModal} authMode={auth.authMode} setAuthMode={auth.setAuthMode} authStep={auth.authStep} setAuthStep={auth.setAuthStep} authName={auth.authName} setAuthName={auth.setAuthName} authEmail={auth.authEmail} setAuthEmail={auth.setAuthEmail} authPassword={auth.authPassword} setAuthPassword={auth.setAuthPassword} authCode={auth.authCode} setAuthCode={auth.setAuthCode} authError={auth.authError} setAuthError={auth.setAuthError} authLoading={auth.authLoading} resendTimer={auth.resendTimer} submitAuth={auth.submitAuth} sendCode={auth.sendCode} />
     </div>
   );
 }

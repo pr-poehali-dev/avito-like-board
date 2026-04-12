@@ -70,8 +70,16 @@ def is_site_offline(cur) -> bool:
     return row and row[0] == "true"
 
 
-def is_admin(event, cur) -> bool:
-    token = (event.get("headers") or {}).get("X-Admin-Token") or (event.get("headers") or {}).get("x-admin-token") or ""
+def is_admin(event, cur, body=None) -> bool:
+    # Читаем токен из тела запроса (заголовки фильтруются прокси)
+    token = ""
+    if body and isinstance(body, dict):
+        token = body.get("admin_token") or ""
+    if not token:
+        try:
+            token = json.loads(event.get("body") or "{}").get("admin_token") or ""
+        except Exception:
+            pass
     if not token:
         return False
     cur.execute(
@@ -110,7 +118,7 @@ def handler(event: dict, context) -> dict:
     if action == "categories":
         conn = get_conn()
         cur = conn.cursor()
-        if is_site_offline(cur) and not is_admin(event, cur):
+        if is_site_offline(cur) and not is_admin(event, cur, body):
             conn.close()
             return OFFLINE_RESP
         cur.execute(
@@ -138,7 +146,7 @@ def handler(event: dict, context) -> dict:
 
         conn = get_conn()
         cur = conn.cursor()
-        if is_site_offline(cur) and not is_admin(event, cur):
+        if is_site_offline(cur) and not is_admin(event, cur, body):
             conn.close()
             return OFFLINE_RESP
 

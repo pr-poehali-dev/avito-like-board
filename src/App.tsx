@@ -24,34 +24,32 @@ function SiteGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isAdminRoute) { setChecked(true); return; }
-    // Проверяем статус сайта
+
+    const adminToken = localStorage.getItem("admin_token");
+
     fetch(ADS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "status" }),
     })
       .then((r) => r.json())
-      .then((d) => {
-        if (d.offline) {
-          // Проверяем — может пользователь admin (есть admin-token в localStorage)
-          const adminToken = localStorage.getItem("admin_token");
-          if (!adminToken) {
-            setOffline(true);
-          } else {
-            // Проверяем валидность admin-токена через ответ categories
-            fetch(ADS_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
-              body: JSON.stringify({ action: "categories" }),
-            })
-              .then((r2) => r2.json())
-              .then((d2) => { setOffline(!d2.ok); })
-              .catch(() => { setOffline(true); });
-          }
-        }
+      .then(async (d) => {
+        if (!d.offline) { setChecked(true); return; }
+
+        // Сайт offline — проверяем есть ли валидный admin_token
+        if (!adminToken) { setOffline(true); setChecked(true); return; }
+
+        // Передаём токен в теле запроса (заголовки фильтруются прокси)
+        const r2 = await fetch(ADS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "categories", admin_token: adminToken }),
+        });
+        const d2 = await r2.json();
+        if (!d2.ok) setOffline(true);
+        setChecked(true);
       })
-      .catch(() => {})
-      .finally(() => setChecked(true));
+      .catch(() => setChecked(true));
   }, [isAdminRoute]);
 
   if (!checked) return null;

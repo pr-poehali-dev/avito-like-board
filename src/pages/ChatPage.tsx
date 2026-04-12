@@ -119,29 +119,6 @@ export default function ChatPage() {
     loadMessages(activeChatId, 0, false);
   }, [activeChatId]);
 
-  // Отправляем мини-карточку объявления первым сообщением, если чат новый
-  useEffect(() => {
-    if (!adFromUrl || !activeChatId || !user || adGreetingSentRef.current) return;
-    // Ждём загрузки сообщений, затем если пусто — отправляем
-    const timer = setTimeout(async () => {
-      if (adGreetingSentRef.current) return;
-      adGreetingSentRef.current = true;
-      await fetch(CHAT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-        body: JSON.stringify({
-          action: "send_message",
-          chat_id: activeChatId,
-          content: "Здравствуйте! Интересует ваше объявление.",
-          ...adFromUrl,
-        }),
-      }).then(r => r.json()).then(d => { if (d.ok) loadMessages(activeChatId, lastMsgId, true); }).catch(() => {});
-      // Убираем параметры объявления из URL чтобы не отправить повторно
-      setSearchParams({ id: String(activeChatId) });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [activeChatId, user, adFromUrl]);
-
   // Polling каждые 3 сек
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -180,7 +157,22 @@ export default function ChatPage() {
     setSending(true);
     const content = text.trim();
     setText("");
-    await fetch(CHAT_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sid() }, body: JSON.stringify({ action: "send_message", chat_id: activeChatId, content }) })
+
+    // Прикрепляем карточку объявления только к первому сообщению
+    const attachAd = adFromUrl && !adGreetingSentRef.current;
+    if (attachAd) adGreetingSentRef.current = true;
+
+    const msgBody: Record<string, unknown> = { action: "send_message", chat_id: activeChatId, content };
+    if (attachAd && adFromUrl) {
+      msgBody.ad_id = adFromUrl.ad_id;
+      msgBody.ad_title = adFromUrl.ad_title;
+      msgBody.ad_price = adFromUrl.ad_price;
+      msgBody.ad_photo = adFromUrl.ad_photo;
+      // Убираем параметры объявления из URL после первой отправки
+      setSearchParams({ id: String(activeChatId) });
+    }
+
+    await fetch(CHAT_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sid() }, body: JSON.stringify(msgBody) })
       .then(r => r.json())
       .then(d => { if (d.ok) { loadMessages(activeChatId, lastMsgId, true); loadChats(); } })
       .catch(() => {});
@@ -347,6 +339,25 @@ export default function ChatPage() {
 
               {/* Поле ввода */}
               <div className="px-4 py-3 border-t border-border shrink-0">
+                {/* Превью прикреплённого объявления */}
+                {adFromUrl && !adGreetingSentRef.current && (
+                  <div className="flex items-center gap-2.5 mb-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-xl">
+                    {adFromUrl.ad_photo ? (
+                      <img src={adFromUrl.ad_photo} alt={adFromUrl.ad_title} className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                        <Icon name="Image" size={14} className="text-[hsl(var(--accent))]" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[hsl(var(--foreground))] truncate">{adFromUrl.ad_title}</p>
+                      {adFromUrl.ad_price != null && (
+                        <p className="text-xs text-[hsl(var(--accent))] font-bold">{adFromUrl.ad_price.toLocaleString("ru")} ₽</p>
+                      )}
+                    </div>
+                    <Icon name="Paperclip" size={13} className="text-[hsl(var(--accent))] shrink-0" />
+                  </div>
+                )}
                 <div className="flex items-end gap-2">
                   <textarea
                     value={text}

@@ -1108,6 +1108,331 @@ function OptimizationSettingsTab() {
   );
 }
 
+// ─── Вкладка Загрузка файлов ─────────────────────────────────────────────────
+interface StorageSettings { storage_ad_images: string; storage_avatars: string; storage_backups: string; }
+const STORAGE_OPTS = [{ value: "local", label: "Локальный сервер" }, { value: "s3", label: "AWS S3" }, { value: "ftp", label: "Удалённый FTP" }];
+const STORAGE_DEFAULTS: StorageSettings = { storage_ad_images: "local", storage_avatars: "local", storage_backups: "local" };
+
+function SimpleTab<T extends Record<string, unknown>>({ group, defaults, children, successMsg }: {
+  group: string; defaults: T;
+  children: (form: T, set: <K extends keyof T>(k: K, v: T[K]) => void, errors: Partial<Record<keyof T, string>>) => React.ReactNode;
+  successMsg?: string;
+}) {
+  const [form, setForm] = useState<T>(defaults);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({});
+
+  useEffect(() => {
+    adminApi.settingsGet(group).then((d) => {
+      if (!d.error) setForm({ ...defaults, ...(d as unknown as T) });
+      setLoading(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group]);
+
+  const set = <K extends keyof T>(key: K, value: T[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const d = await adminApi.settingsSave(form as unknown as Record<string, unknown>);
+    setSaving(false);
+    if (d.ok) toast.success(successMsg || "Сохранено");
+    else if (d.errors) { setErrors(d.errors as Partial<Record<keyof T, string>>); toast.error("Исправьте ошибки"); }
+    else toast.error((d.error as string) || "Ошибка сохранения");
+  };
+
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800 px-6">
+        {children(form, set, errors)}
+      </div>
+      <div className="flex justify-end">
+        <button onClick={handleSave} disabled={saving}
+          className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+          {saving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</> : <>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+            </svg>Сохранить настройки</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StorageTab() {
+  return (
+    <SimpleTab group="storage" defaults={STORAGE_DEFAULTS} successMsg="Настройки хранилища сохранены">
+      {(form, set) => (<>
+        <Field label="Изображения к объявлениям">
+          <SelectField value={form.storage_ad_images} onChange={(v) => set("storage_ad_images", v)} options={STORAGE_OPTS} />
+        </Field>
+        <Field label="Аватары пользователей">
+          <SelectField value={form.storage_avatars} onChange={(v) => set("storage_avatars", v)} options={STORAGE_OPTS} />
+        </Field>
+        <Field label="Резервные копии БД">
+          <SelectField value={form.storage_backups} onChange={(v) => set("storage_backups", v)} options={STORAGE_OPTS} />
+        </Field>
+      </>)}
+    </SimpleTab>
+  );
+}
+
+// ─── Вкладка E-Mail ───────────────────────────────────────────────────────────
+interface EmailSettings {
+  admin_email: string; mail_from_name: string; mail_method: string;
+  smtp_host: string; smtp_port: number; smtp_username: string;
+  smtp_password: string; smtp_encryption: string; smtp_auth_email: string;
+}
+const EMAIL_DEFAULTS: EmailSettings = {
+  admin_email: "admin@example.com", mail_from_name: "", mail_method: "mail",
+  smtp_host: "localhost", smtp_port: 25, smtp_username: "", smtp_password: "",
+  smtp_encryption: "none", smtp_auth_email: "",
+};
+
+function EmailTab() {
+  const [showPass, setShowPass] = useState(false);
+  return (
+    <SimpleTab group="email" defaults={EMAIL_DEFAULTS} successMsg="Настройки почты сохранены">
+      {(form, set, errors) => {
+        const isSmtp = form.mail_method === "smtp";
+        const dis = "opacity-40 pointer-events-none select-none";
+        return (<>
+          <Field label="Email администратора" hint="Системные письма и уведомления">
+            <div>
+              <TextInput value={form.admin_email} onChange={(v) => set("admin_email", v)} placeholder="admin@example.com" type="email" />
+              {errors.admin_email && <p className="text-red-400 text-xs mt-1">{errors.admin_email}</p>}
+            </div>
+          </Field>
+          <Field label="Имя отправителя" hint="Отображается в заголовке письма">
+            <TextInput value={form.mail_from_name} onChange={(v) => set("mail_from_name", v)} placeholder="Название сайта" />
+          </Field>
+          <Field label="Метод отправки">
+            <SelectField value={form.mail_method} onChange={(v) => set("mail_method", v)}
+              options={[{ value: "mail", label: "PHP mail()" }, { value: "smtp", label: "SMTP" }]} />
+          </Field>
+          <div className={!isSmtp ? dis : ""}>
+            <Field label="SMTP хост">
+              <TextInput value={form.smtp_host} onChange={(v) => set("smtp_host", v)} placeholder="smtp.gmail.com" />
+            </Field>
+            <Field label="SMTP порт">
+              <div>
+                <NumberInput value={form.smtp_port} onChange={(v) => set("smtp_port", v)} min={1} />
+                {errors.smtp_port && <p className="text-red-400 text-xs mt-1">{errors.smtp_port}</p>}
+              </div>
+            </Field>
+            <Field label="SMTP пользователь">
+              <TextInput value={form.smtp_username} onChange={(v) => set("smtp_username", v)} placeholder="user@example.com" />
+            </Field>
+            <Field label="SMTP пароль">
+              <div className="flex gap-2 items-center">
+                <input type={showPass ? "text" : "password"} value={form.smtp_password}
+                  onChange={(e) => set("smtp_password", e.target.value)} placeholder="••••••••"
+                  className="flex-1 bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500" />
+                <button type="button" onClick={() => setShowPass((s) => !s)}
+                  className="px-3 py-2.5 bg-gray-800 border border-gray-700 text-gray-400 hover:text-white rounded-xl text-xs transition-colors">
+                  {showPass ? "Скрыть" : "Показать"}
+                </button>
+              </div>
+            </Field>
+            <Field label="Шифрование">
+              <SelectField value={form.smtp_encryption} onChange={(v) => set("smtp_encryption", v)}
+                options={[{ value: "none", label: "Без шифрования" }, { value: "ssl", label: "SSL" }, { value: "tls", label: "TLS" }]} />
+            </Field>
+            <Field label="Email отправителя для SMTP-авторизации" hint="Некоторые сервисы (Яндекс, Mail.ru) требуют совпадения с адресом отправителя">
+              <div>
+                <TextInput value={form.smtp_auth_email} onChange={(v) => set("smtp_auth_email", v)} placeholder="sender@example.com" type="email" />
+                {errors.smtp_auth_email && <p className="text-red-400 text-xs mt-1">{errors.smtp_auth_email}</p>}
+              </div>
+            </Field>
+          </div>
+        </>);
+      }}
+    </SimpleTab>
+  );
+}
+
+// ─── Вкладка Пользователи ─────────────────────────────────────────────────────
+interface UsersSettings {
+  auth_method: string; allow_2fa: boolean; default_user_group: number;
+  stopforumspam_enabled: boolean; stopforumspam_api_key: string;
+  show_pending_ads_in_profile: boolean; allow_multi_registration_per_ip: boolean;
+  notify_pm: boolean; default_feedback_groups: string;
+}
+const USERS_DEFAULTS: UsersSettings = {
+  auth_method: "login", allow_2fa: false, default_user_group: 2,
+  stopforumspam_enabled: false, stopforumspam_api_key: "",
+  show_pending_ads_in_profile: true, allow_multi_registration_per_ip: true,
+  notify_pm: true, default_feedback_groups: "[]",
+};
+
+function UsersTab() {
+  const [groups, setGroups] = useState<{ id: number; name: string }[]>([]);
+  const [form, setForm] = useState<UsersSettings>(USERS_DEFAULTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<keyof UsersSettings, string>>>({});
+
+  useEffect(() => {
+    Promise.all([adminApi.settingsGet("users"), adminApi.userGroups()]).then(([s, g]) => {
+      if (!s.error) setForm({ ...USERS_DEFAULTS, ...(s as unknown as UsersSettings) });
+      setGroups((g.items as { id: number; name: string }[]) || []);
+      setLoading(false);
+    });
+  }, []);
+
+  const set = <K extends keyof UsersSettings>(key: K, value: UsersSettings[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const feedbackGroups: number[] = (() => { try { return JSON.parse(form.default_feedback_groups); } catch { return []; } })();
+  const toggleFeedbackGroup = (id: number) => {
+    const next = feedbackGroups.includes(id) ? feedbackGroups.filter((x) => x !== id) : [...feedbackGroups, id];
+    set("default_feedback_groups", JSON.stringify(next));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const d = await adminApi.settingsSave(form as unknown as Record<string, unknown>);
+    setSaving(false);
+    if (d.ok) toast.success("Настройки пользователей сохранены");
+    else if (d.errors) { setErrors(d.errors as Partial<Record<keyof UsersSettings, string>>); toast.error("Исправьте ошибки"); }
+    else toast.error((d.error as string) || "Ошибка сохранения");
+  };
+
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800 px-6">
+        <Field label="Метод авторизации">
+          <SelectField value={form.auth_method} onChange={(v) => set("auth_method", v)}
+            options={[{ value: "login", label: "По логину" }, { value: "email", label: "По E-mail" }]} />
+        </Field>
+        <Field label="Двухфакторная авторизация" hint="Пользователи могут включить в профиле">
+          <Toggle checked={form.allow_2fa} onChange={(v) => set("allow_2fa", v)} />
+        </Field>
+        <Field label="Группа для новых пользователей">
+          <SelectField value={String(form.default_user_group)} onChange={(v) => set("default_user_group", Number(v))}
+            options={groups.map((g) => ({ value: String(g.id), label: g.name }))} />
+        </Field>
+        <Field label="Защита StopForumSpam" hint="Проверка при регистрации и обратной связи">
+          <Toggle checked={form.stopforumspam_enabled} onChange={(v) => set("stopforumspam_enabled", v)} />
+        </Field>
+        {form.stopforumspam_enabled && (
+          <Field label="API ключ StopForumSpam" hint="Необязательно, для отправки жалоб">
+            <TextInput value={form.stopforumspam_api_key} onChange={(v) => set("stopforumspam_api_key", v)} placeholder="Ключ API" />
+          </Field>
+        )}
+        <Field label="Ожидающие объявления в профиле">
+          <Toggle checked={form.show_pending_ads_in_profile} onChange={(v) => set("show_pending_ads_in_profile", v)} />
+        </Field>
+        <Field label="Несколько аккаунтов с одного IP">
+          <Toggle checked={form.allow_multi_registration_per_ip} onChange={(v) => set("allow_multi_registration_per_ip", v)} />
+        </Field>
+        <Field label="Email при новом личном сообщении">
+          <Toggle checked={form.notify_pm} onChange={(v) => set("notify_pm", v)} />
+        </Field>
+        <Field label="Получатели обратной связи по умолчанию" hint="Группы, члены которых получают письма из формы обратной связи">
+          <div className="flex flex-col gap-2">
+            {groups.map((g) => (
+              <label key={g.id} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={feedbackGroups.includes(g.id)} onChange={() => toggleFeedbackGroup(g.id)}
+                  className="w-4 h-4 rounded accent-indigo-600" />
+                <span className="text-sm text-gray-300">{g.name}</span>
+              </label>
+            ))}
+            {errors.default_feedback_groups && <p className="text-red-400 text-xs">{errors.default_feedback_groups}</p>}
+          </div>
+        </Field>
+      </div>
+      <div className="flex justify-end">
+        <button onClick={handleSave} disabled={saving}
+          className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+          {saving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</> : <>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+            </svg>Сохранить настройки</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Вкладка Изображения ──────────────────────────────────────────────────────
+interface ImgSettings {
+  image_driver: string; image_convert_format: string; image_unique_prefix: boolean;
+  image_min_size: string; image_max_size: string; image_resize_by: string;
+  image_max_weight_kb: number; image_auto_remove_days: number;
+  avatar_max_weight_kb: number; image_align: string;
+}
+const IMG_DEFAULTS: ImgSettings = {
+  image_driver: "auto", image_convert_format: "off", image_unique_prefix: true,
+  image_min_size: "0", image_max_size: "0", image_resize_by: "longest",
+  image_max_weight_kb: 2048, image_auto_remove_days: 7,
+  avatar_max_weight_kb: 512, image_align: "none",
+};
+
+function ImagesTab() {
+  return (
+    <SimpleTab group="images" defaults={IMG_DEFAULTS} successMsg="Настройки изображений сохранены">
+      {(form, set, errors) => (<>
+        <Field label="Драйвер обработки">
+          <SelectField value={form.image_driver} onChange={(v) => set("image_driver", v)}
+            options={[{ value: "auto", label: "Авто" }, { value: "imagick", label: "ImageMagick" }, { value: "gd", label: "GD" }]} />
+        </Field>
+        <Field label="Конвертировать в формат" hint="Все загружаемые изображения будут конвертированы">
+          <SelectField value={form.image_convert_format} onChange={(v) => set("image_convert_format", v)}
+            options={[{ value: "off", label: "Не конвертировать" }, { value: "png", label: "PNG" }, { value: "jpg", label: "JPEG" }, { value: "webp", label: "WebP" }, { value: "avif", label: "AVIF" }]} />
+        </Field>
+        <Field label="Уникальный префикс файла" hint="Добавлять случайный префикс к имени файла">
+          <Toggle checked={form.image_unique_prefix} onChange={(v) => set("image_unique_prefix", v)} />
+        </Field>
+        <Field label="Мин. размер (пикс.)" hint="Формат: 800 или 800x600. 0 — без ограничений">
+          <TextInput value={form.image_min_size} onChange={(v) => set("image_min_size", v)} placeholder="0 или 800x600" />
+        </Field>
+        <Field label="Макс. размер (пикс.)" hint="При превышении изображение уменьшится. 0 — без ограничений">
+          <TextInput value={form.image_max_size} onChange={(v) => set("image_max_size", v)} placeholder="0 или 1920x1080" />
+        </Field>
+        <Field label="Уменьшать по стороне">
+          <SelectField value={form.image_resize_by} onChange={(v) => set("image_resize_by", v)}
+            options={[{ value: "longest", label: "По наибольшей стороне" }, { value: "width", label: "По ширине" }, { value: "height", label: "По высоте" }]} />
+        </Field>
+        <Field label="Макс. вес изображения (КБ)" hint="0 — без ограничений">
+          <div>
+            <NumberInput value={form.image_max_weight_kb} onChange={(v) => set("image_max_weight_kb", v)} min={0} />
+            {errors.image_max_weight_kb && <p className="text-red-400 text-xs mt-1">{errors.image_max_weight_kb}</p>}
+          </div>
+        </Field>
+        <Field label="Авто-удаление изображений (дней)" hint="Удалять не прикреплённые к объявлениям. 0 — не удалять">
+          <div>
+            <NumberInput value={form.image_auto_remove_days} onChange={(v) => set("image_auto_remove_days", v)} min={0} />
+            {errors.image_auto_remove_days && <p className="text-red-400 text-xs mt-1">{errors.image_auto_remove_days}</p>}
+          </div>
+        </Field>
+        <Field label="Макс. вес аватара (КБ)" hint="0 — без ограничений, -1 — запрет загрузки аватаров">
+          <div>
+            <NumberInput value={form.avatar_max_weight_kb} onChange={(v) => set("avatar_max_weight_kb", v)} min={-1} />
+            {errors.avatar_max_weight_kb && <p className="text-red-400 text-xs mt-1">{errors.avatar_max_weight_kb}</p>}
+          </div>
+        </Field>
+        <Field label="Выравнивание изображений">
+          <SelectField value={form.image_align} onChange={(v) => set("image_align", v)}
+            options={[{ value: "none", label: "Без выравнивания" }, { value: "left", label: "По левому краю" }, { value: "center", label: "По центру" }, { value: "right", label: "По правому краю" }]} />
+        </Field>
+      </>)}
+    </SimpleTab>
+  );
+}
+
 // ─── Главный компонент страницы ───────────────────────────────────────────────
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState("general");
@@ -1141,7 +1466,11 @@ export default function AdminSettings() {
       {activeTab === "security" && <SecuritySettingsTab />}
       {activeTab === "ads" && <AdsSettingsTab />}
       {activeTab === "db" && <OptimizationSettingsTab />}
-      {activeTab !== "general" && activeTab !== "security" && activeTab !== "ads" && activeTab !== "db" && (
+      {activeTab === "files" && <StorageTab />}
+      {activeTab === "email" && <EmailTab />}
+      {activeTab === "users" && <UsersTab />}
+      {activeTab === "images" && <ImagesTab />}
+      {!["general","security","ads","db","files","email","users","images"].includes(activeTab) && (
         <StubTab label={TABS.find((t) => t.id === activeTab)?.label || ""} />
       )}
     </div>

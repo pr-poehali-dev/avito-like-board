@@ -346,6 +346,26 @@ def handler(event: dict, context) -> dict:
                 "view_count_min_time", "cache_view_counter",
                 "count_ads_in_categories", "tag_cloud_enabled",
             },
+            "storage": {
+                "storage_ad_images", "storage_avatars", "storage_backups",
+            },
+            "email": {
+                "admin_email", "mail_from_name", "mail_method",
+                "smtp_host", "smtp_port", "smtp_username", "smtp_password",
+                "smtp_encryption", "smtp_auth_email",
+            },
+            "users": {
+                "auth_method", "allow_2fa", "default_user_group",
+                "stopforumspam_enabled", "stopforumspam_api_key",
+                "show_pending_ads_in_profile", "allow_multi_registration_per_ip",
+                "notify_pm", "default_feedback_groups",
+            },
+            "images": {
+                "image_driver", "image_convert_format", "image_unique_prefix",
+                "image_min_size", "image_max_size", "image_resize_by",
+                "image_max_weight_kb", "image_auto_remove_days",
+                "avatar_max_weight_kb", "image_align",
+            },
         }
 
         BOOL_KEYS = {
@@ -356,6 +376,9 @@ def handler(event: dict, context) -> dict:
             "warn_concurrent_edit",
             "caching_enabled", "track_last_viewed", "cache_view_counter",
             "count_ads_in_categories", "tag_cloud_enabled",
+            "allow_2fa", "stopforumspam_enabled", "show_pending_ads_in_profile",
+            "allow_multi_registration_per_ip", "notify_pm",
+            "image_unique_prefix",
         }
         INT_KEYS = {
             "max_login_attempts", "login_block_timeout",
@@ -366,6 +389,8 @@ def handler(event: dict, context) -> dict:
             "new_ad_hours", "updated_ad_hours",
             "cache_forced_clear_interval", "cache_pages_count",
             "cache_full_ad_days", "view_count_min_time",
+            "smtp_port", "image_max_weight_kb", "image_auto_remove_days",
+            "avatar_max_weight_kb",
         }
 
         cur = conn.cursor()
@@ -432,6 +457,22 @@ def handler(event: dict, context) -> dict:
             "cache_pages_count", "cache_full_ad_days", "track_last_viewed",
             "view_count_min_time", "cache_view_counter",
             "count_ads_in_categories", "tag_cloud_enabled",
+            # storage
+            "storage_ad_images", "storage_avatars", "storage_backups",
+            # email
+            "admin_email", "mail_from_name", "mail_method",
+            "smtp_host", "smtp_port", "smtp_username", "smtp_password",
+            "smtp_encryption", "smtp_auth_email",
+            # users
+            "auth_method", "allow_2fa", "default_user_group",
+            "stopforumspam_enabled", "stopforumspam_api_key",
+            "show_pending_ads_in_profile", "allow_multi_registration_per_ip",
+            "notify_pm", "default_feedback_groups",
+            # images
+            "image_driver", "image_convert_format", "image_unique_prefix",
+            "image_min_size", "image_max_size", "image_resize_by",
+            "image_max_weight_kb", "image_auto_remove_days",
+            "avatar_max_weight_kb", "image_align",
         }
         validation_errors = {}
 
@@ -567,6 +608,69 @@ def handler(event: dict, context) -> dict:
                 except (ValueError, TypeError):
                     validation_errors[opt_int_key] = "Должно быть целым числом"
 
+        # ── Валидация storage ──────────────────────────────────────────────────
+        VALID_STORAGE = {"local", "s3", "ftp"}
+        for sk in ("storage_ad_images", "storage_avatars", "storage_backups"):
+            if sk in data and str(data[sk]) not in VALID_STORAGE:
+                validation_errors[sk] = "Допустимые значения: local, s3, ftp"
+
+        # ── Валидация email ────────────────────────────────────────────────────
+        import re as _re
+        EMAIL_RE = _re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+        for ek in ("admin_email", "smtp_auth_email"):
+            if ek in data:
+                v = str(data[ek] or "").strip()
+                if v and not EMAIL_RE.match(v):
+                    validation_errors[ek] = "Неверный формат email"
+        if "mail_method" in data and str(data["mail_method"]) not in {"mail", "smtp"}:
+            validation_errors["mail_method"] = "Допустимые значения: mail, smtp"
+        if "smtp_encryption" in data and str(data["smtp_encryption"]) not in {"none", "ssl", "tls"}:
+            validation_errors["smtp_encryption"] = "Допустимые значения: none, ssl, tls"
+        if "smtp_port" in data:
+            try:
+                v = int(data["smtp_port"])
+                if v < 1 or v > 65535:
+                    validation_errors["smtp_port"] = "Порт: 1–65535"
+            except (ValueError, TypeError):
+                validation_errors["smtp_port"] = "Должно быть целым числом"
+
+        # ── Валидация users ────────────────────────────────────────────────────
+        if "auth_method" in data and str(data["auth_method"]) not in {"login", "email"}:
+            validation_errors["auth_method"] = "Допустимые значения: login, email"
+        if "default_feedback_groups" in data:
+            try:
+                import json as _json
+                groups = _json.loads(str(data["default_feedback_groups"]))
+                if not isinstance(groups, list):
+                    raise ValueError
+            except (ValueError, TypeError):
+                validation_errors["default_feedback_groups"] = "Должен быть массив ID групп"
+
+        # ── Валидация images ───────────────────────────────────────────────────
+        if "image_driver" in data and str(data["image_driver"]) not in {"auto", "imagick", "gd"}:
+            validation_errors["image_driver"] = "Допустимые значения: auto, imagick, gd"
+        if "image_convert_format" in data and str(data["image_convert_format"]) not in {"off", "png", "jpg", "webp", "avif"}:
+            validation_errors["image_convert_format"] = "Допустимые значения: off, png, jpg, webp, avif"
+        if "image_resize_by" in data and str(data["image_resize_by"]) not in {"longest", "width", "height"}:
+            validation_errors["image_resize_by"] = "Допустимые значения: longest, width, height"
+        if "image_align" in data and str(data["image_align"]) not in {"none", "left", "center", "right"}:
+            validation_errors["image_align"] = "Допустимые значения: none, left, center, right"
+        for img_int_key in ("image_max_weight_kb", "image_auto_remove_days"):
+            if img_int_key in data:
+                try:
+                    v = int(data[img_int_key])
+                    if v < 0:
+                        validation_errors[img_int_key] = "Минимум 0"
+                except (ValueError, TypeError):
+                    validation_errors[img_int_key] = "Должно быть целым числом"
+        if "avatar_max_weight_kb" in data:
+            try:
+                v = int(data["avatar_max_weight_kb"])
+                if v < -1:
+                    validation_errors["avatar_max_weight_kb"] = "Минимум -1 (запрет загрузки)"
+            except (ValueError, TypeError):
+                validation_errors["avatar_max_weight_kb"] = "Должно быть целым числом или -1"
+
         if validation_errors:
             conn.close()
             return {"statusCode": 422, "headers": CORS, "body": json.dumps({"errors": validation_errors})}
@@ -606,6 +710,19 @@ def handler(event: dict, context) -> dict:
             or "unknown"
         )
         return ok({"ip": ip})
+
+    # ── USER GROUPS ────────────────────────────────────────────────────────────
+    if action == "user_groups":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cur = conn.cursor()
+        cur.execute(f"SELECT id, name, description FROM {SCHEMA}.user_groups ORDER BY id")
+        rows = cur.fetchall()
+        conn.close()
+        return ok({"items": [{"id": r[0], "name": r[1], "description": r[2]} for r in rows]})
 
     # ── LOGS ───────────────────────────────────────────────────────────────────
     if action == "logs":

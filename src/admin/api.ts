@@ -54,4 +54,6 @@ export const adminApi = {
 
   logs: (params?: { limit?: number; offset?: number; level?: string }) =>
     call({ action: "logs", ...(params || {}) }),
+
+  userGroups: () => call({ action: "user_groups" }),
 };

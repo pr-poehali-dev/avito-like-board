@@ -161,6 +161,41 @@
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_get storage без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "settings_get", "group": "storage"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_get email без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "settings_get", "group": "email"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_get users без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "settings_get", "group": "users"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_get images без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "settings_get", "group": "images"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "user_groups без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "user_groups"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
     }
   ]
 }

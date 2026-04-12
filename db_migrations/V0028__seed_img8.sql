@@ -1,0 +1,1 @@
+INSERT INTO t_p72465170_avito_like_board.settings (key, value) VALUES ('avatar_max_weight_kb', '512');

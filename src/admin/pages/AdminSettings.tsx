@@ -320,6 +320,7 @@ function GeneralSettingsTab() {
 // ─── Вкладка Безопасность ────────────────────────────────────────────────────
 interface SecuritySettings {
   admin_filename: string;
+  admin_path: string;
   display_php_errors: boolean;
   block_iframe: boolean;
   allowed_admin_ips: string;
@@ -332,6 +333,7 @@ interface SecuritySettings {
 
 const SEC_DEFAULTS: SecuritySettings = {
   admin_filename: "admin.php",
+  admin_path: "/admin",
   display_php_errors: false,
   block_iframe: false,
   allowed_admin_ips: "",
@@ -402,6 +404,9 @@ function SecuritySettingsTab() {
     } else if (!/^[\w\-.]+$/.test(fn)) {
       e.admin_filename = "Допустимы только буквы, цифры, -_.";
     }
+    const p = form.admin_path.trim();
+    if (!p.startsWith("/")) e.admin_path = "Путь должен начинаться с /";
+    else if (!/^\/[\w\-/]+$/.test(p)) e.admin_path = "Допустимы только буквы, цифры, - и /";
     if (form.max_login_attempts < 0) e.max_login_attempts = "Минимум 0";
     if (form.login_block_timeout < 1) e.login_block_timeout = "Минимум 1 минута";
     if (form.admin_inactivity_timeout < 0) e.admin_inactivity_timeout = "Минимум 0";
@@ -427,6 +432,13 @@ function SecuritySettingsTab() {
     if (d.ok) {
       setOrigFilename(form.admin_filename);
       toast.success("Настройки безопасности сохранены");
+      const newPath = form.admin_path.trim();
+      const oldPath = localStorage.getItem("admin_path") || "/admin";
+      if (newPath !== oldPath) {
+        localStorage.setItem("admin_path", newPath);
+        toast("Адрес изменён — перенаправляю...", { duration: 2500 });
+        setTimeout(() => { window.location.href = newPath + "/settings"; }, 2700);
+      }
     } else if (d.errors) {
       setErrors(d.errors as Partial<Record<keyof SecuritySettings, string>>);
       toast.error("Исправьте ошибки в форме");
@@ -465,6 +477,29 @@ function SecuritySettingsTab() {
                   <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
                 После изменения имени файла не забудьте переименовать его на сервере вручную
+              </div>
+            )}
+          </div>
+        </Field>
+
+        {/* Адрес входа в админку */}
+        <Field label="Адрес входа в админку" hint="URL-путь панели управления. После изменения будет выполнен автоматический редирект">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-sm font-mono">{window.location.origin}</span>
+              <TextInput
+                value={form.admin_path}
+                onChange={(v) => set("admin_path", v)}
+                placeholder="/admin"
+              />
+            </div>
+            {errors.admin_path && <p className="text-red-400 text-xs">{errors.admin_path}</p>}
+            {form.admin_path !== "/admin" && form.admin_path.startsWith("/") && (
+              <div className="flex items-start gap-2 bg-indigo-900/20 border border-indigo-700/40 text-indigo-300 text-xs px-3 py-2 rounded-lg">
+                <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="mt-0.5 shrink-0">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                После сохранения вход в панель будет доступен по: <strong className="font-mono ml-1">{window.location.origin}{form.admin_path}</strong>
               </div>
             )}
           </div>

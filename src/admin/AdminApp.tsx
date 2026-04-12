@@ -7,10 +7,11 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminSettings from "./pages/AdminSettings";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAds from "./pages/AdminAds";
+import AdminLogs from "./pages/AdminLogs";
 
-export default function AdminApp() {
+export default function AdminApp({ basePath = "/admin" }: { basePath?: string }) {
   return (
-    <AdminAuthProvider>
+    <AdminAuthProvider basePath={basePath}>
       <Routes>
         <Route path="login" element={<AdminLogin />} />
         <Route
@@ -25,6 +26,7 @@ export default function AdminApp() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="ads" element={<AdminAds />} />
+          <Route path="logs" element={<AdminLogs />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>

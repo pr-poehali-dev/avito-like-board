@@ -18,7 +18,11 @@ interface AdminAuthCtx {
 
 const AdminAuthContext = createContext<AdminAuthCtx>({} as AdminAuthCtx);
 
-export function AdminAuthProvider({ children }: { children: ReactNode }) {
+export function AdminAuthProvider({ children, basePath = "/admin" }: { children: ReactNode; basePath?: string }) {
+  // Синхронизируем basePath в localStorage чтобы App.tsx читал при следующей загрузке
+  if (typeof window !== "undefined") {
+    localStorage.setItem("admin_path", basePath);
+  }
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
 

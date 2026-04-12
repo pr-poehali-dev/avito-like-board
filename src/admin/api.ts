@@ -51,4 +51,7 @@ export const adminApi = {
 
   myIp: () =>
     call({ action: "my_ip" }),
+
+  logs: (params?: { limit?: number; offset?: number; level?: string }) =>
+    call({ action: "logs", ...(params || {}) }),
 };

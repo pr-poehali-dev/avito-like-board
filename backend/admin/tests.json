@@ -107,6 +107,24 @@
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "logs без токена — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "logs"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_save admin_path невалидный — 401 без токена",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "settings_save", "data": {"admin_path": "no-slash"}},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
     }
   ]
 }

@@ -13,6 +13,7 @@
   settings_save — сохранить настройки (объект ключ-значение)
   server_time   — текущее время сервера в заданном часовом поясе
   my_ip         — IP-адрес текущего клиента
+  logs          — список логов (limit, offset, level)
   logout        — выход
 """
 import json
@@ -58,6 +59,28 @@ def get_admin(headers: dict, conn):
         (token,)
     )
     return cur.fetchone()
+
+
+def write_log(conn, user_id, action: str, details: str, ip: str, status_code: int = 200):
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.admin_logs (user_id, action, details, ip, status_code)
+                VALUES (%s, %s, %s, %s, %s)""",
+            (user_id, action, details, ip, status_code)
+        )
+    except Exception:
+        pass
+
+
+def get_client_ip(event: dict) -> str:
+    headers = event.get("headers") or {}
+    return (
+        (event.get("requestContext") or {}).get("identity", {}).get("sourceIp")
+        or headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or "unknown"
+    )
 
 
 def handler(event: dict, context) -> dict:
@@ -110,6 +133,7 @@ def handler(event: dict, context) -> dict:
             f"UPDATE {SCHEMA}.users SET last_login = NOW() WHERE id = %s",
             (user_id,)
         )
+        write_log(conn, user_id, "login", f"Вход: {email}", get_client_ip(event), 200)
         conn.commit()
         conn.close()
 
@@ -301,7 +325,7 @@ def handler(event: dict, context) -> dict:
                 "admin_filename", "display_php_errors", "block_iframe",
                 "allowed_admin_ips", "max_login_attempts", "login_block_timeout",
                 "admin_inactivity_timeout", "reset_auth_key_on_login",
-                "admin_logs_retention_days",
+                "admin_logs_retention_days", "admin_path",
             },
         }
 
@@ -360,7 +384,7 @@ def handler(event: dict, context) -> dict:
             "admin_filename", "display_php_errors", "block_iframe",
             "allowed_admin_ips", "max_login_attempts", "login_block_timeout",
             "admin_inactivity_timeout", "reset_auth_key_on_login",
-            "admin_logs_retention_days",
+            "admin_logs_retention_days", "admin_path",
         }
         validation_errors = {}
 
@@ -414,6 +438,15 @@ def handler(event: dict, context) -> dict:
                         validation_errors["allowed_admin_ips"] = f"Неверный формат IP: {line}"
                         break
 
+        if "admin_path" in data:
+            path_val = str(data["admin_path"]).strip()
+            if not path_val.startswith("/"):
+                validation_errors["admin_path"] = "Путь должен начинаться с /"
+            elif not re.match(r'^/[\w\-/]+$', path_val):
+                validation_errors["admin_path"] = "Допустимы только буквы, цифры, - и /"
+            elif len(path_val) > 100:
+                validation_errors["admin_path"] = "Максимум 100 символов"
+
         if validation_errors:
             conn.close()
             return {"statusCode": 422, "headers": CORS, "body": json.dumps({"errors": validation_errors})}
@@ -453,5 +486,53 @@ def handler(event: dict, context) -> dict:
             or "unknown"
         )
         return ok({"ip": ip})
+
+    # ── LOGS ───────────────────────────────────────────────────────────────────
+    if action == "logs":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+
+        limit = min(int(qs.get("limit") or body.get("limit") or 100), 500)
+        offset = int(qs.get("offset") or body.get("offset") or 0)
+        level = qs.get("level") or body.get("level") or "all"
+
+        cur = conn.cursor()
+        where = ""
+        if level == "error":
+            where = "WHERE l.status_code >= 400"
+        elif level == "ok":
+            where = "WHERE l.status_code < 400"
+
+        cur.execute(
+            f"""SELECT l.id, l.action, l.details, l.ip, l.status_code, l.created_at,
+                       u.name, u.email
+                FROM {SCHEMA}.admin_logs l
+                LEFT JOIN {SCHEMA}.users u ON u.id = l.user_id
+                {where}
+                ORDER BY l.created_at DESC
+                LIMIT %s OFFSET %s""",
+            (limit, offset)
+        )
+        rows = cur.fetchall()
+
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.admin_logs {where}")
+        total = cur.fetchone()[0]
+        conn.close()
+
+        return ok({
+            "total": total,
+            "items": [
+                {
+                    "id": r[0], "action": r[1], "details": r[2],
+                    "ip": r[3], "status_code": r[4],
+                    "created_at": str(r[5]),
+                    "user_name": r[6], "user_email": r[7],
+                }
+                for r in rows
+            ]
+        })
 
     return err("Укажите action")

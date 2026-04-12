@@ -10,6 +10,9 @@ import AdminApp from "./admin/AdminApp";
 
 const queryClient = new QueryClient();
 
+// Читаем сохранённый путь админки (по умолчанию /admin)
+const adminPath = (localStorage.getItem("admin_path") || "/admin").replace(/\/$/, "") || "/admin";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -19,7 +22,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="/admin/*" element={<AdminApp />} />
+          <Route path={`${adminPath}/*`} element={<AdminApp basePath={adminPath} />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

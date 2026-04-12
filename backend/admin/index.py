@@ -1162,7 +1162,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"""
             SELECT a.id, a.title, a.description, a.price, a.status, a.views,
                    a.created_at, a.updated_at, a.category, a.category_id, a.city,
-                   a.condition, a.photos,
+                   a.condition, a.photos, a.rejection_reason,
                    COALESCE(u.username, u.name) AS uname, u.email, u.id AS uid, u.full_name
             FROM {SCHEMA}.ads a
             LEFT JOIN {SCHEMA}.users u ON u.id = a.user_id
@@ -1187,8 +1187,9 @@ def handler(event: dict, context) -> dict:
             "updated_at": str(row[7]) if row[7] else None,
             "category": row[8], "category_id": row[9], "city": row[10],
             "condition": row[11], "photos": list(row[12] or []),
-            "author_name": row[13], "author_email": row[14], "author_id": row[15],
-            "author_full_name": row[16],
+            "rejection_reason": row[13],
+            "author_name": row[14], "author_email": row[15], "author_id": row[16],
+            "author_full_name": row[17],
             "custom_fields": cf_vals,
         })
 
@@ -1336,12 +1337,24 @@ def handler(event: dict, context) -> dict:
         if new_status not in allowed:
             conn.close()
             return err(f"Статус должен быть одним из: {', '.join(allowed)}")
+        rejection_reason = body.get("reason") or None
         ids_ph = ", ".join(["%s"] * len(ad_ids))
         cur = conn.cursor()
-        cur.execute(
-            f"UPDATE {SCHEMA}.ads SET status=%s, updated_at=NOW() WHERE id IN ({ids_ph})",
-            [new_status] + [int(i) for i in ad_ids]
-        )
+        if new_status == "rejected" and rejection_reason:
+            cur.execute(
+                f"UPDATE {SCHEMA}.ads SET status=%s, rejection_reason=%s, updated_at=NOW() WHERE id IN ({ids_ph})",
+                [new_status, rejection_reason] + [int(i) for i in ad_ids]
+            )
+        elif new_status != "rejected":
+            cur.execute(
+                f"UPDATE {SCHEMA}.ads SET status=%s, rejection_reason=NULL, updated_at=NOW() WHERE id IN ({ids_ph})",
+                [new_status] + [int(i) for i in ad_ids]
+            )
+        else:
+            cur.execute(
+                f"UPDATE {SCHEMA}.ads SET status=%s, updated_at=NOW() WHERE id IN ({ids_ph})",
+                [new_status] + [int(i) for i in ad_ids]
+            )
         affected = cur.rowcount
         conn.commit()
         conn.close()

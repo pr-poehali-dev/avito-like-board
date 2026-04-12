@@ -13,6 +13,7 @@ interface AdRow {
 interface AdDetail extends AdRow {
   description: string; condition: string; updated_at: string | null;
   photos: string[]; author_full_name: string | null;
+  rejection_reason: string | null;
   custom_fields: { field_id: number; name: string; field_type: string; value: string }[];
 }
 
@@ -82,6 +83,8 @@ function AdModal({ adId, onClose, onSaved }: {
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState<Partial<AdDetail>>({});
   const [cfEdit, setCfEdit] = useState<Record<number, string>>({});
+  const [rejectDialog, setRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -110,15 +113,21 @@ function AdModal({ adId, onClose, onSaved }: {
     else toast.error(d.error || "Ошибка сохранения");
   };
 
-  const quickStatus = async (newStatus: string) => {
-    const d = await adminApi.adsSetStatus([adId], newStatus);
+  const quickStatus = async (newStatus: string, reason?: string) => {
+    const d = await adminApi.adsSetStatus([adId], newStatus, reason);
     if (d.ok) {
       const labels: Record<string, string> = { active: "одобрено", rejected: "отклонено", closed: "закрыто", archived: "в архиве" };
       toast.success(`Объявление ${labels[newStatus] || newStatus}`);
-      setAd((prev) => prev ? { ...prev, status: newStatus } : prev);
+      setAd((prev) => prev ? { ...prev, status: newStatus, rejection_reason: newStatus === "rejected" ? (reason || null) : null } : prev);
       setForm((prev) => ({ ...prev, status: newStatus }));
       onSaved();
     } else toast.error(d.error || "Ошибка");
+  };
+
+  const handleReject = async () => {
+    await quickStatus("rejected", rejectReason.trim() || undefined);
+    setRejectDialog(false);
+    setRejectReason("");
   };
 
   const setF = (k: keyof AdDetail, v: unknown) => setForm((p) => ({ ...p, [k]: v }));
@@ -145,7 +154,7 @@ function AdModal({ adId, onClose, onSaved }: {
               {/* Кнопки быстрой модерации */}
               {!edit && ad.status === "pending" && (
                 <>
-                  <button onClick={() => quickStatus("rejected")}
+                  <button onClick={() => setRejectDialog(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-red-900/40 hover:bg-red-900/70 text-red-400 hover:text-red-300 text-sm font-medium rounded-xl transition-colors border border-red-900/50">
                     <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     Отклонить
@@ -207,7 +216,7 @@ function AdModal({ adId, onClose, onSaved }: {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => quickStatus("rejected")}
+                  <button onClick={() => setRejectDialog(true)}
                     className="flex items-center gap-1.5 px-4 py-2 bg-red-900/50 hover:bg-red-900/80 text-red-300 text-sm font-semibold rounded-xl transition-colors border border-red-800/50">
                     <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     Отклонить
@@ -334,11 +343,63 @@ function AdModal({ adId, onClose, onSaved }: {
               </div>
               <span className="text-gray-600 text-xs ml-auto">ID #{ad.author_id}</span>
             </div>
+
+            {/* Причина отклонения */}
+            {ad.status === "rejected" && (
+              <div className="bg-red-950/30 border border-red-900/40 rounded-xl p-4 flex flex-col gap-2">
+                <p className="text-red-400 text-xs font-semibold uppercase tracking-wider">Причина отклонения</p>
+                <p className="text-red-200 text-sm">
+                  {ad.rejection_reason || <span className="text-red-700 italic">Не указана</span>}
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex items-center justify-center py-24 text-gray-500">Объявление не найдено</div>
         )}
       </div>
+
+      {/* Диалог отклонения */}
+      {rejectDialog && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-l-none"
+          onClick={() => setRejectDialog(false)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 bg-red-900/50 rounded-xl flex items-center justify-center shrink-0">
+                <svg width="16" height="16" fill="none" stroke="#f87171" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Отклонить объявление</p>
+                <p className="text-gray-500 text-xs">Укажите причину — автор её увидит</p>
+              </div>
+            </div>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Например: содержит запрещённый контент, неверная категория, недостаточно информации..."
+              rows={4}
+              autoFocus
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder-gray-600 resize-none mb-4"
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setRejectDialog(false); setRejectReason(""); }}
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors">
+                Отмена
+              </button>
+              <button onClick={handleReject}
+                className="flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-600 text-white text-sm font-semibold rounded-xl transition-colors">
+                <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+                Отклонить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

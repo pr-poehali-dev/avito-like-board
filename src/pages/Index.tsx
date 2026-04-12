@@ -486,6 +486,14 @@ export default function Index() {
   void mobileMenuOpen;
   void userMenuOpen;
 
+  const navItems = [
+    { id: "home" as Section, label: "Главная", icon: "Home" },
+    { id: "my-ads" as Section, label: "Мои объявления", icon: "FileText" },
+    { id: "favorites" as Section, label: "Избранное", icon: "Heart" },
+    { id: "messages" as Section, label: "Сообщения", icon: "MessageCircle" },
+    { id: "contacts" as Section, label: "Контакты", icon: "Phone" },
+  ];
+
   if (showCreateAd) {
     return (
       <CreateAd

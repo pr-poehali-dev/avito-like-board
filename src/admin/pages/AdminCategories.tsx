@@ -104,8 +104,20 @@ function buildSelectOpts(flat: { cat: Category; depth: number }[]) {
   return flat.map(({ cat, depth }) => ({ value: String(cat.id), label: "— ".repeat(depth) + cat.name }));
 }
 
+const TRANSLIT_MAP: Record<string, string> = {
+  а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"yo",ж:"zh",з:"z",и:"i",й:"y",
+  к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",
+  х:"kh",ц:"ts",ч:"ch",ш:"sh",щ:"shch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya",
+};
+
 function slugify(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, "-").replace(/^-+|-+$/g, "") || "category";
+  return s
+    .toLowerCase()
+    .split("")
+    .map((c) => TRANSLIT_MAP[c] ?? c)
+    .join("")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "category";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -124,6 +136,7 @@ function CatForm({ initial, flatCats, onSave, onCancel }: {
 }) {
   const [form, setForm] = useState({ ...initial });
   const [saving, setSaving] = useState(false);
+  const [slugEdited, setSlugEdited] = useState(!!initial.slug);
   const set = (k: keyof typeof form, v: unknown) => setForm((p) => ({ ...p, [k]: v }));
 
   const handleSave = async () => {
@@ -141,7 +154,7 @@ function CatForm({ initial, flatCats, onSave, onCancel }: {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-gray-400 text-xs">Название *</label>
-          <Inp value={form.name} onChange={(v) => { set("name", v); if (!form.slug) set("slug", slugify(v)); }} placeholder="Транспорт" className="w-full" />
+          <Inp value={form.name} onChange={(v) => { set("name", v); if (!slugEdited) set("slug", slugify(v)); }} placeholder="Транспорт" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-gray-400 text-xs">Альтернативное название</label>
@@ -154,7 +167,7 @@ function CatForm({ initial, flatCats, onSave, onCancel }: {
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-gray-400 text-xs">URL-псевдоним (slug)</label>
-          <Inp value={form.slug} onChange={(v) => set("slug", v)} placeholder="transport" className="w-full" />
+          <Inp value={form.slug} onChange={(v) => { set("slug", v); setSlugEdited(true); }} placeholder="transport" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-gray-400 text-xs">Мета-заголовок (Title)</label>

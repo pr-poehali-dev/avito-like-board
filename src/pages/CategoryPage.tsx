@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
+import SiteHeader from "@/components/SiteHeader";
 import { ADS_URL, Ad, DbCategory, formatPrice } from "./index/types";
 
 export default function CategoryPage() {
@@ -80,32 +81,31 @@ export default function CategoryPage() {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--background))]">
-      {/* Шапка */}
-      <header className="bg-white border-b border-border sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
-          <button onClick={() => navigate("/")} className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
-            <Icon name="ChevronLeft" size={18} />
-            <span className="text-sm">Назад</span>
-          </button>
-          <div className="w-px h-5 bg-border" />
-          <nav className="flex items-center gap-1 text-sm overflow-hidden">
-            {breadcrumbs.map((crumb, i) => (
-              <span key={crumb.href} className="flex items-center gap-1 shrink-0">
-                {i > 0 && <Icon name="ChevronRight" size={13} className="text-[hsl(var(--muted-foreground))]" />}
-                {i < breadcrumbs.length - 1 ? (
-                  <Link to={crumb.href} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors truncate max-w-[120px]">
-                    {crumb.name}
-                  </Link>
-                ) : (
-                  <span className="font-medium text-[hsl(var(--foreground))] truncate max-w-[200px]">{crumb.name}</span>
-                )}
-              </span>
-            ))}
-          </nav>
-        </div>
-      </header>
+      <SiteHeader
+        dbCategories={dbCategories}
+        user={null}
+        onLogoClick={() => navigate("/")}
+        onNewAd={() => navigate("/")}
+        onLogin={() => navigate("/")}
+        onRegister={() => navigate("/")}
+      />
 
       <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* Хлебные крошки */}
+        <nav className="flex items-center gap-1 text-sm mb-4">
+          {breadcrumbs.map((crumb, i) => (
+            <span key={crumb.href} className="flex items-center gap-1 shrink-0">
+              {i > 0 && <Icon name="ChevronRight" size={13} className="text-[hsl(var(--muted-foreground))]" />}
+              {i < breadcrumbs.length - 1 ? (
+                <Link to={crumb.href} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors truncate max-w-[160px]">
+                  {crumb.name}
+                </Link>
+              ) : (
+                <span className="font-medium text-[hsl(var(--foreground))] truncate max-w-[200px]">{crumb.name}</span>
+              )}
+            </span>
+          ))}
+        </nav>
         {/* Заголовок */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">{category?.name}</h1>

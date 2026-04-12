@@ -15,7 +15,7 @@ export function useAuth() {
   const [resendTimer, setResendTimer] = useState(0);
 
   useEffect(() => {
-    const sid = localStorage.getItem("session_id");
+    const sid = localStorage.getItem("session_id") || localStorage.getItem("admin_token");
     if (!sid) return;
     fetch(AUTH_URL, { headers: { "X-Session-Id": sid } })
       .then((r) => r.json())

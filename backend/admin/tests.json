@@ -143,6 +143,24 @@
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_get optimization без токена — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "settings_get", "group": "optimization"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_save optimization без токена — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "settings_save", "data": {"caching_enabled": true}},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
     }
   ]
 }

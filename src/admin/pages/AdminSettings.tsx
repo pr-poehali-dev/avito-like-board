@@ -891,6 +891,223 @@ function AdsSettingsTab() {
   );
 }
 
+// ─── Вкладка Оптимизация ─────────────────────────────────────────────────────
+interface OptSettings {
+  caching_enabled: boolean;
+  cache_type: string;
+  cache_server: string;
+  redis_username: string;
+  redis_password: string;
+  cache_forced_clear_interval: number;
+  cache_pages_count: number;
+  cache_full_ad_days: number;
+  track_last_viewed: boolean;
+  view_count_min_time: number;
+  cache_view_counter: boolean;
+  count_ads_in_categories: boolean;
+  tag_cloud_enabled: boolean;
+}
+
+const OPT_DEFAULTS: OptSettings = {
+  caching_enabled: true, cache_type: "file", cache_server: "",
+  redis_username: "", redis_password: "", cache_forced_clear_interval: 0,
+  cache_pages_count: 10, cache_full_ad_days: 30, track_last_viewed: true,
+  view_count_min_time: 5, cache_view_counter: true,
+  count_ads_in_categories: true, tag_cloud_enabled: true,
+};
+
+function OptSaveButton({ saving, onClick }: { saving: boolean; onClick: () => void }) {
+  return (
+    <div className="flex justify-end mt-6">
+      <button onClick={onClick} disabled={saving}
+        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+        {saving
+          ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</>
+          : <>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+              </svg>
+              Сохранить настройки
+            </>}
+      </button>
+    </div>
+  );
+}
+
+function OptimizationSettingsTab() {
+  const [form, setForm] = useState<OptSettings>(OPT_DEFAULTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<keyof OptSettings, string>>>({});
+  const [showPass, setShowPass] = useState(false);
+
+  useEffect(() => {
+    adminApi.settingsGet("optimization").then((d) => {
+      if (!d.error) setForm({ ...OPT_DEFAULTS, ...(d as unknown as OptSettings) });
+      setLoading(false);
+    });
+  }, []);
+
+  const set = <K extends keyof OptSettings>(key: K, value: OptSettings[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const validate = (): boolean => {
+    const e: Partial<Record<keyof OptSettings, string>> = {};
+    if (form.cache_forced_clear_interval < 0) e.cache_forced_clear_interval = "Минимум 0";
+    if (form.cache_pages_count < 0) e.cache_pages_count = "Минимум 0";
+    if (form.cache_full_ad_days < 0) e.cache_full_ad_days = "Минимум 0";
+    if (form.view_count_min_time < 1) e.view_count_min_time = "Минимум 1";
+    if (form.cache_type !== "file" && form.cache_server && !form.cache_server.includes(":")) {
+      e.cache_server = "Формат: хост:порт (например localhost:11211)";
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    const d = await adminApi.settingsSave(form as unknown as Record<string, unknown>);
+    setSaving(false);
+    if (d.ok) toast.success("Настройки оптимизации сохранены");
+    else if (d.errors) { setErrors(d.errors as Partial<Record<keyof OptSettings, string>>); toast.error("Исправьте ошибки"); }
+    else toast.error((d.error as string) || "Ошибка сохранения");
+  };
+
+  const cacheDisabled = !form.caching_enabled;
+  const notFile = form.cache_type !== "file";
+  const isRedis = form.cache_type === "redis";
+
+  const disabledCls = "opacity-40 pointer-events-none select-none";
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+
+      {/* ── Кеширование ── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+        <SectionTitle>Кеширование</SectionTitle>
+
+        <Field label="Включить кеширование" hint="Глобальное включение/выключение всех механизмов кеша">
+          <Toggle checked={form.caching_enabled} onChange={(v) => set("caching_enabled", v)} />
+        </Field>
+
+        <div className={cacheDisabled ? disabledCls : ""}>
+          <Field label="Тип кеширования">
+            <SelectField
+              value={form.cache_type}
+              onChange={(v) => set("cache_type", v)}
+              options={[
+                { value: "file", label: "Файловый кеш" },
+                { value: "memcache", label: "Memcache" },
+                { value: "redis", label: "Redis" },
+              ]}
+            />
+          </Field>
+
+          <div className={!notFile ? disabledCls : ""}>
+            <Field label="Сервер кеша" hint="Формат: хост:порт (например localhost:11211)">
+              <div>
+                <TextInput
+                  value={form.cache_server}
+                  onChange={(v) => set("cache_server", v)}
+                  placeholder="localhost:11211"
+                />
+                {errors.cache_server && <p className="text-red-400 text-xs mt-1">{errors.cache_server}</p>}
+              </div>
+            </Field>
+          </div>
+
+          <div className={!isRedis ? disabledCls : ""}>
+            <Field label="Пользователь Redis" hint="Опционально">
+              <TextInput value={form.redis_username} onChange={(v) => set("redis_username", v)} placeholder="username" />
+            </Field>
+            <Field label="Пароль Redis">
+              <div className="flex gap-2 items-center">
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={form.redis_password}
+                  onChange={(e) => set("redis_password", e.target.value)}
+                  placeholder="••••••••"
+                  className="flex-1 bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500"
+                />
+                <button type="button" onClick={() => setShowPass((s) => !s)}
+                  className="px-3 py-2.5 bg-gray-800 border border-gray-700 text-gray-400 hover:text-white rounded-xl text-xs transition-colors">
+                  {showPass ? "Скрыть" : "Показать"}
+                </button>
+              </div>
+            </Field>
+          </div>
+
+          <Field label="Принудительная очистка (мин)" hint="0 — автоматически при изменении данных">
+            <div>
+              <NumberInput value={form.cache_forced_clear_interval} onChange={(v) => set("cache_forced_clear_interval", v)} min={0} />
+              {errors.cache_forced_clear_interval && <p className="text-red-400 text-xs mt-1">{errors.cache_forced_clear_interval}</p>}
+            </div>
+          </Field>
+
+          <Field label="Кешировать страниц (кратких)" hint="Кешируются первые N страниц навигации">
+            <div>
+              <NumberInput value={form.cache_pages_count} onChange={(v) => set("cache_pages_count", v)} min={0} />
+              {errors.cache_pages_count && <p className="text-red-400 text-xs mt-1">{errors.cache_pages_count}</p>}
+            </div>
+          </Field>
+
+          <Field label="Кешировать полное объявление (дней)" hint="Сколько дней кешировать страницу объявления после публикации">
+            <div>
+              <NumberInput value={form.cache_full_ad_days} onChange={(v) => set("cache_full_ad_days", v)} min={0} />
+              {errors.cache_full_ad_days && <p className="text-red-400 text-xs mt-1">{errors.cache_full_ad_days}</p>}
+            </div>
+          </Field>
+
+          <Field label="Кешировать счётчик просмотров" hint="Просмотры обновляются пакетно раз в 2 часа">
+            <Toggle checked={form.cache_view_counter} onChange={(v) => set("cache_view_counter", v)} />
+          </Field>
+        </div>
+      </div>
+
+      {/* ── Учёт просмотров ── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+        <SectionTitle>Учёт просмотров</SectionTitle>
+
+        <Field label="Вести учёт последних просмотров" hint="Сохранять историю просмотренных объявлений">
+          <Toggle checked={form.track_last_viewed} onChange={(v) => set("track_last_viewed", v)} />
+        </Field>
+
+        <Field label="Мин. время на странице (сек)" hint="Через сколько секунд засчитывается просмотр объявления">
+          <div>
+            <NumberInput value={form.view_count_min_time} onChange={(v) => set("view_count_min_time", v)} min={1} />
+            {errors.view_count_min_time && <p className="text-red-400 text-xs mt-1">{errors.view_count_min_time}</p>}
+          </div>
+        </Field>
+      </div>
+
+      {/* ── Подсчёт данных ── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+        <SectionTitle>Подсчёт данных</SectionTitle>
+
+        <Field label="Подсчёт объявлений в категориях" hint="Добавляет один запрос к БД, увеличивает расход памяти">
+          <Toggle checked={form.count_ads_in_categories} onChange={(v) => set("count_ads_in_categories", v)} />
+        </Field>
+
+        <Field label="Модуль «Облако тегов»" hint="Если отключено, облако тегов не работает">
+          <Toggle checked={form.tag_cloud_enabled} onChange={(v) => set("tag_cloud_enabled", v)} />
+        </Field>
+      </div>
+
+      <OptSaveButton saving={saving} onClick={handleSave} />
+    </div>
+  );
+}
+
 // ─── Главный компонент страницы ───────────────────────────────────────────────
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState("general");
@@ -923,7 +1140,8 @@ export default function AdminSettings() {
       {activeTab === "general" && <GeneralSettingsTab />}
       {activeTab === "security" && <SecuritySettingsTab />}
       {activeTab === "ads" && <AdsSettingsTab />}
-      {activeTab !== "general" && activeTab !== "security" && activeTab !== "ads" && (
+      {activeTab === "db" && <OptimizationSettingsTab />}
+      {activeTab !== "general" && activeTab !== "security" && activeTab !== "ads" && activeTab !== "db" && (
         <StubTab label={TABS.find((t) => t.id === activeTab)?.label || ""} />
       )}
     </div>

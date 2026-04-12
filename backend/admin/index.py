@@ -339,6 +339,13 @@ def handler(event: dict, context) -> dict:
                 "notify_new_ads", "allow_user_tags", "warn_concurrent_edit",
                 "rating_type",
             },
+            "optimization": {
+                "caching_enabled", "cache_type", "cache_server",
+                "redis_username", "redis_password", "cache_forced_clear_interval",
+                "cache_pages_count", "cache_full_ad_days", "track_last_viewed",
+                "view_count_min_time", "cache_view_counter",
+                "count_ads_in_categories", "tag_cloud_enabled",
+            },
         }
 
         BOOL_KEYS = {
@@ -347,6 +354,8 @@ def handler(event: dict, context) -> dict:
             "related_same_category_only", "indexnow_enabled", "decline_dates",
             "auto_generate_meta", "notify_new_ads", "allow_user_tags",
             "warn_concurrent_edit",
+            "caching_enabled", "track_last_viewed", "cache_view_counter",
+            "count_ads_in_categories", "tag_cloud_enabled",
         }
         INT_KEYS = {
             "max_login_attempts", "login_block_timeout",
@@ -355,6 +364,8 @@ def handler(event: dict, context) -> dict:
             "min_search_chars", "quick_search_limit", "related_ads_count",
             "popular_ads_count", "tag_cloud_limit", "max_pending_ads",
             "new_ad_hours", "updated_ad_hours",
+            "cache_forced_clear_interval", "cache_pages_count",
+            "cache_full_ad_days", "view_count_min_time",
         }
 
         cur = conn.cursor()
@@ -415,6 +426,12 @@ def handler(event: dict, context) -> dict:
             "indexnow_provider", "decline_dates", "auto_generate_meta",
             "notify_new_ads", "allow_user_tags", "warn_concurrent_edit",
             "rating_type",
+            # optimization
+            "caching_enabled", "cache_type", "cache_server",
+            "redis_username", "redis_password", "cache_forced_clear_interval",
+            "cache_pages_count", "cache_full_ad_days", "track_last_viewed",
+            "view_count_min_time", "cache_view_counter",
+            "count_ads_in_categories", "tag_cloud_enabled",
         }
         validation_errors = {}
 
@@ -526,6 +543,29 @@ def handler(event: dict, context) -> dict:
 
         if "ad_date_format" in data and not str(data.get("ad_date_format") or "").strip():
             validation_errors["ad_date_format"] = "Формат даты не может быть пустым"
+
+        # ── Валидация optimization ─────────────────────────────────────────────
+        VALID_CACHE_TYPES = {"file", "memcache", "redis"}
+        if "cache_type" in data and str(data["cache_type"]) not in VALID_CACHE_TYPES:
+            validation_errors["cache_type"] = "Допустимые значения: file, memcache, redis"
+
+        if "cache_server" in data:
+            ct = str(data.get("cache_type") or "file")
+            srv = str(data.get("cache_server") or "").strip()
+            if ct != "file" and srv and ":" not in srv:
+                validation_errors["cache_server"] = "Формат: хост:порт (например localhost:11211)"
+
+        for opt_int_key, opt_min in [
+            ("cache_forced_clear_interval", 0), ("cache_pages_count", 0),
+            ("cache_full_ad_days", 0), ("view_count_min_time", 1),
+        ]:
+            if opt_int_key in data:
+                try:
+                    v = int(data[opt_int_key])
+                    if v < opt_min:
+                        validation_errors[opt_int_key] = f"Минимальное значение: {opt_min}"
+                except (ValueError, TypeError):
+                    validation_errors[opt_int_key] = "Должно быть целым числом"
 
         if validation_errors:
             conn.close()

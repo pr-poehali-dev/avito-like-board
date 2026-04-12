@@ -2,11 +2,27 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import SiteHeader from "@/components/SiteHeader";
+import AuthModal from "./index/AuthModal";
+import { useAuth } from "@/hooks/useAuth";
 import { ADS_URL, Ad, DbCategory, formatPrice } from "./index/types";
 
 export default function CategoryPage() {
   const { slug, subslug } = useParams<{ slug: string; subslug?: string }>();
   const navigate = useNavigate();
+
+  const {
+    user,
+    authModal, setAuthModal,
+    authMode, setAuthMode,
+    authStep, setAuthStep,
+    authName, setAuthName,
+    authEmail, setAuthEmail,
+    authPassword, setAuthPassword,
+    authCode, setAuthCode,
+    authError, setAuthError,
+    authLoading, resendTimer,
+    openAuth, sendCode, submitAuth, logout,
+  } = useAuth();
 
   const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
   const [ads, setAds] = useState<Ad[]>([]);
@@ -83,11 +99,17 @@ export default function CategoryPage() {
     <div className="min-h-screen bg-[hsl(var(--background))]">
       <SiteHeader
         dbCategories={dbCategories}
-        user={null}
+        user={user}
         onLogoClick={() => navigate("/")}
-        onNewAd={() => navigate("/")}
-        onLogin={() => navigate("/")}
-        onRegister={() => navigate("/")}
+        onNewAd={() => { if (!user) openAuth("login"); else navigate("/"); }}
+        onLogin={() => openAuth("login")}
+        onRegister={() => openAuth("register")}
+        onLogout={logout}
+        onNavSection={(s) => navigate(s === "home" ? "/" : "/")}
+        onNavProfile={() => navigate("/")}
+        onNavMyAds={() => navigate("/")}
+        onNavFavorites={() => navigate("/")}
+        onNavMessages={() => navigate("/")}
       />
 
       <main className="max-w-6xl mx-auto px-4 py-6">
@@ -208,6 +230,29 @@ export default function CategoryPage() {
           </>
         )}
       </main>
+
+      <AuthModal
+        authModal={authModal}
+        setAuthModal={setAuthModal}
+        authMode={authMode}
+        setAuthMode={setAuthMode}
+        authStep={authStep}
+        setAuthStep={setAuthStep}
+        authName={authName}
+        setAuthName={setAuthName}
+        authEmail={authEmail}
+        setAuthEmail={setAuthEmail}
+        authPassword={authPassword}
+        setAuthPassword={setAuthPassword}
+        authCode={authCode}
+        setAuthCode={setAuthCode}
+        authError={authError}
+        setAuthError={setAuthError}
+        authLoading={authLoading}
+        resendTimer={resendTimer}
+        submitAuth={submitAuth}
+        sendCode={sendCode}
+      />
     </div>
   );
 }

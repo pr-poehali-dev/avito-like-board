@@ -70,6 +70,14 @@ function ConditionRow({ cond, onChange, onRemove }: {
   onChange: (c: Condition) => void;
   onRemove: () => void;
 }) {
+  const [rawKeywords, setRawKeywords] = useState((cond.value || []).join(", "));
+
+  const handleKeywordsBlur = () => {
+    const parsed = rawKeywords.split(",").map(s => s.trim()).filter(Boolean);
+    onChange({ ...cond, value: parsed });
+    setRawKeywords(parsed.join(", "));
+  };
+
   return (
     <div className="flex items-start gap-2 p-3 bg-[hsl(var(--muted))] rounded-xl">
       <select
@@ -95,9 +103,10 @@ function ConditionRow({ cond, onChange, onRemove }: {
               <option value="contains_all">содержит все</option>
             </select>
             <input
-              value={(cond.value || []).join(", ")}
-              onChange={e => onChange({ ...cond, value: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
-              placeholder="слово1, слово2, ..."
+              value={rawKeywords}
+              onChange={e => setRawKeywords(e.target.value)}
+              onBlur={handleKeywordsBlur}
+              placeholder="цена, доставка, скидка"
               className="flex-1 min-w-[150px] px-3 py-1.5 text-sm bg-white border border-border rounded-lg outline-none"
             />
           </div>

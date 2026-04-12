@@ -9,6 +9,9 @@
   ql_update     — обновить ссылку
   ql_delete     — удалить ссылку
   ql_reorder    — изменить порядок
+  settings_get  — получить настройки (group=general или все)
+  settings_save — сохранить настройки (объект ключ-значение)
+  server_time   — текущее время сервера в заданном часовом поясе
   logout        — выход
 """
 import json
@@ -17,6 +20,7 @@ import hashlib
 import secrets
 import psycopg2
 from datetime import datetime, timedelta
+import pytz
 
 SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "t_p72465170_avito_like_board")
 
@@ -275,5 +279,110 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             conn.close()
         return ok({"ok": True})
+
+    # ── SETTINGS GET ───────────────────────────────────────────────────────────
+    if action == "settings_get":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+
+        group = qs.get("group") or body.get("group") or ""
+        GENERAL_KEYS = {
+            "site_name", "site_url", "force_https", "redirect_www",
+            "meta_description", "meta_keywords", "site_short_name",
+            "timezone", "use_custom_404", "site_offline",
+        }
+
+        cur = conn.cursor()
+        if group == "general":
+            keys_list = list(GENERAL_KEYS)
+            placeholders = ", ".join(["%s"] * len(keys_list))
+            cur.execute(
+                f"SELECT key, value FROM {SCHEMA}.settings WHERE key IN ({placeholders})",
+                keys_list
+            )
+        else:
+            cur.execute(f"SELECT key, value FROM {SCHEMA}.settings")
+
+        rows = cur.fetchall()
+        conn.close()
+
+        BOOL_KEYS = {"force_https", "redirect_www", "use_custom_404", "site_offline"}
+        result = {}
+        for k, v in rows:
+            if k in BOOL_KEYS:
+                result[k] = v == "true"
+            else:
+                result[k] = v or ""
+        return ok(result)
+
+    # ── SETTINGS SAVE ──────────────────────────────────────────────────────────
+    if action == "settings_save":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+
+        data = body.get("data") or {}
+        if not data:
+            conn.close()
+            return err("Нет данных для сохранения")
+
+        VALID_KEYS = {
+            "site_name", "site_url", "force_https", "redirect_www",
+            "meta_description", "meta_keywords", "site_short_name",
+            "timezone", "use_custom_404", "site_offline",
+        }
+        validation_errors = {}
+
+        # Валидация
+        if "site_url" in data:
+            url_val = str(data["site_url"]).strip()
+            if not (url_val.startswith("http://") or url_val.startswith("https://")):
+                validation_errors["site_url"] = "URL должен начинаться с http:// или https://"
+            elif not url_val.endswith("/"):
+                validation_errors["site_url"] = "URL должен заканчиваться на /"
+
+        if "meta_description" in data:
+            if len(str(data.get("meta_description") or "")) > 200:
+                validation_errors["meta_description"] = "Не более 200 символов"
+
+        if "timezone" in data:
+            tz_val = str(data["timezone"]).strip()
+            if tz_val not in pytz.all_timezones_set:
+                validation_errors["timezone"] = "Неверный часовой пояс"
+
+        if validation_errors:
+            conn.close()
+            return {"statusCode": 422, "headers": CORS, "body": json.dumps({"errors": validation_errors})}
+
+        cur = conn.cursor()
+        for key, value in data.items():
+            if key not in VALID_KEYS:
+                continue
+            str_val = str(value).lower() if isinstance(value, bool) else str(value)
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.settings (key, value, updated_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()""",
+                (key, str_val)
+            )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── SERVER TIME ────────────────────────────────────────────────────────────
+    if action == "server_time":
+        tz_name = qs.get("timezone") or body.get("timezone") or "UTC"
+        try:
+            tz = pytz.timezone(tz_name)
+        except pytz.UnknownTimeZoneError:
+            return err("Неверный часовой пояс")
+
+        now = datetime.now(pytz.utc).astimezone(tz)
+        return ok({"datetime": now.strftime("%Y-%m-%d %H:%M:%S"), "timezone": tz_name})
 
     return err("Укажите action")

@@ -39,4 +39,13 @@ export const adminApi = {
 
   qlReorder: (items: { id: number; sort_order: number }[]) =>
     call({ action: "ql_reorder", items }),
+
+  settingsGet: (group?: string) =>
+    call({ action: "settings_get", group: group || "general" }),
+
+  settingsSave: (data: Record<string, unknown>) =>
+    call({ action: "settings_save", data }),
+
+  serverTime: (timezone: string) =>
+    call({ action: "server_time", timezone }),
 };

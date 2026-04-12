@@ -44,6 +44,42 @@
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_get без токена — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "settings_get", "group": "general"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "settings_save без данных — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "settings_save", "data": {"site_name": "Test"}},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "server_time UTC — 200",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "server_time", "timezone": "UTC"},
+      "expectedStatus": 200,
+      "bodyMatcher": "partial",
+      "expectedBody": {"timezone": "UTC"}
+    },
+    {
+      "name": "server_time неверный TZ — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "server_time", "timezone": "Invalid/Zone"},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Неверный часовой пояс"}
     }
   ]
 }

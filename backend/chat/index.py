@@ -80,19 +80,23 @@ def decrypt_message(encrypted_b64: str, key_hex: str) -> str:
 
 
 def fmt_msg(row, key_hex: str) -> dict:
+    is_removed = row[12] if len(row) > 12 else False
+    edited_at = row[13] if len(row) > 13 else None
     return {
         "id": row[0],
         "chat_id": row[1],
         "sender_id": row[2],
         "sender_name": row[3],
         "sender_avatar": row[4],
-        "content": decrypt_message(row[5], key_hex),
+        "content": "Сообщение удалено" if is_removed else decrypt_message(row[5], key_hex),
         "is_read": row[6],
         "created_at": row[7].isoformat() if row[7] else None,
-        "ad_id": row[8],
-        "ad_title": row[9],
-        "ad_price": row[10],
-        "ad_photo": row[11],
+        "ad_id": None if is_removed else row[8],
+        "ad_title": None if is_removed else row[9],
+        "ad_price": None if is_removed else row[10],
+        "ad_photo": None if is_removed else row[11],
+        "is_removed": is_removed,
+        "edited_at": edited_at.isoformat() if edited_at else None,
     }
 
 
@@ -160,13 +164,16 @@ def handler(event: dict, context) -> dict:
                    u2.id, u2.name, u2.avatar_url,
                    c.last_message_at,
                    (SELECT COUNT(*) FROM {SCHEMA}.messages m
-                    WHERE m.chat_id=c.id AND m.is_read=FALSE AND m.sender_id != %s) as unread
+                    WHERE m.chat_id=c.id AND m.is_read=FALSE AND m.sender_id != %s AND m.is_removed=FALSE) as unread,
+                   c.removed_by_user1, c.removed_by_user2
             FROM {SCHEMA}.chats c
             JOIN {SCHEMA}.users u1 ON u1.id=c.user1_id
             JOIN {SCHEMA}.users u2 ON u2.id=c.user2_id
-            WHERE c.user1_id=%s OR c.user2_id=%s
+            WHERE (c.user1_id=%s OR c.user2_id=%s)
+              AND NOT (c.user1_id=%s AND c.removed_by_user1=TRUE)
+              AND NOT (c.user2_id=%s AND c.removed_by_user2=TRUE)
             ORDER BY c.last_message_at DESC
-        """, (user_id, user_id, user_id))
+        """, (user_id, user_id, user_id, user_id, user_id))
         rows = cur.fetchall()
 
         chats = []
@@ -203,7 +210,8 @@ def handler(event: dict, context) -> dict:
             return err("Укажите chat_id")
 
         cur.execute(
-            f"SELECT id, encrypt_key FROM {SCHEMA}.chats WHERE id=%s AND (user1_id=%s OR user2_id=%s)",
+            f"""SELECT id, encrypt_key, user1_id, cleared_at_user1, cleared_at_user2
+                FROM {SCHEMA}.chats WHERE id=%s AND (user1_id=%s OR user2_id=%s)""",
             (int(chat_id), user_id, user_id)
         )
         chat = cur.fetchone()
@@ -212,16 +220,23 @@ def handler(event: dict, context) -> dict:
             return err("Чат не найден", 404)
 
         key_hex = chat[1]
+        # Учитываем cleared_at — показываем только сообщения после очистки
+        is_user1 = chat[2] == user_id
+        cleared_at = chat[3] if is_user1 else chat[4]
+        cleared_filter = "AND m.created_at > %s" if cleared_at else ""
+        cleared_params = [cleared_at] if cleared_at else []
+
         cur.execute(f"""
             SELECT m.id, m.chat_id, m.sender_id, u.name, u.avatar_url,
                    m.content, m.is_read, m.created_at,
-                   m.ad_id, m.ad_title, m.ad_price, m.ad_photo
+                   m.ad_id, m.ad_title, m.ad_price, m.ad_photo,
+                   m.is_removed, m.edited_at
             FROM {SCHEMA}.messages m
             JOIN {SCHEMA}.users u ON u.id=m.sender_id
-            WHERE m.chat_id=%s AND m.id > %s
+            WHERE m.chat_id=%s AND m.id > %s {cleared_filter}
             ORDER BY m.created_at ASC
             LIMIT 100
-        """, (int(chat_id), since_id))
+        """, [int(chat_id), since_id] + cleared_params)
         rows = cur.fetchall()
 
         # Отмечаем прочитанными
@@ -578,6 +593,113 @@ def handler(event: dict, context) -> dict:
             f"UPDATE {SCHEMA}.auto_reply_rules SET removed=TRUE WHERE id=%s AND user_id=%s",
             (int(rule_id), user_id)
         )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── edit_message — редактировать своё сообщение ──────────────────────────
+    if action == "edit_message":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        msg_id = body.get("message_id")
+        new_content = (body.get("content") or "").strip()
+        if not msg_id or not new_content:
+            conn.close()
+            return err("Укажите message_id и content")
+        # Проверяем что это наше сообщение и оно не удалено
+        cur.execute(
+            f"SELECT chat_id, sender_id, is_removed FROM {SCHEMA}.messages WHERE id=%s",
+            (int(msg_id),)
+        )
+        msg_row = cur.fetchone()
+        if not msg_row or msg_row[1] != user_id or msg_row[2]:
+            conn.close()
+            return err("Сообщение не найдено или нет прав", 403)
+        # Получаем ключ чата
+        cur.execute(f"SELECT encrypt_key FROM {SCHEMA}.chats WHERE id=%s", (msg_row[0],))
+        key_row = cur.fetchone()
+        if not key_row:
+            conn.close()
+            return err("Чат не найден", 404)
+        filters = get_word_filters(cur)
+        new_content = apply_filters(new_content, filters)
+        encrypted = encrypt_message(new_content, key_row[0])
+        cur.execute(
+            f"UPDATE {SCHEMA}.messages SET content=%s, edited_at=NOW() WHERE id=%s",
+            (encrypted, int(msg_id))
+        )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── remove_message — удалить своё сообщение ───────────────────────────────
+    if action == "remove_message":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        msg_id = body.get("message_id")
+        if not msg_id:
+            conn.close()
+            return err("Укажите message_id")
+        cur.execute(
+            f"SELECT sender_id FROM {SCHEMA}.messages WHERE id=%s",
+            (int(msg_id),)
+        )
+        row = cur.fetchone()
+        if not row or row[0] != user_id:
+            conn.close()
+            return err("Сообщение не найдено или нет прав", 403)
+        cur.execute(
+            f"UPDATE {SCHEMA}.messages SET is_removed=TRUE, content=content WHERE id=%s",
+            (int(msg_id),)
+        )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── clear_chat — очистить историю чата (только у себя) ───────────────────
+    if action == "clear_chat":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        chat_id_val = body.get("chat_id")
+        if not chat_id_val:
+            conn.close()
+            return err("Укажите chat_id")
+        cur.execute(
+            f"SELECT user1_id, user2_id FROM {SCHEMA}.chats WHERE id=%s AND (user1_id=%s OR user2_id=%s)",
+            (int(chat_id_val), user_id, user_id)
+        )
+        chat_row = cur.fetchone()
+        if not chat_row:
+            conn.close()
+            return err("Чат не найден", 404)
+        col = "cleared_at_user1" if chat_row[0] == user_id else "cleared_at_user2"
+        cur.execute(f"UPDATE {SCHEMA}.chats SET {col}=NOW() WHERE id=%s", (int(chat_id_val),))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── leave_chat — скрыть чат из списка (у себя) ───────────────────────────
+    if action == "leave_chat":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        chat_id_val = body.get("chat_id")
+        if not chat_id_val:
+            conn.close()
+            return err("Укажите chat_id")
+        cur.execute(
+            f"SELECT user1_id, user2_id FROM {SCHEMA}.chats WHERE id=%s AND (user1_id=%s OR user2_id=%s)",
+            (int(chat_id_val), user_id, user_id)
+        )
+        chat_row = cur.fetchone()
+        if not chat_row:
+            conn.close()
+            return err("Чат не найден", 404)
+        col = "removed_by_user1" if chat_row[0] == user_id else "removed_by_user2"
+        cur.execute(f"UPDATE {SCHEMA}.chats SET {col}=TRUE WHERE id=%s", (int(chat_id_val),))
         conn.commit()
         conn.close()
         return ok({"ok": True})

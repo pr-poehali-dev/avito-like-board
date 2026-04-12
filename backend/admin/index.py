@@ -1810,4 +1810,81 @@ def handler(event: dict, context) -> dict:
             ]
         })
 
+    # ── CHAT: список чатов ─────────────────────────────────────────────────────
+    if action == "chats_list":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT c.id, u1.name, u2.name, c.last_message_at,
+                   (SELECT COUNT(*) FROM {SCHEMA}.messages m WHERE m.chat_id=c.id) AS msg_count
+            FROM {SCHEMA}.chats c
+            JOIN {SCHEMA}.users u1 ON u1.id=c.user1_id
+            JOIN {SCHEMA}.users u2 ON u2.id=c.user2_id
+            ORDER BY c.last_message_at DESC NULLS LAST
+            LIMIT 200
+        """)
+        rows = cur.fetchall()
+        conn.close()
+        return ok({"ok": True, "chats": [
+            {"id": r[0], "user1_name": r[1], "user2_name": r[2],
+             "last_message_at": r[3].isoformat() if r[3] else None, "msg_count": r[4]}
+            for r in rows
+        ]})
+
+    # ── WORD FILTERS: список ───────────────────────────────────────────────────
+    if action == "word_filters_list":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cur = conn.cursor()
+        cur.execute(f"SELECT id, word, replacement FROM {SCHEMA}.word_filters ORDER BY id")
+        rows = cur.fetchall()
+        conn.close()
+        return ok({"ok": True, "filters": [{"id": r[0], "word": r[1], "replacement": r[2]} for r in rows]})
+
+    # ── WORD FILTERS: добавить ─────────────────────────────────────────────────
+    if action == "word_filter_add":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        word = str(body.get("word") or "").strip()
+        replacement = str(body.get("replacement") or "***").strip()
+        if not word:
+            conn.close()
+            return err("Укажите слово")
+        cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.word_filters (word, replacement) VALUES (%s, %s) ON CONFLICT (word) DO UPDATE SET replacement=EXCLUDED.replacement RETURNING id",
+            (word, replacement)
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": new_id})
+
+    # ── WORD FILTERS: удалить ──────────────────────────────────────────────────
+    if action == "word_filter_remove":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        fid = body.get("id")
+        if not fid:
+            conn.close()
+            return err("Укажите id")
+        cur = conn.cursor()
+        cur.execute(f"UPDATE {SCHEMA}.word_filters SET word=word WHERE id=%s", (int(fid),))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
     return err("Укажите action")

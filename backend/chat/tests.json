@@ -1,0 +1,40 @@
+{
+  "tests": [
+    {
+      "name": "POST list_chats без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "list_chats"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"ok": false}
+    },
+    {
+      "name": "POST send_message без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "send_message", "chat_id": 1, "content": "test"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"ok": false}
+    },
+    {
+      "name": "POST start_chat без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "start_chat", "user_id": 1},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"ok": false}
+    },
+    {
+      "name": "POST unknown action — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "unknown"},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial",
+      "expectedBody": {"ok": false}
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import AdminApp from "./admin/AdminApp";
 import CategoryPage from "./pages/CategoryPage";
 import OfflinePage from "./pages/OfflinePage";
+import ChatPage from "./pages/ChatPage";
 import { ADS_URL } from "./pages/index/types";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,7 @@ const App = () => (
         <SiteGuard>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="/:slug" element={<CategoryPage />} />
             <Route path="/:slug/:subslug" element={<CategoryPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

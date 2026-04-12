@@ -9,6 +9,7 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminAds from "./pages/AdminAds";
 import AdminLogs from "./pages/AdminLogs";
 import AdminCategories from "./pages/AdminCategories";
+import AdminChat from "./pages/AdminChat";
 
 export default function AdminApp({ basePath = "/admin" }: { basePath?: string }) {
   return (
@@ -28,6 +29,7 @@ export default function AdminApp({ basePath = "/admin" }: { basePath?: string })
           <Route path="users" element={<AdminUsers />} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="ads" element={<AdminAds />} />
+          <Route path="chat" element={<AdminChat />} />
           <Route path="logs" element={<AdminLogs />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />

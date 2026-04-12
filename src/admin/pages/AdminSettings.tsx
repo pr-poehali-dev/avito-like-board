@@ -588,6 +588,309 @@ function SecuritySettingsTab() {
   );
 }
 
+// ─── Вкладка Объявления ───────────────────────────────────────────────────────
+interface AdsSettings {
+  ads_per_page: number; ads_per_page_search: number; max_search_results: number;
+  min_search_chars: number; quick_search_limit: number; related_ads_count: number;
+  related_same_category_only: boolean; popular_ads_count: number; tag_cloud_limit: number;
+  max_pending_ads: number; new_ad_hours: number; updated_ad_hours: number;
+  category_separator: string; tag_separator: string; speedbar_separator: string;
+  ad_date_format: string; ad_sort_by: string; ad_sort_order: string;
+  catalog_sort_by: string; catalog_sort_order: string; indexnow_enabled: boolean;
+  indexnow_provider: string; decline_dates: boolean; auto_generate_meta: boolean;
+  notify_new_ads: boolean; allow_user_tags: boolean; warn_concurrent_edit: boolean;
+  rating_type: string;
+}
+
+const ADS_DEFAULTS: AdsSettings = {
+  ads_per_page: 10, ads_per_page_search: 10, max_search_results: 0,
+  min_search_chars: 4, quick_search_limit: 5, related_ads_count: 5,
+  related_same_category_only: true, popular_ads_count: 5, tag_cloud_limit: 20,
+  max_pending_ads: 0, new_ad_hours: 24, updated_ad_hours: 24,
+  category_separator: "»", tag_separator: "/", speedbar_separator: "»",
+  ad_date_format: "j-m-Y, H:i", ad_sort_by: "date", ad_sort_order: "desc",
+  catalog_sort_by: "date", catalog_sort_order: "desc", indexnow_enabled: false,
+  indexnow_provider: "indexnow", decline_dates: false, auto_generate_meta: false,
+  notify_new_ads: false, allow_user_tags: true, warn_concurrent_edit: true,
+  rating_type: "stars",
+};
+
+const SORT_BY_OPTIONS = [
+  { value: "date", label: "По дате публикации" },
+  { value: "edit_date", label: "По дате редактирования" },
+  { value: "rating", label: "По рейтингу" },
+  { value: "views", label: "По просмотрам" },
+  { value: "title", label: "По алфавиту" },
+];
+
+const SORT_ORDER_OPTIONS = [
+  { value: "desc", label: "По убыванию" },
+  { value: "asc", label: "По возрастанию" },
+];
+
+const DATE_FORMATS = [
+  { value: "j-m-Y, H:i", label: "j-m-Y, H:i  →  5-01-2026, 14:30" },
+  { value: "d.m.Y H:i", label: "d.m.Y H:i  →  05.01.2026 14:30" },
+  { value: "Y-m-d H:i", label: "Y-m-d H:i  →  2026-01-05 14:30" },
+  { value: "d/m/Y", label: "d/m/Y  →  05/01/2026" },
+  { value: "F j, Y", label: "F j, Y  →  January 5, 2026" },
+];
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-6 pt-5 pb-2">
+      <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">{children}</p>
+    </div>
+  );
+}
+
+function SelectField({ value, onChange, options }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    >
+      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+}
+
+function AdsSettingsTab() {
+  const [form, setForm] = useState<AdsSettings>(ADS_DEFAULTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<keyof AdsSettings, string>>>({});
+
+  useEffect(() => {
+    adminApi.settingsGet("ads").then((d) => {
+      if (!d.error) setForm({ ...ADS_DEFAULTS, ...(d as unknown as AdsSettings) });
+      setLoading(false);
+    });
+  }, []);
+
+  const set = <K extends keyof AdsSettings>(key: K, value: AdsSettings[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const validate = (): boolean => {
+    const e: Partial<Record<keyof AdsSettings, string>> = {};
+    const minOne: (keyof AdsSettings)[] = [
+      "ads_per_page", "ads_per_page_search", "min_search_chars",
+      "quick_search_limit", "popular_ads_count", "tag_cloud_limit",
+    ];
+    minOne.forEach((k) => { if ((form[k] as number) < 1) e[k] = "Минимум 1"; });
+    const minZero: (keyof AdsSettings)[] = [
+      "max_search_results", "related_ads_count", "max_pending_ads",
+      "new_ad_hours", "updated_ad_hours",
+    ];
+    minZero.forEach((k) => { if ((form[k] as number) < 0) e[k] = "Минимум 0"; });
+    if (!form.ad_date_format.trim()) e.ad_date_format = "Не может быть пустым";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    const d = await adminApi.settingsSave(form as unknown as Record<string, unknown>);
+    setSaving(false);
+    if (d.ok) toast.success("Настройки объявлений сохранены");
+    else if (d.errors) { setErrors(d.errors as Partial<Record<keyof AdsSettings, string>>); toast.error("Исправьте ошибки"); }
+    else toast.error((d.error as string) || "Ошибка сохранения");
+  };
+
+  const SaveButton = () => (
+    <div className="flex justify-end mt-6">
+      <button onClick={handleSave} disabled={saving}
+        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+        {saving
+          ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</>
+          : <>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+            </svg>
+            Сохранить настройки
+          </>}
+      </button>
+    </div>
+  );
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+
+      {/* ── Отображение ── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+        <SectionTitle>Отображение</SectionTitle>
+        <Field label="Объявлений на страницу" hint="Основной список">
+          <div><NumberInput value={form.ads_per_page} onChange={(v) => set("ads_per_page", v)} min={1} />
+          {errors.ads_per_page && <p className="text-red-400 text-xs mt-1">{errors.ads_per_page}</p>}</div>
+        </Field>
+        <Field label="Похожих объявлений" hint="Блок «Похожие» на странице объявления">
+          <div><NumberInput value={form.related_ads_count} onChange={(v) => set("related_ads_count", v)} min={0} />
+          {errors.related_ads_count && <p className="text-red-400 text-xs mt-1">{errors.related_ads_count}</p>}</div>
+        </Field>
+        <Field label="Только та же категория" hint="Искать похожие только в той же категории">
+          <Toggle checked={form.related_same_category_only} onChange={(v) => set("related_same_category_only", v)} />
+        </Field>
+        <Field label="Популярных объявлений" hint="Блок популярных на главной">
+          <div><NumberInput value={form.popular_ads_count} onChange={(v) => set("popular_ads_count", v)} min={1} />
+          {errors.popular_ads_count && <p className="text-red-400 text-xs mt-1">{errors.popular_ads_count}</p>}</div>
+        </Field>
+        <Field label="Тегов в облаке" hint="Максимум ключевых слов в облаке тегов">
+          <div><NumberInput value={form.tag_cloud_limit} onChange={(v) => set("tag_cloud_limit", v)} min={1} />
+          {errors.tag_cloud_limit && <p className="text-red-400 text-xs mt-1">{errors.tag_cloud_limit}</p>}</div>
+        </Field>
+        <Field label="«Новое» — часов" hint="Сколько часов объявление считается новым">
+          <div><NumberInput value={form.new_ad_hours} onChange={(v) => set("new_ad_hours", v)} min={0} />
+          {errors.new_ad_hours && <p className="text-red-400 text-xs mt-1">{errors.new_ad_hours}</p>}</div>
+        </Field>
+        <Field label="«Обновлено» — часов" hint="Сколько часов объявление считается обновлённым">
+          <div><NumberInput value={form.updated_ad_hours} onChange={(v) => set("updated_ad_hours", v)} min={0} />
+          {errors.updated_ad_hours && <p className="text-red-400 text-xs mt-1">{errors.updated_ad_hours}</p>}</div>
+        </Field>
+        <Field label="Формат даты" hint="Формат PHP date для отображения даты объявления">
+          <div className="flex flex-col gap-2">
+            <SelectField value={form.ad_date_format} onChange={(v) => set("ad_date_format", v)} options={DATE_FORMATS} />
+            <TextInput value={form.ad_date_format} onChange={(v) => set("ad_date_format", v)} placeholder="j-m-Y, H:i" />
+            {errors.ad_date_format && <p className="text-red-400 text-xs">{errors.ad_date_format}</p>}
+          </div>
+        </Field>
+        <Field label="Разделитель категорий" hint="Символ между уровнями категорий">
+          <TextInput value={form.category_separator} onChange={(v) => set("category_separator", v)} placeholder="»" />
+        </Field>
+        <Field label="Разделитель тегов">
+          <TextInput value={form.tag_separator} onChange={(v) => set("tag_separator", v)} placeholder="/" />
+        </Field>
+        <Field label="Разделитель speedbar">
+          <TextInput value={form.speedbar_separator} onChange={(v) => set("speedbar_separator", v)} placeholder="»" />
+        </Field>
+        <Field label="Тип рейтинга">
+          <SelectField value={form.rating_type} onChange={(v) => set("rating_type", v)}
+            options={[{ value: "stars", label: "Пятизвёздочный рейтинг" }, { value: "likes", label: "Лайки / Дизлайки" }]} />
+        </Field>
+      </div>
+
+      {/* ── Поиск ── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+        <SectionTitle>Поиск</SectionTitle>
+        <Field label="Объявлений на странице поиска">
+          <div><NumberInput value={form.ads_per_page_search} onChange={(v) => set("ads_per_page_search", v)} min={1} />
+          {errors.ads_per_page_search && <p className="text-red-400 text-xs mt-1">{errors.ads_per_page_search}</p>}</div>
+        </Field>
+        <Field label="Макс. результатов поиска" hint="0 — без ограничений">
+          <div><NumberInput value={form.max_search_results} onChange={(v) => set("max_search_results", v)} min={0} />
+          {errors.max_search_results && <p className="text-red-400 text-xs mt-1">{errors.max_search_results}</p>}</div>
+        </Field>
+        <Field label="Мин. символов для поиска">
+          <div><NumberInput value={form.min_search_chars} onChange={(v) => set("min_search_chars", v)} min={1} />
+          {errors.min_search_chars && <p className="text-red-400 text-xs mt-1">{errors.min_search_chars}</p>}</div>
+        </Field>
+        <Field label="Результатов в быстром поиске">
+          <div><NumberInput value={form.quick_search_limit} onChange={(v) => set("quick_search_limit", v)} min={1} />
+          {errors.quick_search_limit && <p className="text-red-400 text-xs mt-1">{errors.quick_search_limit}</p>}</div>
+        </Field>
+      </div>
+
+      {/* ── Сортировка ── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+        <SectionTitle>Сортировка</SectionTitle>
+        <Field label="Сортировка объявлений">
+          <div className="grid grid-cols-2 gap-2">
+            <SelectField value={form.ad_sort_by} onChange={(v) => set("ad_sort_by", v)} options={SORT_BY_OPTIONS} />
+            <SelectField value={form.ad_sort_order} onChange={(v) => set("ad_sort_order", v)} options={SORT_ORDER_OPTIONS} />
+          </div>
+        </Field>
+        <Field label="Сортировка в каталоге">
+          <div className="grid grid-cols-2 gap-2">
+            <SelectField value={form.catalog_sort_by} onChange={(v) => set("catalog_sort_by", v)} options={SORT_BY_OPTIONS} />
+            <SelectField value={form.catalog_sort_order} onChange={(v) => set("catalog_sort_order", v)} options={SORT_ORDER_OPTIONS} />
+          </div>
+        </Field>
+      </div>
+
+      {/* ── Модерация ── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+        <SectionTitle>Модерация и ограничения</SectionTitle>
+        <Field label="Макс. объявлений на модерации" hint="0 — без ограничений">
+          <div><NumberInput value={form.max_pending_ads} onChange={(v) => set("max_pending_ads", v)} min={0} />
+          {errors.max_pending_ads && <p className="text-red-400 text-xs mt-1">{errors.max_pending_ads}</p>}</div>
+        </Field>
+        <Field label="Разрешить теги от пользователей" hint="Добавление ключевых слов в облако при публикации">
+          <Toggle checked={form.allow_user_tags} onChange={(v) => set("allow_user_tags", v)} />
+        </Field>
+        <Field label="Уведомление о параллельном редактировании">
+          <Toggle checked={form.warn_concurrent_edit} onChange={(v) => set("warn_concurrent_edit", v)} />
+        </Field>
+      </div>
+
+      {/* ── Прочее ── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+        <SectionTitle>Прочее</SectionTitle>
+        <Field label="Склонять даты" hint="Склонение дат при выводе тегом {date}">
+          <Toggle checked={form.decline_dates} onChange={(v) => set("decline_dates", v)} />
+        </Field>
+        <Field label="Авто-генерация метатегов" hint="Автоматически формировать description и keywords для объявлений">
+          <Toggle checked={form.auto_generate_meta} onChange={(v) => set("auto_generate_meta", v)} />
+        </Field>
+        <Field label="E-Mail при новых объявлениях" hint="Отправлять уведомление администратору">
+          <Toggle checked={form.notify_new_ads} onChange={(v) => set("notify_new_ads", v)} />
+        </Field>
+      </div>
+
+      {/* ── IndexNow ── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+        <SectionTitle>IndexNow</SectionTitle>
+        <Field label="Включить IndexNow" hint="Автоматически уведомлять поисковые системы о новых объявлениях">
+          <Toggle checked={form.indexnow_enabled} onChange={(v) => set("indexnow_enabled", v)} />
+        </Field>
+        {form.indexnow_enabled && (
+          <Field label="Провайдер">
+            <SelectField value={form.indexnow_provider} onChange={(v) => set("indexnow_provider", v)}
+              options={[
+                { value: "indexnow", label: "IndexNow" },
+                { value: "yandex", label: "Yandex" },
+                { value: "bing", label: "Bing" },
+                { value: "naver", label: "Naver" },
+                { value: "seznam", label: "Seznam" },
+              ]} />
+          </Field>
+        )}
+        {form.indexnow_enabled && (
+          <div className="px-6 py-4">
+            <div className="bg-indigo-900/20 border border-indigo-700/40 rounded-xl p-4 text-sm">
+              <p className="text-indigo-300 font-semibold mb-2">Необходима настройка файла</p>
+              <p className="text-gray-400 text-xs mb-3">Создайте файл в корне сайта:</p>
+              <div className="flex flex-col gap-1.5">
+                <div className="bg-gray-900 rounded-lg px-3 py-2 font-mono text-xs text-emerald-400">
+                  Имя файла: ff7c909509a52d37fae7ec184e1bf4ab.txt
+                </div>
+                <div className="bg-gray-900 rounded-lg px-3 py-2 font-mono text-xs text-emerald-400">
+                  Содержимое: ff7c909509a52d37fae7ec184e1bf4ab
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <SaveButton />
+    </div>
+  );
+}
+
 // ─── Главный компонент страницы ───────────────────────────────────────────────
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState("general");
@@ -619,7 +922,8 @@ export default function AdminSettings() {
       {/* Контент вкладки */}
       {activeTab === "general" && <GeneralSettingsTab />}
       {activeTab === "security" && <SecuritySettingsTab />}
-      {activeTab !== "general" && activeTab !== "security" && (
+      {activeTab === "ads" && <AdsSettingsTab />}
+      {activeTab !== "general" && activeTab !== "security" && activeTab !== "ads" && (
         <StubTab label={TABS.find((t) => t.id === activeTab)?.label || ""} />
       )}
     </div>

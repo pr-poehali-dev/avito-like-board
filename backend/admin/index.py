@@ -327,15 +327,34 @@ def handler(event: dict, context) -> dict:
                 "admin_inactivity_timeout", "reset_auth_key_on_login",
                 "admin_logs_retention_days", "admin_path",
             },
+            "ads": {
+                "ads_per_page", "ads_per_page_search", "max_search_results",
+                "min_search_chars", "quick_search_limit", "related_ads_count",
+                "related_same_category_only", "popular_ads_count", "tag_cloud_limit",
+                "max_pending_ads", "new_ad_hours", "updated_ad_hours",
+                "category_separator", "tag_separator", "speedbar_separator",
+                "ad_date_format", "ad_sort_by", "ad_sort_order",
+                "catalog_sort_by", "catalog_sort_order", "indexnow_enabled",
+                "indexnow_provider", "decline_dates", "auto_generate_meta",
+                "notify_new_ads", "allow_user_tags", "warn_concurrent_edit",
+                "rating_type",
+            },
         }
 
         BOOL_KEYS = {
             "force_https", "redirect_www", "use_custom_404", "site_offline",
             "display_php_errors", "block_iframe", "reset_auth_key_on_login",
+            "related_same_category_only", "indexnow_enabled", "decline_dates",
+            "auto_generate_meta", "notify_new_ads", "allow_user_tags",
+            "warn_concurrent_edit",
         }
         INT_KEYS = {
             "max_login_attempts", "login_block_timeout",
             "admin_inactivity_timeout", "admin_logs_retention_days",
+            "ads_per_page", "ads_per_page_search", "max_search_results",
+            "min_search_chars", "quick_search_limit", "related_ads_count",
+            "popular_ads_count", "tag_cloud_limit", "max_pending_ads",
+            "new_ad_hours", "updated_ad_hours",
         }
 
         cur = conn.cursor()
@@ -385,6 +404,17 @@ def handler(event: dict, context) -> dict:
             "allowed_admin_ips", "max_login_attempts", "login_block_timeout",
             "admin_inactivity_timeout", "reset_auth_key_on_login",
             "admin_logs_retention_days", "admin_path",
+            # ads
+            "ads_per_page", "ads_per_page_search", "max_search_results",
+            "min_search_chars", "quick_search_limit", "related_ads_count",
+            "related_same_category_only", "popular_ads_count", "tag_cloud_limit",
+            "max_pending_ads", "new_ad_hours", "updated_ad_hours",
+            "category_separator", "tag_separator", "speedbar_separator",
+            "ad_date_format", "ad_sort_by", "ad_sort_order",
+            "catalog_sort_by", "catalog_sort_order", "indexnow_enabled",
+            "indexnow_provider", "decline_dates", "auto_generate_meta",
+            "notify_new_ads", "allow_user_tags", "warn_concurrent_edit",
+            "rating_type",
         }
         validation_errors = {}
 
@@ -446,6 +476,56 @@ def handler(event: dict, context) -> dict:
                 validation_errors["admin_path"] = "Допустимы только буквы, цифры, - и /"
             elif len(path_val) > 100:
                 validation_errors["admin_path"] = "Максимум 100 символов"
+
+        # ── Валидация ads ──────────────────────────────────────────────────────
+        ADS_INT_MIN1 = {
+            "ads_per_page", "ads_per_page_search", "min_search_chars",
+            "quick_search_limit", "popular_ads_count", "tag_cloud_limit",
+        }
+        ADS_INT_MIN0 = {
+            "max_search_results", "related_ads_count", "max_pending_ads",
+            "new_ad_hours", "updated_ad_hours",
+        }
+        for k in ADS_INT_MIN1:
+            if k in data:
+                try:
+                    v = int(data[k])
+                    if v < 1:
+                        validation_errors[k] = "Минимальное значение: 1"
+                except (ValueError, TypeError):
+                    validation_errors[k] = "Должно быть целым числом"
+        for k in ADS_INT_MIN0:
+            if k in data:
+                try:
+                    v = int(data[k])
+                    if v < 0:
+                        validation_errors[k] = "Минимальное значение: 0"
+                except (ValueError, TypeError):
+                    validation_errors[k] = "Должно быть целым числом"
+
+        VALID_SORT_BY = {"date", "edit_date", "rating", "views", "title"}
+        VALID_SORT_ORDER = {"asc", "desc"}
+        for sort_key in ("ad_sort_by", "catalog_sort_by"):
+            if sort_key in data and str(data[sort_key]) not in VALID_SORT_BY:
+                validation_errors[sort_key] = f"Допустимые значения: {', '.join(VALID_SORT_BY)}"
+        for ord_key in ("ad_sort_order", "catalog_sort_order"):
+            if ord_key in data and str(data[ord_key]) not in VALID_SORT_ORDER:
+                validation_errors[ord_key] = "Допустимые значения: asc, desc"
+
+        VALID_PROVIDERS = {"indexnow", "yandex", "bing", "naver", "seznam"}
+        if "indexnow_provider" in data and str(data["indexnow_provider"]) not in VALID_PROVIDERS:
+            validation_errors["indexnow_provider"] = f"Допустимые значения: {', '.join(VALID_PROVIDERS)}"
+
+        VALID_RATING = {"stars", "likes"}
+        if "rating_type" in data and str(data["rating_type"]) not in VALID_RATING:
+            validation_errors["rating_type"] = "Допустимые значения: stars, likes"
+
+        for sep_key in ("category_separator", "tag_separator", "speedbar_separator", "ad_date_format"):
+            if sep_key in data and len(str(data.get(sep_key) or "")) > 255:
+                validation_errors[sep_key] = "Максимум 255 символов"
+
+        if "ad_date_format" in data and not str(data.get("ad_date_format") or "").strip():
+            validation_errors["ad_date_format"] = "Формат даты не может быть пустым"
 
         if validation_errors:
             conn.close()

@@ -156,7 +156,7 @@ function AdsTab({ profile }: { profile: Profile }) {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {ads.map(ad => (
-            <AdCard key={ad.id} ad={ad} isOwner={!!profile.is_owner} onOpen={() => window.open(`/?ad=${ad.id}`, "_blank")} />
+            <AdCard key={ad.id} ad={ad} isOwner={!!profile.is_owner} onOpen={() => navigate(`/ad/${ad.id}`)} />
           ))}
         </div>
       )}

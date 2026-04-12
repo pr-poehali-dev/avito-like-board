@@ -245,6 +245,20 @@
       "body": {"action": "acf_folder_list"},
       "expectedStatus": 401, "bodyMatcher": "partial",
       "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "ads_list без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "ads_list"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "ads_set_status без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "ads_set_status", "ad_ids": [1], "status": "active"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
     }
   ]
 }

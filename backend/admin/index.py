@@ -1147,6 +1147,136 @@ def handler(event: dict, context) -> dict:
         conn.close()
         return ok({"ok": True})
 
+    # ── ADS LIST ───────────────────────────────────────────────────────────────
+    if action == "ads_list":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+
+        search       = str(body.get("search") or qs.get("search") or "").strip()
+        status_f     = body.get("status") or qs.get("status") or ""
+        user_search  = str(body.get("user_search") or qs.get("user_search") or "").strip()
+        category_id  = body.get("category_id") or qs.get("category_id")
+        date_from    = body.get("date_from") or qs.get("date_from")
+        date_to      = body.get("date_to") or qs.get("date_to")
+        sort_by      = str(body.get("sort_by") or qs.get("sort_by") or "created_at")
+        sort_order   = "ASC" if str(body.get("sort_order") or qs.get("sort_order") or "desc").lower() == "asc" else "DESC"
+        page         = max(1, int(body.get("page") or qs.get("page") or 1))
+        per_page     = min(int(body.get("per_page") or qs.get("per_page") or 25), 100)
+        cf_filters   = body.get("custom_fields") or {}
+
+        SORT_MAP = {"created_at": "a.created_at", "title": "a.title", "price": "a.price", "views": "a.views"}
+        sort_col = SORT_MAP.get(sort_by, "a.created_at")
+
+        conditions = []
+        params = []
+
+        if search:
+            conditions.append("(a.title ILIKE %s OR a.description ILIKE %s)")
+            params += [f"%{search}%", f"%{search}%"]
+        if status_f:
+            conditions.append("a.status = %s")
+            params.append(status_f)
+        if user_search:
+            conditions.append("(u.username ILIKE %s OR u.email ILIKE %s OR u.name ILIKE %s)")
+            params += [f"%{user_search}%", f"%{user_search}%", f"%{user_search}%"]
+        if category_id:
+            conditions.append("(a.category_id = %s OR a.category = %s)")
+            params += [int(category_id), str(category_id)]
+        if date_from:
+            conditions.append("a.created_at >= %s")
+            params.append(date_from)
+        if date_to:
+            conditions.append("a.created_at <= %s")
+            params.append(date_to + " 23:59:59")
+
+        for field_id_str, field_val in cf_filters.items():
+            if not field_val:
+                continue
+            conditions.append(
+                f"EXISTS (SELECT 1 FROM {SCHEMA}.ad_custom_field_values cv WHERE cv.ad_id=a.id AND cv.field_id=%s AND cv.value ILIKE %s)"
+            )
+            params += [int(field_id_str), f"%{field_val}%"]
+
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT a.id, a.title, a.price, a.status, a.views, a.created_at,
+                   a.category, a.category_id, a.city,
+                   COALESCE(u.username, u.name) AS uname, u.email, u.id AS uid
+            FROM {SCHEMA}.ads a
+            LEFT JOIN {SCHEMA}.users u ON u.id = a.user_id
+            {where}
+            ORDER BY {sort_col} {sort_order}
+            LIMIT %s OFFSET %s
+        """, params + [per_page, (page - 1) * per_page])
+        rows = cur.fetchall()
+
+        cur.execute(f"""
+            SELECT COUNT(*) FROM {SCHEMA}.ads a
+            LEFT JOIN {SCHEMA}.users u ON u.id = a.user_id
+            {where}
+        """, params)
+        total = cur.fetchone()[0]
+        conn.close()
+
+        return ok({
+            "items": [
+                {"id": r[0], "title": r[1], "price": r[2], "status": r[3],
+                 "views": r[4], "created_at": str(r[5]) if r[5] else None,
+                 "category": r[6], "category_id": r[7], "city": r[8],
+                 "author_name": r[9], "author_email": r[10], "author_id": r[11]}
+                for r in rows
+            ],
+            "total": total, "page": page, "per_page": per_page
+        })
+
+    if action == "ads_set_status":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        ad_ids = body.get("ad_ids") or []
+        new_status = str(body.get("status") or "")
+        if not ad_ids or not new_status:
+            conn.close()
+            return err("Нужны ad_ids и status")
+        allowed = {"active", "pending", "rejected", "closed", "archived"}
+        if new_status not in allowed:
+            conn.close()
+            return err(f"Статус должен быть одним из: {', '.join(allowed)}")
+        ids_ph = ", ".join(["%s"] * len(ad_ids))
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.ads SET status=%s, updated_at=NOW() WHERE id IN ({ids_ph})",
+            [new_status] + [int(i) for i in ad_ids]
+        )
+        affected = cur.rowcount
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "affected": affected})
+
+    if action == "ads_get_cf":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT f.id, f.name, f.field_type, fld.name AS folder_name
+            FROM {SCHEMA}.ad_custom_fields f
+            LEFT JOIN {SCHEMA}.ad_custom_field_folders fld ON fld.id=f.folder_id
+            ORDER BY f.sort_order, f.id
+        """)
+        rows = cur.fetchall()
+        conn.close()
+        return ok({"items": [{"id": r[0], "name": r[1], "field_type": r[2], "folder_name": r[3]} for r in rows]})
+
     # ── CATEGORIES ─────────────────────────────────────────────────────────────
     if action == "cat_list":
         conn = get_conn()

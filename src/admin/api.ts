@@ -92,4 +92,8 @@ export const adminApi = {
   acfCreate: (data: Record<string, unknown>) => call({ action: "acf_create", ...data }),
   acfUpdate: (data: Record<string, unknown>) => call({ action: "acf_update", ...data }),
   acfRemove: (id: number) => call({ action: "acf_remove", id }),
+
+  adsList: (params: Record<string, unknown>) => call({ action: "ads_list", ...params }),
+  adsSetStatus: (ad_ids: number[], status: string) => call({ action: "ads_set_status", ad_ids, status }),
+  adsGetCf: () => call({ action: "ads_get_cf" }),
 };

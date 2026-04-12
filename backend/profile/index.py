@@ -10,7 +10,7 @@ from datetime import datetime
 import psycopg2
 import boto3
 
-SCHEMA = "t_p72465170_avito_like_board"
+SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "t_p72465170_avito_like_board")
 DSN = os.environ["DATABASE_URL"]
 
 CORS = {
@@ -208,17 +208,17 @@ def handler(event: dict, context) -> dict:
         if is_owner:
             if status_filter == "all":
                 cur.execute(f"""
-                    SELECT id, title, price, photos, status, created_at, views
+                    SELECT id, title, price, photos, status, created_at, COALESCE(views, 0)
                     FROM {SCHEMA}.ads WHERE user_id=%s ORDER BY created_at DESC LIMIT 50
                 """, (int(target_id),))
             else:
                 cur.execute(f"""
-                    SELECT id, title, price, photos, status, created_at, views
+                    SELECT id, title, price, photos, status, created_at, COALESCE(views, 0)
                     FROM {SCHEMA}.ads WHERE user_id=%s AND status=%s ORDER BY created_at DESC LIMIT 50
                 """, (int(target_id), status_filter))
         else:
             cur.execute(f"""
-                SELECT id, title, price, photos, status, created_at, views
+                SELECT id, title, price, photos, status, created_at, COALESCE(views, 0)
                 FROM {SCHEMA}.ads WHERE user_id=%s AND status='active' ORDER BY created_at DESC LIMIT 50
             """, (int(target_id),))
 

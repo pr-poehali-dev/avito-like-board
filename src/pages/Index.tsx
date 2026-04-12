@@ -626,57 +626,80 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Полоса категорий */}
+        {/* Мега-меню категорий */}
         <div className="hidden md:block border-t border-border">
           <div className="max-w-6xl mx-auto px-4">
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-1">
-              {/* Все категории — выпадающий список */}
-              <div className="relative shrink-0">
-                <button
-                  onClick={() => setCatMenuOpen((v) => !v)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${catMenuOpen ? "bg-[hsl(var(--accent))] text-white" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"}`}
-                >
+            <div className="flex items-center gap-0 relative" onMouseLeave={() => setCatMenuOpen(false)}>
+
+              {/* Кнопка «Все категории» */}
+              <div className="relative shrink-0" onMouseEnter={() => setCatMenuOpen(true)}>
+                <button className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 ${catMenuOpen ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"}`}>
                   <Icon name="LayoutGrid" size={14} />
                   Все категории
-                  <Icon name={catMenuOpen ? "ChevronUp" : "ChevronDown"} size={13} />
+                  <Icon name={catMenuOpen ? "ChevronUp" : "ChevronDown"} size={12} />
                 </button>
-                {catMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setCatMenuOpen(false)} />
-                    <div className="absolute left-0 top-full mt-1 z-50 w-64 bg-white rounded-xl shadow-lg border border-border py-1.5 animate-fade-in max-h-[70vh] overflow-y-auto">
-                      {dbCategories.length === 0 ? (
-                        <p className="px-4 py-3 text-sm text-[hsl(var(--muted-foreground))]">Нет категорий</p>
-                      ) : (
-                        dbCategories.filter((c) => !c.parent_id).map((cat) => (
-                          <button
-                            key={cat.id}
-                            onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); setCatMenuOpen(false); }}
-                            className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left group"
-                          >
-                            <span className="font-medium text-[hsl(var(--foreground))]">{cat.name}</span>
-                            {cat.ads_count > 0 && <span className="text-xs text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))]">{cat.ads_count}</span>}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </>
-                )}
               </div>
 
-              {/* Топ-8 корневых категорий напрямую */}
-              {dbCategories.filter((c) => !c.parent_id).slice(0, 8).map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); }}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                    selectedCategory === String(cat.id) && section === "home"
-                      ? "bg-[hsl(var(--accent))] text-white"
-                      : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
-                  }`}
-                >
-                  {cat.name}
-                </button>
+              {/* Остальные корневые категории */}
+              {dbCategories.filter((c) => !c.parent_id).map((cat) => (
+                <div key={cat.id} className="relative shrink-0 group/cat" onMouseEnter={() => setCatMenuOpen(false)}>
+                  <button
+                    onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); }}
+                    className={`px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 ${
+                      selectedCategory === String(cat.id) && section === "home"
+                        ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]"
+                        : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                </div>
               ))}
+
+              {/* Мега-панель — появляется при hover на «Все категории» */}
+              {catMenuOpen && dbCategories.length > 0 && (
+                <div
+                  className="absolute left-0 top-full z-50 bg-white border border-border shadow-2xl rounded-b-2xl animate-fade-in"
+                  style={{ minWidth: "680px", maxWidth: "900px" }}
+                  onMouseEnter={() => setCatMenuOpen(true)}
+                >
+                  <div className="grid grid-cols-3 gap-0 p-5 max-h-[70vh] overflow-y-auto">
+                    {dbCategories.filter((c) => !c.parent_id).map((root) => {
+                      const children = dbCategories.filter((c) => c.parent_id === root.id);
+                      return (
+                        <div key={root.id} className="py-2 px-3">
+                          <button
+                            onClick={() => { setSelectedCategory(String(root.id)); setSection("home"); setCatMenuOpen(false); }}
+                            className="text-sm font-semibold text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))] transition-colors text-left block mb-2"
+                          >
+                            {root.name}
+                          </button>
+                          <div className="flex flex-col gap-1">
+                            {children.slice(0, 6).map((child) => (
+                              <button
+                                key={child.id}
+                                onClick={() => { setSelectedCategory(String(child.id)); setSection("home"); setCatMenuOpen(false); }}
+                                className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors text-left"
+                              >
+                                {child.name}
+                              </button>
+                            ))}
+                            {children.length > 6 && (
+                              <button
+                                onClick={() => { setSelectedCategory(String(root.id)); setSection("home"); setCatMenuOpen(false); }}
+                                className="text-xs text-[hsl(var(--accent))] hover:underline text-left mt-0.5"
+                              >
+                                Ещё {children.length - 6}...
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>

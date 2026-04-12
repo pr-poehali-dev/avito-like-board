@@ -64,6 +64,28 @@ def upload_photos(photos_b64: list) -> list:
     return urls
 
 
+def is_site_offline(cur) -> bool:
+    cur.execute(f"SELECT value FROM {SCHEMA}.settings WHERE key = 'site_offline'")
+    row = cur.fetchone()
+    return row and row[0] == "true"
+
+
+def is_admin(event, cur) -> bool:
+    token = (event.get("headers") or {}).get("X-Admin-Token") or (event.get("headers") or {}).get("x-admin-token") or ""
+    if not token:
+        return False
+    cur.execute(
+        f"""SELECT u.id FROM {SCHEMA}.sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.id = %s AND s.expires_at > NOW() AND u.is_admin = TRUE""",
+        (token,)
+    )
+    return cur.fetchone() is not None
+
+
+OFFLINE_RESP = {"statusCode": 503, "headers": CORS, "body": json.dumps({"ok": False, "offline": True, "error": "Сайт временно недоступен"})}
+
+
 def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
@@ -76,10 +98,21 @@ def handler(event: dict, context) -> dict:
     qs = event.get("queryStringParameters") or {}
     action = qs.get("action") or body.get("action") or ""
 
+    # status — проверка режима сайта (публичный endpoint)
+    if action == "status":
+        conn = get_conn()
+        cur = conn.cursor()
+        offline = is_site_offline(cur)
+        conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "offline": offline})}
+
     # categories — список категорий из БД
     if action == "categories":
         conn = get_conn()
         cur = conn.cursor()
+        if is_site_offline(cur) and not is_admin(event, cur):
+            conn.close()
+            return OFFLINE_RESP
         cur.execute(
             f"""SELECT c.id, c.name, c.slug, c.icon, c.parent_id,
                        (SELECT COUNT(*) FROM {SCHEMA}.ads a WHERE a.category_id=c.id AND a.status='active') AS ads_count
@@ -105,6 +138,9 @@ def handler(event: dict, context) -> dict:
 
         conn = get_conn()
         cur = conn.cursor()
+        if is_site_offline(cur) and not is_admin(event, cur):
+            conn.close()
+            return OFFLINE_RESP
 
         # Читаем настройки из БД
         cur.execute(

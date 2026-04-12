@@ -90,6 +90,139 @@ function Spinner() {
   return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
 }
 
+// ─── Массовое добавление категорий ────────────────────────────────────────────
+interface BulkAddProps {
+  flat: { cat: Category; depth: number }[];
+  onDone: () => void;
+  onCancel: () => void;
+}
+
+function BulkAddCategories({ flat, onDone, onCancel }: BulkAddProps) {
+  const [text, setText] = useState("");
+  const [parentId, setParentId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState<{ name: string; status: "pending" | "ok" | "err" }[]>([]);
+  const [started, setStarted] = useState(false);
+
+  const parentOpts = buildSelectOpts(flat);
+
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  const handleRun = async () => {
+    if (!lines.length) return;
+    const tasks = lines.map((name) => ({ name, status: "pending" as const }));
+    setProgress(tasks);
+    setStarted(true);
+    setSaving(true);
+
+    for (let i = 0; i < lines.length; i++) {
+      const name = lines[i];
+      const slug = name
+        .toLowerCase()
+        .split("")
+        .map((c: string) => ({"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"yo","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"kh","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ъ":"","ы":"y","ь":"","э":"e","ю":"yu","я":"ya"} as Record<string,string>)[c] ?? c)
+        .join("")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || `cat-${Date.now()}`;
+
+      const d = await adminApi.catCreate({
+        name,
+        slug: `${slug}-${Date.now()}`,
+        parent_id: parentId ? Number(parentId) : null,
+        sort_order: i,
+        show_in_menu: true,
+      });
+
+      setProgress((p) => p.map((t, idx) => idx === i ? { ...t, status: d.ok ? "ok" : "err" } : t));
+    }
+
+    setSaving(false);
+    onDone();
+  };
+
+  const doneCount = progress.filter((p) => p.status === "ok").length;
+  const errCount = progress.filter((p) => p.status === "err").length;
+
+  return (
+    <div className="bg-gray-900 border border-indigo-800/40 rounded-2xl p-5 flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-white font-semibold text-sm">Массовое добавление категорий</h3>
+          <p className="text-gray-500 text-xs mt-0.5">Введите названия — по одному на строку</p>
+        </div>
+        <button onClick={onCancel} className="text-gray-500 hover:text-white transition-colors text-lg leading-none">✕</button>
+      </div>
+
+      {!started ? (
+        <>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-gray-400 text-xs">Родительская категория (необязательно)</label>
+            <select value={parentId} onChange={(e) => setParentId(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">— корневые категории —</option>
+              {parentOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-gray-400 text-xs">Названия категорий <span className="text-gray-600">(одна строка — одна категория)</span></label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={8}
+              placeholder={"Транспорт\nАвтомобили\nМотоциклы\nГрузовые авто\nЗапчасти"}
+              className="bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 resize-none font-mono"
+            />
+            <p className="text-gray-600 text-xs">
+              {lines.length > 0 ? <span className="text-indigo-400">{lines.length} категорий будет создано</span> : "Введите хотя бы одно название"}
+            </p>
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <button onClick={onCancel} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors border border-gray-700">
+              Отмена
+            </button>
+            <button onClick={handleRun} disabled={!lines.length || saving}
+              className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+              Создать {lines.length > 0 && `${lines.length} категорий`}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="max-h-64 overflow-y-auto flex flex-col gap-1">
+            {progress.map((p, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-800/50">
+                <span className="text-base leading-none shrink-0">
+                  {p.status === "pending" ? "⏳" : p.status === "ok" ? "✅" : "❌"}
+                </span>
+                <span className="text-sm text-gray-300 flex-1 truncate">{p.name}</span>
+              </div>
+            ))}
+          </div>
+          {!saving && (
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-xs text-gray-500">
+                <span className="text-green-400">{doneCount} создано</span>
+                {errCount > 0 && <span className="text-red-400 ml-2">{errCount} ошибок</span>}
+              </p>
+              <button onClick={onCancel} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors">
+                Готово
+              </button>
+            </div>
+          )}
+          {saving && (
+            <div className="flex items-center gap-2 text-gray-500 text-xs pt-1">
+              <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              Создаю категории...
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Утилиты ──────────────────────────────────────────────────────────────────
 function flattenTree(tree: Category[], depth = 0): { cat: Category; depth: number }[] {
   const res: { cat: Category; depth: number }[] = [];
@@ -250,6 +383,7 @@ function CategoriesTab() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [editCat, setEditCat] = useState<typeof CAT_DEFAULTS | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
   const [createParentId, setCreateParentId] = useState<number>(0);
 
   const load = async () => {
@@ -311,15 +445,27 @@ function CategoriesTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="flex gap-2">
-          <Btn onClick={() => { setShowCreate(true); setCreateParentId(0); setEditCat(null); }} variant="primary">
+        <div className="flex gap-2 flex-wrap">
+          <Btn onClick={() => { setShowCreate(true); setCreateParentId(0); setEditCat(null); setShowBulk(false); }} variant="primary">
             + Корневая категория
+          </Btn>
+          <Btn onClick={() => { setShowBulk(true); setShowCreate(false); setEditCat(null); }} variant="secondary">
+            + Несколько сразу
           </Btn>
           <Btn onClick={() => toggleAll(true)} variant="secondary">Развернуть всё</Btn>
           <Btn onClick={() => toggleAll(false)} variant="secondary">Свернуть всё</Btn>
         </div>
         <span className="text-gray-500 text-sm">Всего: {flat.length}</span>
       </div>
+
+      {/* Массовое добавление */}
+      {showBulk && (
+        <BulkAddCategories
+          flat={flat}
+          onDone={() => { setShowBulk(false); load(); }}
+          onCancel={() => setShowBulk(false)}
+        />
+      )}
 
       {/* Форма создания / редактирования вверху */}
       {(showCreate || editCat) && (

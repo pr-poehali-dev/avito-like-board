@@ -43,27 +43,27 @@ interface FavFolder {
   count: number;
 }
 
-const CATEGORIES = [
-  { id: "realty", label: "Недвижимость", icon: "Home", count: 1240 },
-  { id: "auto", label: "Авто", icon: "Car", count: 856 },
-  { id: "electronics", label: "Электроника", icon: "Smartphone", count: 2341 },
-  { id: "clothes", label: "Одежда", icon: "Shirt", count: 1780 },
-  { id: "furniture", label: "Мебель", icon: "Armchair", count: 634 },
-  { id: "services", label: "Услуги", icon: "Wrench", count: 423 },
-  { id: "animals", label: "Животные", icon: "PawPrint", count: 312 },
-  { id: "hobbies", label: "Хобби", icon: "Music", count: 198 },
+interface DbCategory {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string | null;
+  parent_id: number | null;
+  ads_count: number;
+}
+
+const FALLBACK_CATEGORIES = [
+  { id: "realty", label: "Недвижимость", icon: "Home", count: 0 },
+  { id: "auto", label: "Авто", icon: "Car", count: 0 },
+  { id: "electronics", label: "Электроника", icon: "Smartphone", count: 0 },
+  { id: "clothes", label: "Одежда", icon: "Shirt", count: 0 },
+  { id: "furniture", label: "Мебель", icon: "Armchair", count: 0 },
+  { id: "services", label: "Услуги", icon: "Wrench", count: 0 },
+  { id: "animals", label: "Животные", icon: "PawPrint", count: 0 },
+  { id: "hobbies", label: "Хобби", icon: "Music", count: 0 },
 ];
 
-const MOCK_ADS = [
-  { id: 1, title: "iPhone 15 Pro 256GB", price: 89900, city: "Москва", category: "electronics", date: "Сегодня", image: "📱", condition: "Новый" },
-  { id: 2, title: "Квартира 2к, Арбат", price: 120000, city: "Москва", category: "realty", date: "Вчера", image: "🏠", condition: "Отличное" },
-  { id: 3, title: "Toyota Camry 2021", price: 2450000, city: "СПб", category: "auto", date: "2 дня назад", image: "🚗", condition: "Хорошее" },
-  { id: 4, title: "MacBook Pro M3", price: 159000, city: "Казань", category: "electronics", date: "Сегодня", image: "💻", condition: "Новый" },
-  { id: 5, title: "Диван угловой IKEA", price: 32000, city: "Новосибирск", category: "furniture", date: "3 дня назад", image: "🛋️", condition: "Хорошее" },
-  { id: 6, title: "Велосипед горный Trek", price: 45000, city: "Екатеринбург", category: "hobbies", date: "Вчера", image: "🚴", condition: "Отличное" },
-  { id: 7, title: "Репетитор по математике", price: 2500, city: "Москва", category: "services", date: "Сегодня", image: "📚", condition: "Услуга" },
-  { id: 8, title: "Пуховик зимний M", price: 8500, city: "Самара", category: "clothes", date: "4 дня назад", image: "🧥", condition: "Хорошее" },
-];
+
 
 const CITIES = ["Все города", "Москва", "СПб", "Казань", "Екатеринбург", "Новосибирск", "Самара"];
 
@@ -95,6 +95,9 @@ export default function Index() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // Categories from DB
+  const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
 
   // Ads from API
   const [apiAds, setApiAds] = useState<Ad[]>([]);
@@ -158,10 +161,26 @@ export default function Index() {
       .catch(() => {});
   }, []);
 
+  // Загрузка категорий из БД
+  const loadCategories = () => {
+    fetch(ADS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "categories" }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.ok && d.categories.length > 0) setDbCategories(d.categories); })
+      .catch(() => {});
+  };
+
   // Загрузка объявлений с API
   const loadAds = () => {
     setAdsLoading(true);
-    fetch(ADS_URL)
+    fetch(ADS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list" }),
+    })
       .then((r) => r.json())
       .then((d) => { if (d.ok) setApiAds(d.ads); })
       .catch(() => {})
@@ -181,7 +200,7 @@ export default function Index() {
       .catch(() => {});
   };
 
-  useEffect(() => { loadAds(); }, []);
+  useEffect(() => { loadAds(); loadCategories(); }, []);
   useEffect(() => { if (user) loadMyAds(); }, [user]);
   useEffect(() => { if (section === "favorites" && user) loadFolders(); }, [section, user]);
   useEffect(() => {
@@ -335,12 +354,15 @@ export default function Index() {
     setEditSaving(false);
   };
 
-  // Объединяем API + MOCK (MOCK показываем только если API пустой)
-  const allAds: Ad[] = apiAds.length > 0 ? apiAds : MOCK_ADS;
+  const allAds: Ad[] = apiAds;
 
   const filteredAds = allAds.filter((ad) => {
-    const matchQuery = ad.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCategory = selectedCategory === "all" || ad.category === selectedCategory;
+    const matchQuery = !searchQuery || ad.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchCategory = selectedCategory === "all" || (() => {
+      const dbCat = dbCategories.find((c) => String(c.id) === selectedCategory);
+      if (dbCat) return (ad as Ad & { category_id?: number }).category_id === dbCat.id || ad.category === dbCat.slug || ad.category === dbCat.name;
+      return ad.category === selectedCategory;
+    })();
     const matchCity = selectedCity === "Все города" || ad.city === selectedCity;
     const matchFrom = priceFrom === "" || ad.price >= Number(priceFrom);
     const matchTo = priceTo === "" || ad.price <= Number(priceTo);
@@ -852,7 +874,7 @@ export default function Index() {
                   className="px-3 py-2 text-sm bg-[hsl(var(--muted))] rounded-lg border-0 outline-none flex-1 min-w-[140px] text-[hsl(var(--foreground))]"
                 >
                   <option value="all">Все категории</option>
-                  {CATEGORIES.map((c) => (
+                  {(dbCategories.length > 0 ? dbCategories.map((c) => ({ id: String(c.id), label: c.name })) : FALLBACK_CATEGORIES.map((c) => ({ id: c.id, label: c.label }))).map((c) => (
                     <option key={c.id} value={c.id}>{c.label}</option>
                   ))}
                 </select>
@@ -1028,7 +1050,7 @@ export default function Index() {
                 <div className="bg-white rounded-2xl border border-border p-5">
                   <p className="font-bold mb-3">Популярные категории</p>
                   <div className="flex flex-col gap-1">
-                    {CATEGORIES.slice(0, 6).map((cat) => (
+                    {(dbCategories.length > 0 ? dbCategories.slice(0, 6).map((c) => ({ id: String(c.id), label: c.name, icon: c.icon || "Tag", count: c.ads_count })) : FALLBACK_CATEGORIES.slice(0, 6)).map((cat) => (
                       <button
                         key={cat.id}
                         onClick={() => { setSelectedCategory(cat.id); }}
@@ -1064,7 +1086,7 @@ export default function Index() {
                       <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">объявлений</p>
                     </div>
                     <div className="bg-[hsl(var(--muted))] rounded-xl p-3 text-center">
-                      <p className="text-2xl font-bold text-[hsl(var(--accent))]">8</p>
+                      <p className="text-2xl font-bold text-[hsl(var(--accent))]">{dbCategories.length || FALLBACK_CATEGORIES.length}</p>
                       <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">категорий</p>
                     </div>
                   </div>
@@ -1080,7 +1102,10 @@ export default function Index() {
             <h2 className="text-2xl font-bold mb-2">Категории</h2>
             <p className="text-[hsl(var(--muted-foreground))] mb-8">Выберите раздел для поиска</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {CATEGORIES.map((cat, i) => (
+              {(dbCategories.length > 0
+                ? dbCategories.map((c) => ({ id: String(c.id), label: c.name, icon: c.icon || "Tag", count: c.ads_count }))
+                : FALLBACK_CATEGORIES
+              ).map((cat, i) => (
                 <button
                   key={cat.id}
                   onClick={() => { setSelectedCategory(cat.id); setSection("home"); }}
@@ -1088,7 +1113,7 @@ export default function Index() {
                   style={{ animationDelay: `${i * 0.05}s` }}
                 >
                   <div className="w-12 h-12 bg-[hsl(var(--muted))] rounded-xl flex items-center justify-center group-hover:bg-[hsl(var(--accent))] transition-colors">
-                    <Icon name={cat.icon} size={22} className="text-[hsl(var(--foreground))] group-hover:text-white transition-colors" />
+                    <Icon name={cat.icon as "Home"} size={22} className="text-[hsl(var(--foreground))] group-hover:text-white transition-colors" />
                   </div>
                   <div>
                     <p className="font-semibold text-sm text-[hsl(var(--foreground))]">{cat.label}</p>

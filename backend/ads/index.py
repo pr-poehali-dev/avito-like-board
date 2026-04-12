@@ -76,14 +76,33 @@ def handler(event: dict, context) -> dict:
     qs = event.get("queryStringParameters") or {}
     action = qs.get("action") or body.get("action") or ""
 
+    # categories — список категорий из БД
+    if action == "categories":
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"""SELECT c.id, c.name, c.slug, c.icon, c.parent_id,
+                       (SELECT COUNT(*) FROM {SCHEMA}.ads a WHERE a.category_id=c.id AND a.status='active') AS ads_count
+                FROM {SCHEMA}.categories c
+                WHERE c.show_in_menu = true
+                ORDER BY c.sort_order, c.name"""
+        )
+        rows = cur.fetchall()
+        conn.close()
+        cats = [{"id": r[0], "name": r[1], "slug": r[2], "icon": r[3], "parent_id": r[4], "ads_count": r[5]} for r in rows]
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "categories": cats})}
+
     # list — получить все активные объявления с фильтрами
     if action == "list" or (method == "GET" and not action):
-        category = qs.get("category") or ""
-        city = qs.get("city") or ""
-        price_from = qs.get("price_from") or ""
-        price_to = qs.get("price_to") or ""
-        condition = qs.get("condition") or ""
-        search = qs.get("search") or ""
+        category = qs.get("category") or body.get("category") or ""
+        category_id = qs.get("category_id") or body.get("category_id") or ""
+        city = qs.get("city") or body.get("city") or ""
+        price_from = qs.get("price_from") or body.get("price_from") or ""
+        price_to = qs.get("price_to") or body.get("price_to") or ""
+        condition = qs.get("condition") or body.get("condition") or ""
+        search = qs.get("search") or body.get("search") or ""
+        page = max(1, int(qs.get("page") or body.get("page") or 1))
+        per_page = min(int(qs.get("per_page") or body.get("per_page") or 40), 100)
 
         conn = get_conn()
         cur = conn.cursor()
@@ -91,11 +110,14 @@ def handler(event: dict, context) -> dict:
         filters = ["a.status = 'active'"]
         params = []
 
-        if category:
-            filters.append("a.category = %s")
-            params.append(category)
+        if category_id:
+            filters.append("a.category_id = %s")
+            params.append(int(category_id))
+        elif category:
+            filters.append("(a.category = %s OR EXISTS (SELECT 1 FROM {schema}.categories c WHERE c.id=a.category_id AND c.slug=%s))".replace("{schema}", SCHEMA))
+            params.extend([category, category])
         if city:
-            filters.append("a.city = %s")
+            filters.append("a.city ILIKE %s")
             params.append(city)
         if price_from:
             filters.append("a.price >= %s")
@@ -113,15 +135,26 @@ def handler(event: dict, context) -> dict:
         where = " AND ".join(filters)
         cur.execute(
             f"""SELECT a.id, a.title, a.price, a.category, a.city, a.condition,
-                       a.created_at, u.name as author, a.photos
+                       a.created_at, u.name as author, a.photos,
+                       a.status, a.views, a.category_id,
+                       COALESCE(cat.name, a.category) as cat_name
                 FROM {SCHEMA}.ads a
                 JOIN {SCHEMA}.users u ON u.id = a.user_id
+                LEFT JOIN {SCHEMA}.categories cat ON cat.id = a.category_id
                 WHERE {where}
                 ORDER BY a.created_at DESC
-                LIMIT 100""",
-            params
+                LIMIT %s OFFSET %s""",
+            params + [per_page, (page - 1) * per_page]
         )
         rows = cur.fetchall()
+        cur.execute(
+            f"""SELECT COUNT(*) FROM {SCHEMA}.ads a
+                JOIN {SCHEMA}.users u ON u.id = a.user_id
+                LEFT JOIN {SCHEMA}.categories cat ON cat.id = a.category_id
+                WHERE {where}""",
+            params
+        )
+        total = cur.fetchone()[0]
         conn.close()
 
         ads = [
@@ -129,11 +162,13 @@ def handler(event: dict, context) -> dict:
                 "id": r[0], "title": r[1], "price": r[2],
                 "category": r[3], "city": r[4], "condition": r[5],
                 "date": r[6].strftime("%d.%m.%Y"), "author": r[7],
-                "photos": list(r[8]) if r[8] else []
+                "photos": list(r[8]) if r[8] else [],
+                "status": r[9], "views": r[10],
+                "category_id": r[11], "category_name": r[12],
             }
             for r in rows
         ]
-        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "ads": ads})}
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "ads": ads, "total": total, "page": page, "per_page": per_page})}
 
     # create — создать объявление с фотографиями
     if action == "create":
@@ -148,13 +183,25 @@ def handler(event: dict, context) -> dict:
         description = (body.get("description") or "").strip()
         price = body.get("price")
         category = (body.get("category") or "").strip()
+        category_id = body.get("category_id")
+        category_id = int(category_id) if category_id else None
         city = (body.get("city") or "").strip()
         condition = (body.get("condition") or "Хорошее").strip()
         photos_b64 = body.get("photos") or []
 
-        if not title or not price or not category or not city:
+        if not title or not price or not city:
             conn.close()
             return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Заполните обязательные поля"})}
+
+        if not category and not category_id:
+            conn.close()
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите категорию"})}
+
+        if category_id and not category:
+            cur.execute(f"SELECT name FROM {SCHEMA}.categories WHERE id=%s", (category_id,))
+            row_c = cur.fetchone()
+            if row_c:
+                category = row_c[0]
 
         try:
             price = int(price)
@@ -165,9 +212,9 @@ def handler(event: dict, context) -> dict:
         photo_urls = upload_photos(photos_b64) if photos_b64 else []
 
         cur.execute(
-            f"""INSERT INTO {SCHEMA}.ads (user_id, title, description, price, category, city, condition, photos)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
-            (user_id, title, description, price, category, city, condition, photo_urls)
+            f"""INSERT INTO {SCHEMA}.ads (user_id, title, description, price, category, category_id, city, condition, photos, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending') RETURNING id""",
+            (user_id, title, description, price, category, category_id, city, condition, photo_urls)
         )
         ad_id = cur.fetchone()[0]
         conn.commit()
@@ -218,14 +265,22 @@ def handler(event: dict, context) -> dict:
         description = (body.get("description") or "").strip()
         price = body.get("price")
         category = (body.get("category") or "").strip()
+        category_id = body.get("category_id")
+        category_id = int(category_id) if category_id else None
         city = (body.get("city") or "").strip()
         condition = (body.get("condition") or "Хорошее").strip()
-        photos_b64 = body.get("new_photos") or []      # base64 — новые фото
-        keep_urls = body.get("keep_photos") or []       # уже загруженные URL которые оставить
+        photos_b64 = body.get("new_photos") or []
+        keep_urls = body.get("keep_photos") or []
 
-        if not title or not price or not category or not city:
+        if not title or not price or not city:
             conn.close()
             return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Заполните обязательные поля"})}
+
+        if category_id and not category:
+            cur.execute(f"SELECT name FROM {SCHEMA}.categories WHERE id=%s", (category_id,))
+            row_c = cur.fetchone()
+            if row_c:
+                category = row_c[0]
 
         try:
             price = int(price)
@@ -238,9 +293,10 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(
             f"""UPDATE {SCHEMA}.ads
-                SET title=%s, description=%s, price=%s, category=%s, city=%s, condition=%s, photos=%s
+                SET title=%s, description=%s, price=%s, category=%s, category_id=%s,
+                    city=%s, condition=%s, photos=%s, updated_at=NOW()
                 WHERE id=%s AND user_id=%s""",
-            (title, description, price, category, city, condition, all_photos, ad_id, user_id)
+            (title, description, price, category, category_id, city, condition, all_photos, ad_id, user_id)
         )
         conn.commit()
         conn.close()

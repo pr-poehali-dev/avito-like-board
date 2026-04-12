@@ -54,8 +54,9 @@ export default function ChatPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [typing, setTyping] = useState<string[]>([]);
-  const [lastMsgId, setLastMsgId] = useState(0);
   const [chatsLoading, setChatsLoading] = useState(false);
+  const lastMsgIdRef = useRef(0);          // ref вместо state — не пересоздаёт polling
+  const loadingMessagesRef = useRef(false); // блокировка параллельных загрузок
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -89,18 +90,28 @@ export default function ChatPage() {
   }, [user]);
 
   const loadMessages = useCallback((chatId: number, since = 0, append = false) => {
+    if (loadingMessagesRef.current) return; // пропускаем если уже идёт загрузка
+    loadingMessagesRef.current = true;
     fetch(CHAT_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sid() }, body: JSON.stringify({ action: "get_messages", chat_id: chatId, since_id: since }) })
       .then(r => r.json())
       .then(d => {
         if (d.ok) {
+          if (d.messages.length > 0) {
+            const newLastId = d.messages[d.messages.length - 1].id;
+            lastMsgIdRef.current = newLastId;
+          }
           setMessages(prev => {
-            const all = append ? [...prev, ...d.messages] : d.messages;
-            if (d.messages.length > 0) setLastMsgId(d.messages[d.messages.length - 1].id);
-            return all;
+            if (!append) return d.messages;
+            // дедупликация — не добавляем уже существующие id
+            const existingIds = new Set(prev.map((m: Message) => m.id));
+            const newMsgs = d.messages.filter((m: Message) => !existingIds.has(m.id));
+            return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
           });
           setTyping(d.typing || []);
         }
-      }).catch(() => {});
+      })
+      .catch(() => {})
+      .finally(() => { loadingMessagesRef.current = false; });
   }, []);
 
   // Из URL-параметра chat_id
@@ -114,21 +125,22 @@ export default function ChatPage() {
   useEffect(() => {
     if (!activeChatId) return;
     setMessages([]);
-    setLastMsgId(0);
+    lastMsgIdRef.current = 0;
+    loadingMessagesRef.current = false;
     adGreetingSentRef.current = false;
     loadMessages(activeChatId, 0, false);
   }, [activeChatId]);
 
-  // Polling каждые 3 сек
+  // Polling каждые 3 сек — зависит только от activeChatId
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
     if (!activeChatId) return;
     pollRef.current = setInterval(() => {
-      loadMessages(activeChatId, lastMsgId, true);
+      loadMessages(activeChatId, lastMsgIdRef.current, true);
       loadChats();
     }, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [activeChatId, lastMsgId, loadMessages, loadChats]);
+  }, [activeChatId, loadMessages, loadChats]);
 
   // Скролл вниз при новых сообщениях
   useEffect(() => {
@@ -172,9 +184,16 @@ export default function ChatPage() {
       setSearchParams({ id: String(activeChatId) });
     }
 
+    loadingMessagesRef.current = false; // снимаем блокировку перед запросом
     await fetch(CHAT_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sid() }, body: JSON.stringify(msgBody) })
       .then(r => r.json())
-      .then(d => { if (d.ok) { loadMessages(activeChatId, lastMsgId, true); loadChats(); } })
+      .then(d => {
+        if (d.ok) {
+          // Грузим сразу после отправки чтобы показать своё сообщение
+          loadMessages(activeChatId, lastMsgIdRef.current, true);
+          loadChats();
+        }
+      })
       .catch(() => {});
     setSending(false);
   };

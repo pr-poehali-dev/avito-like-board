@@ -210,8 +210,8 @@ def handler(event: dict, context) -> dict:
             (session_id,)
         )
         row = cur.fetchone()
-        conn.close()
         if not row:
+            conn.close()
             return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Сессия не найдена"})}
 
         cur.execute(

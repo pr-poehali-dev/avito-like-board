@@ -585,11 +585,10 @@ export default function Index() {
                       {user.name[0].toUpperCase()}
                     </div>
                   </div>
-                  <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
-                  <div className="relative">
-                    <Icon name="MessageCircle" size={18} className="text-[hsl(var(--muted-foreground))]" />
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">3</span>
-                  </div>
+                  <span className="relative text-sm font-medium max-w-[100px] truncate">
+                    {user.name}
+                    <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full" />
+                  </span>
                   <Icon name={userMenuOpen ? "ChevronUp" : "ChevronDown"} size={14} className="text-[hsl(var(--muted-foreground))]" />
                 </button>
                 {userMenuOpen && (

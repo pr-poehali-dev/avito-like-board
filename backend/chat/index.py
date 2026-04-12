@@ -299,8 +299,7 @@ def handler(event: dict, context) -> dict:
         # Сбрасываем typing
         cur.execute(f"UPDATE {SCHEMA}.chat_typing SET updated_at='2000-01-01' WHERE chat_id=%s AND user_id=%s", (int(chat_id), user_id))
 
-        # ── Автоответ получателя ──────────────────────────────────────────────
-        # Находим другого участника чата
+        # ── Новая система автоответов ─────────────────────────────────────────
         cur.execute(
             f"SELECT user1_id, user2_id FROM {SCHEMA}.chats WHERE id=%s",
             (int(chat_id),)
@@ -308,50 +307,125 @@ def handler(event: dict, context) -> dict:
         chat_row = cur.fetchone()
         recipient_id = chat_row[1] if chat_row[0] == user_id else chat_row[0]
 
-        # Проверяем включён ли автоответ у получателя
-        cur.execute(
-            f"SELECT enabled, greeting FROM {SCHEMA}.auto_reply_settings WHERE user_id=%s",
-            (recipient_id,)
-        )
-        ar_settings = cur.fetchone()
+        # Данные получателя для переменных
+        cur.execute(f"SELECT name, auto_reply_enabled FROM {SCHEMA}.users WHERE id=%s", (recipient_id,))
+        recip_row = cur.fetchone()
+        recipient_name = recip_row[0] if recip_row else ""
+        auto_reply_global = recip_row[1] if recip_row else False
 
-        # Проверяем — это первое сообщение от этого отправителя в чате?
-        cur.execute(
-            f"SELECT COUNT(*) FROM {SCHEMA}.messages WHERE chat_id=%s AND sender_id=%s",
-            (int(chat_id), user_id)
-        )
-        sender_msg_count = cur.fetchone()[0]
+        # Данные отправителя для переменных
+        cur.execute(f"SELECT name FROM {SCHEMA}.users WHERE id=%s", (user_id,))
+        sender_row = cur.fetchone()
+        sender_name = sender_row[0] if sender_row else ""
 
         auto_reply_text = None
+        fired_rule_id = None
 
-        if ar_settings and ar_settings[0]:  # автоответ включён
-            # Загружаем правила получателя
+        if auto_reply_global:
+            import json as _json
+            from datetime import datetime as _dt
+
+            now = _dt.now()
+            weekday = now.weekday()  # 0=пн
+            hour_now = now.hour + now.minute / 60.0
+
+            # Загружаем активные правила получателя
             cur.execute(
-                f"""SELECT question, answer, match_type FROM {SCHEMA}.auto_reply_rules
-                    WHERE user_id=%s AND enabled=TRUE AND removed=FALSE ORDER BY sort_order, id""",
+                f"""SELECT id, name, conditions, conditions_operator, reply_text,
+                           delay_seconds, once_per_dialog, skip_if_user_replied
+                    FROM {SCHEMA}.user_auto_reply_rules
+                    WHERE user_id=%s AND is_active=TRUE
+                    ORDER BY id""",
                 (recipient_id,)
             )
             rules = cur.fetchall()
 
-            content_lower = content.lower().strip()
-            matched_answer = None
+            # Проверял ли получатель в этом чате (для skip_if_user_replied)
+            cur.execute(
+                f"SELECT COUNT(*) FROM {SCHEMA}.messages WHERE chat_id=%s AND sender_id=%s",
+                (int(chat_id), recipient_id)
+            )
+            seller_msg_count = cur.fetchone()[0]
 
-            for rule_q, rule_a, match_type in rules:
-                q_lower = rule_q.lower().strip()
-                if match_type == 'exact':
-                    if content_lower == q_lower:
-                        matched_answer = rule_a
-                        break
-                else:  # partial
-                    if q_lower in content_lower or content_lower in q_lower:
-                        matched_answer = rule_a
-                        break
+            content_lower = content.lower()
 
-            if matched_answer:
-                auto_reply_text = matched_answer
-            elif sender_msg_count == 1 and ar_settings[1]:
-                # Первое сообщение и есть приветствие
-                auto_reply_text = ar_settings[1]
+            for rule in rules:
+                r_id, r_name, r_conds_raw, r_op, r_reply, r_delay, r_once, r_skip = rule
+
+                # once_per_dialog — проверяем не срабатывало ли уже в этом диалоге
+                if r_once:
+                    cur.execute(
+                        f"SELECT COUNT(*) FROM {SCHEMA}.user_auto_reply_logs WHERE rule_id=%s AND dialog_id=%s",
+                        (r_id, int(chat_id))
+                    )
+                    if cur.fetchone()[0] > 0:
+                        continue
+
+                # skip_if_user_replied — продавец уже писал сам
+                if r_skip and seller_msg_count > 0:
+                    continue
+
+                # Парсим условия
+                try:
+                    conditions = r_conds_raw if isinstance(r_conds_raw, list) else _json.loads(r_conds_raw)
+                except Exception:
+                    conditions = []
+
+                results = []
+                for cond in conditions:
+                    ctype = cond.get("type", "")
+                    passed = False
+
+                    if ctype == "keyword":
+                        op = cond.get("operator", "contains_any")
+                        words = [w.lower().strip() for w in cond.get("value", []) if w.strip()]
+                        if op == "contains_all":
+                            passed = all(w in content_lower for w in words)
+                        else:  # contains_any
+                            passed = any(w in content_lower for w in words)
+
+                    elif ctype == "time_range":
+                        start_str = cond.get("start", "00:00")
+                        end_str = cond.get("end", "23:59")
+                        sh, sm = map(int, start_str.split(":"))
+                        eh, em = map(int, end_str.split(":"))
+                        s_val = sh + sm / 60.0
+                        e_val = eh + em / 60.0
+                        if s_val <= e_val:
+                            passed = s_val <= hour_now <= e_val
+                        else:  # перенос через полночь
+                            passed = hour_now >= s_val or hour_now <= e_val
+
+                    elif ctype == "weekday":
+                        days = cond.get("days", [])
+                        # 0=пн в Python, но в ТЗ 0=вс — конвертируем
+                        py_weekday = (weekday + 1) % 7  # пн=1 вс=0
+                        passed = py_weekday in days
+
+                    elif ctype == "always":
+                        passed = True
+
+                    results.append(passed)
+
+                if not results:
+                    all_passed = True
+                elif r_op == "OR":
+                    all_passed = any(results)
+                else:  # AND
+                    all_passed = all(results)
+
+                if all_passed:
+                    # Подставляем переменные
+                    reply = r_reply
+                    reply = reply.replace("{buyer_name}", sender_name)
+                    reply = reply.replace("{seller_name}", recipient_name)
+                    reply = reply.replace("{ad_title}", ad_title or "")
+                    reply = reply.replace("{ad_price}", str(ad_price) + " ₽" if ad_price else "")
+                    reply = reply.replace("{ad_url}", f"/?ad={ad_id}" if ad_id else "")
+                    reply = reply.replace("{site_name}", "Объявления")
+                    auto_reply_text = reply
+                    fired_rule_id = r_id
+                    break
 
         if auto_reply_text:
             encrypted_reply = encrypt_message(auto_reply_text, key_hex)
@@ -361,6 +435,17 @@ def handler(event: dict, context) -> dict:
                 (int(chat_id), recipient_id, encrypted_reply)
             )
             cur.execute(f"UPDATE {SCHEMA}.chats SET last_message_at=NOW() WHERE id=%s", (int(chat_id),))
+            if fired_rule_id:
+                cur.execute(
+                    f"""INSERT INTO {SCHEMA}.user_auto_reply_logs
+                           (rule_id, user_id, dialog_id, incoming_message, reply_text)
+                        VALUES (%s, %s, %s, %s, %s)""",
+                    (fired_rule_id, recipient_id, int(chat_id), content, auto_reply_text)
+                )
+                cur.execute(
+                    f"UPDATE {SCHEMA}.user_auto_reply_rules SET last_triggered_at=NOW() WHERE id=%s",
+                    (fired_rule_id,)
+                )
 
         conn.commit()
         conn.close()
@@ -496,6 +581,312 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         conn.close()
         return ok({"ok": True})
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # НОВАЯ СИСТЕМА АВТООТВЕТОВ (user_auto_reply_rules)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    # ── uar_settings_get — глобальное вкл/выкл ───────────────────────────────
+    if action == "uar_settings_get":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        cur.execute(f"SELECT auto_reply_enabled FROM {SCHEMA}.users WHERE id=%s", (user_id,))
+        row = cur.fetchone()
+        conn.close()
+        return ok({"ok": True, "enabled": row[0] if row else False})
+
+    # ── uar_settings_save — сохранить глобальное вкл/выкл ────────────────────
+    if action == "uar_settings_save":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        enabled = bool(body.get("enabled", False))
+        cur.execute(f"UPDATE {SCHEMA}.users SET auto_reply_enabled=%s WHERE id=%s", (enabled, user_id))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── uar_rules_list — список правил ───────────────────────────────────────
+    if action == "uar_rules_list":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        cur.execute(
+            f"""SELECT id, name, is_active, conditions, conditions_operator,
+                       reply_text, delay_seconds, once_per_dialog, skip_if_user_replied,
+                       created_at, last_triggered_at
+                FROM {SCHEMA}.user_auto_reply_rules
+                WHERE user_id=%s ORDER BY id""",
+            (user_id,)
+        )
+        rows = cur.fetchall()
+        conn.close()
+        import json as _j
+        rules = []
+        for r in rows:
+            conds = r[3] if isinstance(r[3], list) else _j.loads(r[3])
+            rules.append({
+                "id": r[0], "name": r[1], "is_active": r[2],
+                "conditions": conds, "conditions_operator": r[4],
+                "reply_text": r[5], "delay_seconds": r[6],
+                "once_per_dialog": r[7], "skip_if_user_replied": r[8],
+                "created_at": r[9].isoformat() if r[9] else None,
+                "last_triggered_at": r[10].isoformat() if r[10] else None,
+            })
+        return ok({"ok": True, "rules": rules})
+
+    # ── uar_rule_save — создать или обновить правило ──────────────────────────
+    if action == "uar_rule_save":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        import json as _j
+
+        rule_id = body.get("id")
+        name = (body.get("name") or "").strip()
+        is_active = bool(body.get("is_active", True))
+        conditions = body.get("conditions", [])
+        conditions_operator = body.get("conditions_operator", "AND")
+        reply_text = (body.get("reply_text") or "").strip()
+        delay_seconds = int(body.get("delay_seconds") or 0)
+        once_per_dialog = bool(body.get("once_per_dialog", True))
+        skip_if_user_replied = bool(body.get("skip_if_user_replied", True))
+
+        if not name or not reply_text:
+            conn.close()
+            return err("Укажите название и текст ответа")
+        if conditions_operator not in ("AND", "OR"):
+            conditions_operator = "AND"
+
+        conditions_json = _j.dumps(conditions, ensure_ascii=False)
+
+        if rule_id:
+            cur.execute(
+                f"""UPDATE {SCHEMA}.user_auto_reply_rules
+                    SET name=%s, is_active=%s, conditions=%s, conditions_operator=%s,
+                        reply_text=%s, delay_seconds=%s, once_per_dialog=%s,
+                        skip_if_user_replied=%s, updated_at=NOW()
+                    WHERE id=%s AND user_id=%s""",
+                (name, is_active, conditions_json, conditions_operator, reply_text,
+                 delay_seconds, once_per_dialog, skip_if_user_replied,
+                 int(rule_id), user_id)
+            )
+            new_id = int(rule_id)
+        else:
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.user_auto_reply_rules
+                    (user_id, name, is_active, conditions, conditions_operator,
+                     reply_text, delay_seconds, once_per_dialog, skip_if_user_replied)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                (user_id, name, is_active, conditions_json, conditions_operator,
+                 reply_text, delay_seconds, once_per_dialog, skip_if_user_replied)
+            )
+            new_id = cur.fetchone()[0]
+
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": new_id})
+
+    # ── uar_rule_toggle — вкл/выкл правило ───────────────────────────────────
+    if action == "uar_rule_toggle":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        rule_id = body.get("id")
+        if not rule_id:
+            conn.close()
+            return err("Укажите id")
+        cur.execute(
+            f"""UPDATE {SCHEMA}.user_auto_reply_rules
+                SET is_active = NOT is_active, updated_at=NOW()
+                WHERE id=%s AND user_id=%s RETURNING is_active""",
+            (int(rule_id), user_id)
+        )
+        row = cur.fetchone()
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "is_active": row[0] if row else None})
+
+    # ── uar_rule_copy — скопировать правило ──────────────────────────────────
+    if action == "uar_rule_copy":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        rule_id = body.get("id")
+        if not rule_id:
+            conn.close()
+            return err("Укажите id")
+        cur.execute(
+            f"""SELECT name, conditions, conditions_operator, reply_text,
+                       delay_seconds, once_per_dialog, skip_if_user_replied
+                FROM {SCHEMA}.user_auto_reply_rules WHERE id=%s AND user_id=%s""",
+            (int(rule_id), user_id)
+        )
+        orig = cur.fetchone()
+        if not orig:
+            conn.close()
+            return err("Правило не найдено", 404)
+        import json as _j
+        conds_json = _j.dumps(orig[1] if isinstance(orig[1], list) else orig[1], ensure_ascii=False)
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.user_auto_reply_rules
+                (user_id, name, is_active, conditions, conditions_operator,
+                 reply_text, delay_seconds, once_per_dialog, skip_if_user_replied)
+                VALUES (%s,%s,FALSE,%s,%s,%s,%s,%s,%s) RETURNING id""",
+            (user_id, f"Копия: {orig[0]}", conds_json, orig[2],
+             orig[3], orig[4], orig[5], orig[6])
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": new_id})
+
+    # ── uar_rule_remove — пометить правило удалённым ─────────────────────────
+    if action == "uar_rule_remove":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        rule_id = body.get("id")
+        if not rule_id:
+            conn.close()
+            return err("Укажите id")
+        cur.execute(
+            f"UPDATE {SCHEMA}.user_auto_reply_rules SET is_active=FALSE WHERE id=%s AND user_id=%s",
+            (int(rule_id), user_id)
+        )
+        # Физически скрываем через name-маркер
+        cur.execute(
+            f"UPDATE {SCHEMA}.user_auto_reply_rules SET name='__removed__' || id WHERE id=%s AND user_id=%s",
+            (int(rule_id), user_id)
+        )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── uar_rule_test — протестировать правило ────────────────────────────────
+    if action == "uar_rule_test":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        import json as _j
+        from datetime import datetime as _dt
+
+        test_message = (body.get("message") or "").strip()
+        conditions = body.get("conditions", [])
+        conditions_operator = body.get("conditions_operator", "AND")
+        reply_text = (body.get("reply_text") or "").strip()
+        test_time = body.get("test_time")  # "HH:MM"
+        test_weekday = body.get("test_weekday")  # 0-6
+
+        if not test_message:
+            conn.close()
+            return err("Укажите тестовое сообщение")
+
+        now = _dt.now()
+        if test_time:
+            try:
+                th, tm = map(int, test_time.split(":"))
+                hour_now = th + tm / 60.0
+            except Exception:
+                hour_now = now.hour + now.minute / 60.0
+        else:
+            hour_now = now.hour + now.minute / 60.0
+
+        weekday = int(test_weekday) if test_weekday is not None else (now.weekday() + 1) % 7
+
+        content_lower = test_message.lower()
+        results = []
+        condition_results = []
+
+        for cond in conditions:
+            ctype = cond.get("type", "")
+            passed = False
+            desc = ""
+
+            if ctype == "keyword":
+                op = cond.get("operator", "contains_any")
+                words = [w.lower().strip() for w in cond.get("value", []) if w.strip()]
+                if op == "contains_all":
+                    passed = all(w in content_lower for w in words)
+                    desc = f'Слова «{", ".join(words)}» — {"все найдены" if passed else "не все найдены"}'
+                else:
+                    found = [w for w in words if w in content_lower]
+                    passed = len(found) > 0
+                    desc = f'Слова «{", ".join(words)}» — {"найдено: " + str(found) if passed else "не найдено"}'
+
+            elif ctype == "time_range":
+                start_str = cond.get("start", "00:00")
+                end_str = cond.get("end", "23:59")
+                sh, sm = map(int, start_str.split(":"))
+                eh, em = map(int, end_str.split(":"))
+                s_val = sh + sm / 60.0
+                e_val = eh + em / 60.0
+                if s_val <= e_val:
+                    passed = s_val <= hour_now <= e_val
+                else:
+                    passed = hour_now >= s_val or hour_now <= e_val
+                desc = f'Время {start_str}–{end_str} — {"✓" if passed else "✗"}'
+
+            elif ctype == "weekday":
+                days = cond.get("days", [])
+                day_names = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
+                passed = weekday in days
+                selected = [day_names[d] for d in days if 0 <= d < 7]
+                desc = f'Дни: {", ".join(selected)} — {"✓" if passed else "✗"}'
+
+            elif ctype == "always":
+                passed = True
+                desc = "Всегда — ✓"
+
+            results.append(passed)
+            condition_results.append({"type": ctype, "passed": passed, "desc": desc})
+
+        if not results:
+            triggered = True
+        elif conditions_operator == "OR":
+            triggered = any(results)
+        else:
+            triggered = all(results)
+
+        reply_preview = None
+        if triggered and reply_text:
+            reply_preview = reply_text
+            reply_preview = reply_preview.replace("{buyer_name}", "Покупатель")
+            reply_preview = reply_preview.replace("{seller_name}", "Продавец")
+            reply_preview = reply_preview.replace("{ad_title}", "Название объявления")
+            reply_preview = reply_preview.replace("{ad_price}", "5 000 ₽")
+            reply_preview = reply_preview.replace("{site_name}", "Объявления")
+
+        conn.close()
+        return ok({
+            "ok": True,
+            "triggered": triggered,
+            "condition_results": condition_results,
+            "reply_preview": reply_preview,
+        })
+
+    # ── uar_logs — журнал срабатываний ────────────────────────────────────────
+    if action == "uar_logs":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+        cur.execute(
+            f"""SELECT l.id, r.name, l.dialog_id, l.incoming_message, l.reply_text, l.triggered_at
+                FROM {SCHEMA}.user_auto_reply_logs l
+                LEFT JOIN {SCHEMA}.user_auto_reply_rules r ON r.id=l.rule_id
+                WHERE l.user_id=%s
+                ORDER BY l.triggered_at DESC LIMIT 50""",
+            (user_id,)
+        )
+        rows = cur.fetchall()
+        conn.close()
+        return ok({"ok": True, "logs": [
+            {"id": r[0], "rule_name": r[1], "dialog_id": r[2],
+             "incoming": r[3], "reply": r[4],
+             "triggered_at": r[5].isoformat() if r[5] else None}
+            for r in rows
+        ]})
 
     conn.close()
     return err("Неизвестное действие")

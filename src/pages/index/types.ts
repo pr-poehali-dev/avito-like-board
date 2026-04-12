@@ -2,6 +2,7 @@ export const AUTH_URL = "https://functions.poehali.dev/8b2cd80b-f20b-45b5-8696-0
 export const ADS_URL = "https://functions.poehali.dev/26941b84-1198-4969-8e13-07523f9f04d0";
 export const FAV_URL = "https://functions.poehali.dev/47db8eb7-30bf-4234-9cbb-10b2e57a491c";
 export const CHAT_URL = "https://functions.poehali.dev/4961a627-e58a-4b80-bafb-720c53fa39f8";
+export const PROFILE_URL = "https://functions.poehali.dev/200ceb3d-1623-4a46-8010-118bd4ebb987";
 
 export interface User {
   id: number;

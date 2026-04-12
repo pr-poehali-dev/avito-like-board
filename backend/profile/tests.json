@@ -1,0 +1,37 @@
+{
+  "tests": [
+    {
+      "name": "get_profile без user_id — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "get_profile"},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "update_profile без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "update_profile", "name": "Test"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "get_notifications без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "get_notifications"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "unread_notifications_count — 200",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "unread_notifications_count"},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

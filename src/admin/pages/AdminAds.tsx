@@ -110,6 +110,17 @@ function AdModal({ adId, onClose, onSaved }: {
     else toast.error(d.error || "Ошибка сохранения");
   };
 
+  const quickStatus = async (newStatus: string) => {
+    const d = await adminApi.adsSetStatus([adId], newStatus);
+    if (d.ok) {
+      const labels: Record<string, string> = { active: "одобрено", rejected: "отклонено", closed: "закрыто", archived: "в архиве" };
+      toast.success(`Объявление ${labels[newStatus] || newStatus}`);
+      setAd((prev) => prev ? { ...prev, status: newStatus } : prev);
+      setForm((prev) => ({ ...prev, status: newStatus }));
+      onSaved();
+    } else toast.error(d.error || "Ошибка");
+  };
+
   const setF = (k: keyof AdDetail, v: unknown) => setForm((p) => ({ ...p, [k]: v }));
 
   return (
@@ -130,7 +141,36 @@ function AdModal({ adId, onClose, onSaved }: {
             </h2>
           </div>
           {!loading && ad && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {/* Кнопки быстрой модерации */}
+              {!edit && ad.status === "pending" && (
+                <>
+                  <button onClick={() => quickStatus("rejected")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-900/40 hover:bg-red-900/70 text-red-400 hover:text-red-300 text-sm font-medium rounded-xl transition-colors border border-red-900/50">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    Отклонить
+                  </button>
+                  <button onClick={() => quickStatus("active")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-900/40 hover:bg-green-900/70 text-green-400 hover:text-green-300 text-sm font-medium rounded-xl transition-colors border border-green-900/50">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                    Одобрить
+                  </button>
+                </>
+              )}
+              {!edit && ad.status === "active" && (
+                <button onClick={() => quickStatus("closed")}
+                  className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-sm rounded-xl transition-colors border border-gray-700">
+                  Закрыть
+                </button>
+              )}
+              {!edit && ad.status === "rejected" && (
+                <button onClick={() => quickStatus("active")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-900/40 hover:bg-green-900/70 text-green-400 text-sm font-medium rounded-xl transition-colors border border-green-900/50">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                  Восстановить
+                </button>
+              )}
+              {/* Редактирование */}
               {edit ? (
                 <>
                   <button onClick={() => setEdit(false)} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors">Отмена</button>
@@ -141,8 +181,8 @@ function AdModal({ adId, onClose, onSaved }: {
                   </button>
                 </>
               ) : (
-                <button onClick={() => setEdit(true)} className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors border border-gray-700">
-                  ✏️ Редактировать
+                <button onClick={() => setEdit(true)} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-sm rounded-xl transition-colors border border-gray-700">
+                  ✏️
                 </button>
               )}
             </div>
@@ -155,6 +195,31 @@ function AdModal({ adId, onClose, onSaved }: {
           </div>
         ) : ad ? (
           <div className="p-6 flex flex-col gap-6">
+
+            {/* Баннер модерации */}
+            {!edit && ad.status === "pending" && (
+              <div className="bg-yellow-900/20 border border-yellow-700/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">⏳</span>
+                  <div>
+                    <p className="text-yellow-300 font-semibold text-sm">Ожидает модерации</p>
+                    <p className="text-yellow-500 text-xs mt-0.5">Проверьте объявление и примите решение</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => quickStatus("rejected")}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-red-900/50 hover:bg-red-900/80 text-red-300 text-sm font-semibold rounded-xl transition-colors border border-red-800/50">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    Отклонить
+                  </button>
+                  <button onClick={() => quickStatus("active")}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-green-800/60 hover:bg-green-800/90 text-green-300 text-sm font-semibold rounded-xl transition-colors border border-green-700/50">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                    Одобрить
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Статус + даты */}
             <div className="flex flex-wrap gap-3 items-center">

@@ -52,7 +52,7 @@ interface Review {
 type Tab = "ads" | "about" | "reviews" | "contacts" | "settings";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const sid = () => localStorage.getItem("session_id") || "";
+const sid = () => localStorage.getItem("session_id") || localStorage.getItem("admin_token") || "";
 
 function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
   return (

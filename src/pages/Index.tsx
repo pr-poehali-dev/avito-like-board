@@ -474,8 +474,6 @@ export default function Index() {
   const navItems: { id: Section; label: string; icon: string }[] = [
     { id: "home", label: "Главная", icon: "Home" },
     { id: "categories", label: "Категории", icon: "LayoutGrid" },
-    { id: "my-ads", label: "Мои объявления", icon: "FileText" },
-    { id: "messages", label: "Сообщения", icon: "MessageCircle" },
   ];
 
   if (showCreateAd) {
@@ -582,10 +580,16 @@ export default function Index() {
                   onClick={() => setUserMenuOpen((v) => !v)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
                 >
-                  <div className="w-7 h-7 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {user.name[0].toUpperCase()}
+                  <div className="relative">
+                    <div className="w-7 h-7 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {user.name[0].toUpperCase()}
+                    </div>
                   </div>
                   <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
+                  <div className="relative">
+                    <Icon name="MessageCircle" size={18} className="text-[hsl(var(--muted-foreground))]" />
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">3</span>
+                  </div>
                   <Icon name={userMenuOpen ? "ChevronUp" : "ChevronDown"} size={14} className="text-[hsl(var(--muted-foreground))]" />
                 </button>
                 {userMenuOpen && (
@@ -595,8 +599,15 @@ export default function Index() {
                       <button onClick={() => { setSection("profile"); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
                         <Icon name="User" size={15} className="text-[hsl(var(--muted-foreground))]" />Личный кабинет
                       </button>
+                      <button onClick={() => { setSection("my-ads"); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                        <Icon name="FileText" size={15} className="text-[hsl(var(--muted-foreground))]" />Мои объявления
+                      </button>
                       <button onClick={() => { setSection("favorites"); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
                         <Icon name="Heart" size={15} className="text-[hsl(var(--muted-foreground))]" />Избранное
+                      </button>
+                      <button onClick={() => { setSection("messages"); setUserMenuOpen(false); }} className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                        <span className="flex items-center gap-2.5"><Icon name="MessageCircle" size={15} className="text-[hsl(var(--muted-foreground))]" />Сообщения</span>
+                        <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
                       </button>
                       <div className="my-1 border-t border-border" />
                       <button onClick={() => { logout(); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 transition-colors text-left">

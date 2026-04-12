@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
-import { DbCategory, User, AUTH_URL } from "@/pages/index/types";
+import { DbCategory, User, AUTH_URL, PROFILE_URL } from "@/pages/index/types";
 
 interface SiteHeaderProps {
   dbCategories: DbCategory[];

@@ -37,13 +37,16 @@ export default function SiteHeader({
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [openRootId, setOpenRootId] = useState<number | null>(null);
   const [catPath, setCatPath] = useState<number[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadNotif, setUnreadNotif] = useState(0);
+  const [notifications, setNotifications] = useState<{id:number;title:string;content:string|null;link_url:string|null;is_read:boolean;created_at:string|null;type:string}[]>([]);
   const prevUnreadRef = useRef(0);
 
   useEffect(() => {
-    if (!user) { setUnreadCount(0); return; }
+    if (!user) { setUnreadCount(0); setUnreadNotif(0); setNotifications([]); return; }
     const sid = localStorage.getItem("session_id");
     if (!sid) return;
 
@@ -69,12 +72,40 @@ export default function SiteHeader({
           }
         })
         .catch(() => {});
+
+      fetch(PROFILE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Id": sid },
+        body: JSON.stringify({ action: "unread_notifications_count" }),
+      }).then(r => r.json()).then(d => { if (d.ok) setUnreadNotif(d.count || 0); }).catch(() => {});
     };
 
     checkUnread();
-    const interval = setInterval(checkUnread, 10000);
+    const interval = setInterval(checkUnread, 15000);
     return () => clearInterval(interval);
   }, [user]);
+
+  const loadNotifications = () => {
+    const sid = localStorage.getItem("session_id");
+    if (!sid || !user) return;
+    fetch(PROFILE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid },
+      body: JSON.stringify({ action: "get_notifications" }),
+    }).then(r => r.json()).then(d => {
+      if (d.ok) { setNotifications(d.notifications.slice(0, 5)); setUnreadNotif(d.unread_count || 0); }
+    }).catch(() => {});
+  };
+
+  const markAllRead = () => {
+    const sid = localStorage.getItem("session_id");
+    if (!sid) return;
+    fetch(PROFILE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid },
+      body: JSON.stringify({ action: "mark_notifications_read" }),
+    }).then(() => { setUnreadNotif(0); setNotifications(prev => prev.map(n => ({ ...n, is_read: true }))); });
+  };
 
   const handleLogoClick = () => {
     if (onLogoClick) onLogoClick(); else navigate("/");
@@ -82,10 +113,12 @@ export default function SiteHeader({
 
   const handleNav = (id: string) => {
     if (onNavSection) { onNavSection(id); return; }
-    if (id === "profile" && onNavProfile) onNavProfile();
-    else if (id === "my-ads" && onNavMyAds) onNavMyAds();
+    if (id === "profile") {
+      if (user) navigate(`/user/${user.id}`);
+      else if (onNavProfile) onNavProfile();
+    } else if (id === "my-ads" && onNavMyAds) onNavMyAds();
     else if (id === "favorites" && onNavFavorites) onNavFavorites();
-    else if (id === "messages" && onNavMessages) onNavMessages();
+    else if (id === "messages") navigate("/chat");
     else navigate("/");
   };
 
@@ -143,39 +176,91 @@ export default function SiteHeader({
         </button>
 
         {/* Правая часть — кнопки */}
-        <div className="hidden md:flex items-center gap-2 shrink-0">
-          {/* Кнопка сообщений с бейджем */}
+        <div className="hidden md:flex items-center gap-1.5 shrink-0">
           {user && (
-            <button
-              onClick={() => navigate("/chat")}
-              className="relative p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
-              title="Сообщения"
-            >
-              <Icon name="MessageCircle" size={20} className="text-[hsl(var(--muted-foreground))]" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-            </button>
+            <>
+              {/* Сообщения */}
+              <button onClick={() => navigate("/chat")}
+                className="relative p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors" title="Сообщения">
+                <Icon name="MessageCircle" size={20} className="text-[hsl(var(--muted-foreground))]" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Колокольчик уведомлений */}
+              <div className="relative">
+                <button
+                  onClick={() => { setNotifOpen(v => !v); if (!notifOpen) loadNotifications(); }}
+                  className="relative p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors" title="Уведомления">
+                  <Icon name="Bell" size={20} className="text-[hsl(var(--muted-foreground))]" />
+                  {unreadNotif > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-[hsl(var(--accent))] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                      {unreadNotif > 99 ? "99+" : unreadNotif}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 w-80 bg-white rounded-xl shadow-xl border border-border overflow-hidden animate-fade-in">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                        <p className="font-semibold text-sm">Уведомления</p>
+                        {unreadNotif > 0 && (
+                          <button onClick={markAllRead} className="text-xs text-[hsl(var(--accent))] hover:underline font-medium">
+                            Прочитать все
+                          </button>
+                        )}
+                      </div>
+                      {notifications.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-2 text-[hsl(var(--muted-foreground))]">
+                          <Icon name="BellOff" size={28} />
+                          <p className="text-sm">Нет уведомлений</p>
+                        </div>
+                      ) : (
+                        <div className="max-h-72 overflow-y-auto">
+                          {notifications.map(n => (
+                            <button key={n.id} onClick={() => { if (n.link_url) navigate(n.link_url); setNotifOpen(false); }}
+                              className={`w-full text-left px-4 py-3 hover:bg-[hsl(var(--muted))] transition-colors border-b border-border last:border-0 ${!n.is_read ? "bg-orange-50" : ""}`}>
+                              <div className="flex items-start gap-2.5">
+                                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!n.is_read ? "bg-[hsl(var(--accent))]" : "bg-transparent"}`} />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{n.title}</p>
+                                  {n.content && <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 line-clamp-2">{n.content}</p>}
+                                  {n.created_at && (
+                                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-1">
+                                      {new Date(n.created_at).toLocaleDateString("ru", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
           )}
 
-          <button
-            onClick={onNewAd}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-[hsl(var(--accent))] text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors"
-          >
+          <button onClick={onNewAd}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-[hsl(var(--accent))] text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors ml-1">
             <Icon name="Plus" size={15} />
             Подать объявление
           </button>
 
           {user ? (
             <div className="relative">
-              <button
-                onClick={() => setUserMenuOpen((v) => !v)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
-              >
-                <div className="w-7 h-7 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
-                  {user.name[0].toUpperCase()}
+              <button onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors">
+                <div className="w-7 h-7 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                  {user.avatar_url
+                    ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                    : user.name[0].toUpperCase()}
                 </div>
                 <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
                 <Icon name={userMenuOpen ? "ChevronUp" : "ChevronDown"} size={14} className="text-[hsl(var(--muted-foreground))]" />
@@ -184,17 +269,35 @@ export default function SiteHeader({
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
                   <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-white rounded-xl shadow-lg border border-border py-1.5 animate-fade-in">
-                    <button onClick={() => { handleNav("profile"); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
-                      <Icon name="User" size={15} className="text-[hsl(var(--muted-foreground))]" />Личный кабинет
+                    {/* Мини-шапка */}
+                    <div className="px-4 py-2.5 border-b border-border mb-1">
+                      <p className="text-sm font-semibold truncate">{user.name}</p>
+                      <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">{user.email}</p>
+                    </div>
+                    <button onClick={() => { handleNav("profile"); setUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                      <Icon name="User" size={15} className="text-[hsl(var(--muted-foreground))]" />Мой профиль
                     </button>
-                    <button onClick={() => { handleNav("my-ads"); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                    <button onClick={() => { handleNav("my-ads"); setUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
                       <Icon name="FileText" size={15} className="text-[hsl(var(--muted-foreground))]" />Мои объявления
                     </button>
-                    <button onClick={() => { handleNav("favorites"); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                    <button onClick={() => { handleNav("favorites"); setUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
                       <Icon name="Heart" size={15} className="text-[hsl(var(--muted-foreground))]" />Избранное
                     </button>
+                    <button onClick={() => { navigate("/chat"); setUserMenuOpen(false); }}
+                      className="w-full flex items-center justify-between gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                      <span className="flex items-center gap-2.5">
+                        <Icon name="MessageCircle" size={15} className="text-[hsl(var(--muted-foreground))]" />Сообщения
+                      </span>
+                      {unreadCount > 0 && (
+                        <span className="min-w-[18px] h-4.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">{unreadCount}</span>
+                      )}
+                    </button>
                     <div className="my-1 border-t border-border" />
-                    <button onClick={() => { onLogout?.(); setUserMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 transition-colors text-left">
+                    <button onClick={() => { onLogout?.(); setUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 transition-colors text-left">
                       <Icon name="LogOut" size={15} />Выйти
                     </button>
                   </div>
@@ -317,11 +420,31 @@ export default function SiteHeader({
                 <Icon name={item.icon as "Home"} size={16} />{item.label}
               </button>
             ))}
+            {user && (
+              <>
+                <button onClick={() => { handleNav("profile"); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]">
+                  <Icon name="User" size={16} />Мой профиль
+                </button>
+                <button onClick={() => { navigate("/chat"); setMobileMenuOpen(false); }} className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-left text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]">
+                  <span className="flex items-center gap-3"><Icon name="MessageCircle" size={16} />Сообщения</span>
+                  {unreadCount > 0 && <span className="min-w-[18px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">{unreadCount}</span>}
+                </button>
+              </>
+            )}
+            <div className="my-1 border-t border-border" />
             {dbCategories.filter((c) => !c.parent_id).map((cat) => (
               <button key={cat.id} onClick={() => { navigate(`/${cat.slug}`); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]">
                 <Icon name="Tag" size={16} />{cat.name}
               </button>
             ))}
+            {user && (
+              <>
+                <div className="my-1 border-t border-border" />
+                <button onClick={() => { onLogout?.(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left text-red-500 hover:bg-red-50">
+                  <Icon name="LogOut" size={16} />Выйти
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

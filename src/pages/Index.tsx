@@ -471,9 +471,10 @@ export default function Index() {
     }
   };
 
+  const [catMenuOpen, setCatMenuOpen] = useState(false);
+
   const navItems: { id: Section; label: string; icon: string }[] = [
     { id: "home", label: "Главная", icon: "Home" },
-    { id: "categories", label: "Категории", icon: "LayoutGrid" },
   ];
 
   if (showCreateAd) {
@@ -625,6 +626,61 @@ export default function Index() {
           </div>
         </div>
 
+        {/* Полоса категорий */}
+        <div className="hidden md:block border-t border-border">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-1">
+              {/* Все категории — выпадающий список */}
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setCatMenuOpen((v) => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${catMenuOpen ? "bg-[hsl(var(--accent))] text-white" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"}`}
+                >
+                  <Icon name="LayoutGrid" size={14} />
+                  Все категории
+                  <Icon name={catMenuOpen ? "ChevronUp" : "ChevronDown"} size={13} />
+                </button>
+                {catMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setCatMenuOpen(false)} />
+                    <div className="absolute left-0 top-full mt-1 z-50 w-64 bg-white rounded-xl shadow-lg border border-border py-1.5 animate-fade-in max-h-[70vh] overflow-y-auto">
+                      {dbCategories.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-[hsl(var(--muted-foreground))]">Нет категорий</p>
+                      ) : (
+                        dbCategories.filter((c) => !c.parent_id).map((cat) => (
+                          <button
+                            key={cat.id}
+                            onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); setCatMenuOpen(false); }}
+                            className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left group"
+                          >
+                            <span className="font-medium text-[hsl(var(--foreground))]">{cat.name}</span>
+                            {cat.ads_count > 0 && <span className="text-xs text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))]">{cat.ads_count}</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Топ-8 корневых категорий напрямую */}
+              {dbCategories.filter((c) => !c.parent_id).slice(0, 8).map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); }}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                    selectedCategory === String(cat.id) && section === "home"
+                      ? "bg-[hsl(var(--accent))] text-white"
+                      : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-border bg-white animate-fade-in">
             <div className="px-4 py-3">
@@ -634,6 +690,12 @@ export default function Index() {
               {navItems.map((item) => (
                 <button key={item.id} onClick={() => { setSection(item.id); setMobileMenuOpen(false); }} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left ${section === item.id ? "bg-[hsl(var(--accent))] text-white" : "text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`}>
                   <Icon name={item.icon} size={16} />{item.label}
+                </button>
+              ))}
+              {/* Категории в мобильном меню */}
+              {dbCategories.filter((c) => !c.parent_id).map((cat) => (
+                <button key={cat.id} onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); setMobileMenuOpen(false); }} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left ${selectedCategory === String(cat.id) && section === "home" ? "bg-[hsl(var(--accent))] text-white" : "text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`}>
+                  <Icon name="Tag" size={16} />{cat.name}
                 </button>
               ))}
             </div>

@@ -56,4 +56,17 @@ export const adminApi = {
     call({ action: "logs", ...(params || {}) }),
 
   userGroups: () => call({ action: "user_groups" }),
+
+  groupCreate: (data: Record<string, unknown>) => call({ action: "group_create", ...data }),
+  groupUpdate: (data: Record<string, unknown>) => call({ action: "group_update", ...data }),
+  groupRemove: (id: number) => call({ action: "group_remove", id }),
+
+  usersList: (params: Record<string, unknown>) => call({ action: "users_list", ...params }),
+  usersBulk: (user_ids: number[], bulk_action: string, params?: Record<string, unknown>) =>
+    call({ action: "users_bulk", user_ids, bulk_action, params: params || {} }),
+
+  cfList: () => call({ action: "cf_list" }),
+  cfCreate: (data: Record<string, unknown>) => call({ action: "cf_create", ...data }),
+  cfUpdate: (data: Record<string, unknown>) => call({ action: "cf_update", ...data }),
+  cfRemove: (id: number) => call({ action: "cf_remove", id }),
 };

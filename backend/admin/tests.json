@@ -196,6 +196,34 @@
       "body": {"action": "user_groups"},
       "expectedStatus": 401, "bodyMatcher": "partial",
       "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "users_list без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "users_list"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "users_bulk без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "users_bulk", "user_ids": [1], "bulk_action": "ban"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "cf_list без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "cf_list"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
+    },
+    {
+      "name": "group_create без токена — 401",
+      "method": "POST", "path": "/",
+      "body": {"action": "group_create", "name": "Test"},
+      "expectedStatus": 401, "bodyMatcher": "partial",
+      "expectedBody": {"error": "Нет доступа"}
     }
   ]
 }

@@ -1,20 +1,11 @@
 """
 Административная панель API.
 Поддерживаемые action:
-  login         — вход администратора (возвращает admin_token)
-  me            — данные текущего администратора
-  stats         — статистика (users, ads, online)
-  quick_links   — список быстрых ссылок
-  ql_create     — создать ссылку
-  ql_update     — обновить ссылку
-  ql_delete     — удалить ссылку
-  ql_reorder    — изменить порядок
-  settings_get  — получить настройки (group=general|security или все)
-  settings_save — сохранить настройки (объект ключ-значение)
-  server_time   — текущее время сервера в заданном часовом поясе
-  my_ip         — IP-адрес текущего клиента
-  logs          — список логов (limit, offset, level)
-  logout        — выход
+  login, me, logout, stats, quick_links, ql_create, ql_update, ql_delete, ql_reorder
+  settings_get, settings_save, server_time, my_ip, logs
+  user_groups, group_create, group_update, group_remove
+  users_list, users_bulk
+  cf_list, cf_create, cf_update, cf_remove
 """
 import json
 import os
@@ -711,7 +702,7 @@ def handler(event: dict, context) -> dict:
         )
         return ok({"ip": ip})
 
-    # ── USER GROUPS ────────────────────────────────────────────────────────────
+    # ── USER GROUPS LIST ───────────────────────────────────────────────────────
     if action == "user_groups":
         conn = get_conn()
         admin = get_admin(headers, conn)
@@ -719,10 +710,358 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return err("Нет доступа", 401)
         cur = conn.cursor()
-        cur.execute(f"SELECT id, name, description FROM {SCHEMA}.user_groups ORDER BY id")
+        cur.execute(f"""SELECT id, name, short_name, description, account_deletion_policy,
+                               can_view_offline, is_temporary, default_group_id,
+                               can_access_admin, can_edit_all_news
+                        FROM {SCHEMA}.user_groups ORDER BY id""")
         rows = cur.fetchall()
         conn.close()
-        return ok({"items": [{"id": r[0], "name": r[1], "description": r[2]} for r in rows]})
+        return ok({"items": [
+            {"id": r[0], "name": r[1], "short_name": r[2], "description": r[3],
+             "account_deletion_policy": r[4], "can_view_offline": r[5],
+             "is_temporary": r[6], "default_group_id": r[7],
+             "can_access_admin": r[8], "can_edit_all_news": r[9]}
+            for r in rows
+        ]})
+
+    # ── USER GROUPS CREATE ─────────────────────────────────────────────────────
+    if action == "group_create":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название группы обязательно")
+        short_name = str(body.get("short_name") or "")[:20] or None
+        adp = int(body.get("account_deletion_policy") or 1)
+        cvo = bool(body.get("can_view_offline"))
+        it = bool(body.get("is_temporary"))
+        dgid = body.get("default_group_id")
+        dgid = int(dgid) if dgid else None
+        caa = bool(body.get("can_access_admin"))
+        cean = bool(body.get("can_edit_all_news"))
+        cur = conn.cursor()
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.user_groups
+                (name, short_name, account_deletion_policy, can_view_offline, is_temporary,
+                 default_group_id, can_access_admin, can_edit_all_news, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
+            (name, short_name, adp, cvo, it, dgid, caa, cean)
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": new_id})
+
+    # ── USER GROUPS UPDATE ─────────────────────────────────────────────────────
+    if action == "group_update":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        gid = body.get("id")
+        if not gid:
+            conn.close()
+            return err("Не указан id группы")
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название группы обязательно")
+        short_name = str(body.get("short_name") or "")[:20] or None
+        adp = int(body.get("account_deletion_policy") or 1)
+        cvo = bool(body.get("can_view_offline"))
+        it = bool(body.get("is_temporary"))
+        dgid = body.get("default_group_id")
+        dgid = int(dgid) if dgid else None
+        caa = bool(body.get("can_access_admin"))
+        cean = bool(body.get("can_edit_all_news"))
+        cur = conn.cursor()
+        cur.execute(
+            f"""UPDATE {SCHEMA}.user_groups SET name=%s, short_name=%s,
+                account_deletion_policy=%s, can_view_offline=%s, is_temporary=%s,
+                default_group_id=%s, can_access_admin=%s, can_edit_all_news=%s, updated_at=NOW()
+                WHERE id=%s""",
+            (name, short_name, adp, cvo, it, dgid, caa, cean, int(gid))
+        )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── USER GROUPS REMOVE ─────────────────────────────────────────────────────
+    if action == "group_remove":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        gid = body.get("id")
+        if not gid:
+            conn.close()
+            return err("Не указан id группы")
+        cur = conn.cursor()
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users WHERE group_id=%s", (int(gid),))
+        cnt = cur.fetchone()[0]
+        if cnt > 0:
+            conn.close()
+            return err(f"В группе {cnt} пользователей. Переведите их в другую группу перед удалением.")
+        cur.execute(f"UPDATE {SCHEMA}.user_groups SET default_group_id=NULL WHERE default_group_id=%s", (int(gid),))
+        cur.execute(f"UPDATE {SCHEMA}.users SET group_id=NULL WHERE group_id=%s", (int(gid),))
+        cur.execute(f"UPDATE {SCHEMA}.user_groups SET updated_at=NOW() WHERE id=%s", (int(gid),))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── USERS LIST ─────────────────────────────────────────────────────────────
+    if action == "users_list":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+
+        search = str(body.get("search") or qs.get("search") or "").strip()
+        exact_match = body.get("exact_match") or qs.get("exact_match")
+        post_banned = body.get("post_banned")
+        banned = body.get("banned")
+        comment_banned = body.get("comment_banned")
+        reg_from = body.get("reg_date_from") or qs.get("reg_date_from")
+        reg_to = body.get("reg_date_to") or qs.get("reg_date_to")
+        visit_from = body.get("last_visit_from") or qs.get("last_visit_from")
+        visit_to = body.get("last_visit_to") or qs.get("last_visit_to")
+        posts_min = body.get("posts_min")
+        posts_max = body.get("posts_max")
+        sort_by = str(body.get("sort_by") or qs.get("sort_by") or "id")
+        sort_order = "ASC" if str(body.get("sort_order") or qs.get("sort_order") or "asc").lower() == "asc" else "DESC"
+        page = max(1, int(body.get("page") or qs.get("page") or 1))
+        per_page = min(int(body.get("per_page") or qs.get("per_page") or 25), 100)
+
+        SORT_MAP = {"username": "u.username", "reg_date": "u.created_at", "last_visit": "u.last_visit", "posts_count": "posts_count"}
+        sort_col = SORT_MAP.get(sort_by, "u.id")
+
+        conditions = []
+        params = []
+        if search:
+            if exact_match in (True, "true", "1"):
+                conditions.append("(u.username = %s OR u.email = %s)")
+                params += [search, search]
+            else:
+                conditions.append("(u.username ILIKE %s OR u.email ILIKE %s)")
+                params += [f"%{search}%", f"%{search}%"]
+        if post_banned is not None and post_banned != "":
+            conditions.append("u.can_post = %s")
+            params.append(post_banned in (False, "false", "0"))
+        if banned is not None and banned != "":
+            conditions.append("u.is_banned = %s")
+            params.append(banned in (True, "true", "1"))
+        if comment_banned is not None and comment_banned != "":
+            conditions.append("u.can_comment = %s")
+            params.append(comment_banned in (False, "false", "0"))
+        if reg_from:
+            conditions.append("u.created_at >= %s")
+            params.append(reg_from)
+        if reg_to:
+            conditions.append("u.created_at <= %s")
+            params.append(reg_to)
+        if visit_from:
+            conditions.append("u.last_visit >= %s")
+            params.append(visit_from)
+        if visit_to:
+            conditions.append("u.last_visit <= %s")
+            params.append(visit_to)
+
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+        posts_subq = f"(SELECT COUNT(*) FROM {SCHEMA}.ads a WHERE a.user_id=u.id) AS posts_count"
+        having_parts = []
+        having_params = []
+        if posts_min is not None and posts_min != "":
+            having_parts.append(f"(SELECT COUNT(*) FROM {SCHEMA}.ads a WHERE a.user_id=u.id) >= %s")
+            having_params.append(int(posts_min))
+        if posts_max is not None and posts_max != "":
+            having_parts.append(f"(SELECT COUNT(*) FROM {SCHEMA}.ads a WHERE a.user_id=u.id) <= %s")
+            having_params.append(int(posts_max))
+        having = ("AND " + " AND ".join(having_parts)) if having_parts else ""
+
+        cur = conn.cursor()
+        cur.execute(
+            f"""SELECT u.id, COALESCE(u.username, u.name) as username, u.email,
+                       u.created_at, u.last_visit, {posts_subq},
+                       COALESCE(u.is_banned,false), COALESCE(u.can_post,true), COALESCE(u.can_comment,true),
+                       u.group_id, g.name
+                FROM {SCHEMA}.users u
+                LEFT JOIN {SCHEMA}.user_groups g ON g.id = u.group_id
+                {where}
+                {having}
+                ORDER BY {sort_col} {sort_order}
+                LIMIT %s OFFSET %s""",
+            params + having_params + [per_page, (page - 1) * per_page]
+        )
+        rows = cur.fetchall()
+        cur.execute(
+            f"""SELECT COUNT(*) FROM {SCHEMA}.users u {where} {having}""",
+            params + having_params
+        )
+        total = cur.fetchone()[0]
+        conn.close()
+        return ok({
+            "items": [
+                {"id": r[0], "username": r[1], "email": r[2],
+                 "reg_date": str(r[3]) if r[3] else None,
+                 "last_visit": str(r[4]) if r[4] else None,
+                 "posts_count": r[5], "is_banned": r[6],
+                 "can_post": r[7], "can_comment": r[8],
+                 "group_id": r[9], "group_name": r[10]}
+                for r in rows
+            ],
+            "total": total, "page": page, "per_page": per_page
+        })
+
+    # ── USERS BULK ACTION ──────────────────────────────────────────────────────
+    if action == "users_bulk":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        user_ids = body.get("user_ids") or []
+        bulk_action = str(body.get("bulk_action") or "")
+        params_data = body.get("params") or {}
+        if not user_ids or not bulk_action:
+            conn.close()
+            return err("user_ids и bulk_action обязательны")
+        ids_ph = ", ".join(["%s"] * len(user_ids))
+        cur = conn.cursor()
+        if bulk_action == "ban":
+            cur.execute(f"UPDATE {SCHEMA}.users SET is_banned=true WHERE id IN ({ids_ph})", user_ids)
+        elif bulk_action == "unban":
+            cur.execute(f"UPDATE {SCHEMA}.users SET is_banned=false WHERE id IN ({ids_ph})", user_ids)
+        elif bulk_action == "change_group":
+            gid = params_data.get("group_id")
+            if not gid:
+                conn.close()
+                return err("Не указан group_id")
+            cur.execute(f"UPDATE {SCHEMA}.users SET group_id=%s WHERE id IN ({ids_ph})", [int(gid)] + user_ids)
+        elif bulk_action == "allow_post":
+            cur.execute(f"UPDATE {SCHEMA}.users SET can_post=true WHERE id IN ({ids_ph})", user_ids)
+        elif bulk_action == "deny_post":
+            cur.execute(f"UPDATE {SCHEMA}.users SET can_post=false WHERE id IN ({ids_ph})", user_ids)
+        else:
+            conn.close()
+            return err(f"Неизвестное действие: {bulk_action}")
+        affected = cur.rowcount
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "affected": affected})
+
+    # ── CUSTOM FIELDS LIST ─────────────────────────────────────────────────────
+    if action == "cf_list":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cur = conn.cursor()
+        cur.execute(f"""SELECT id, name, description, field_type, options,
+                               show_on_registration, user_editable, is_private, sort_order
+                        FROM {SCHEMA}.user_custom_fields ORDER BY sort_order, id""")
+        rows = cur.fetchall()
+        conn.close()
+        return ok({"items": [
+            {"id": r[0], "name": r[1], "description": r[2], "field_type": r[3],
+             "options": r[4], "show_on_registration": r[5], "user_editable": r[6],
+             "is_private": r[7], "sort_order": r[8]}
+            for r in rows
+        ]})
+
+    # ── CUSTOM FIELDS CREATE ───────────────────────────────────────────────────
+    if action == "cf_create":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название поля обязательно")
+        ft = str(body.get("field_type") or "text")
+        if ft not in ("text", "textarea", "select", "boolean", "datetime"):
+            conn.close()
+            return err("Неверный тип поля")
+        cur = conn.cursor()
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.user_custom_fields
+                (name, description, field_type, options, show_on_registration,
+                 user_editable, is_private, sort_order, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
+            (name, body.get("description") or "", ft,
+             body.get("options") or None,
+             bool(body.get("show_on_registration")),
+             body.get("user_editable") is not False,
+             bool(body.get("is_private")),
+             int(body.get("sort_order") or 0))
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": new_id})
+
+    # ── CUSTOM FIELDS UPDATE ───────────────────────────────────────────────────
+    if action == "cf_update":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cfid = body.get("id")
+        if not cfid:
+            conn.close()
+            return err("Не указан id поля")
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название поля обязательно")
+        ft = str(body.get("field_type") or "text")
+        if ft not in ("text", "textarea", "select", "boolean", "datetime"):
+            conn.close()
+            return err("Неверный тип поля")
+        cur = conn.cursor()
+        cur.execute(
+            f"""UPDATE {SCHEMA}.user_custom_fields SET name=%s, description=%s,
+                field_type=%s, options=%s, show_on_registration=%s,
+                user_editable=%s, is_private=%s, sort_order=%s, updated_at=NOW()
+                WHERE id=%s""",
+            (name, body.get("description") or "", ft,
+             body.get("options") or None,
+             bool(body.get("show_on_registration")),
+             body.get("user_editable") is not False,
+             bool(body.get("is_private")),
+             int(body.get("sort_order") or 0), int(cfid))
+        )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── CUSTOM FIELDS REMOVE ───────────────────────────────────────────────────
+    if action == "cf_remove":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cfid = body.get("id")
+        if not cfid:
+            conn.close()
+            return err("Не указан id поля")
+        cur = conn.cursor()
+        cur.execute(f"UPDATE {SCHEMA}.user_custom_fields SET updated_at=NOW() WHERE id=%s", (int(cfid),))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
 
     # ── LOGS ───────────────────────────────────────────────────────────────────
     if action == "logs":

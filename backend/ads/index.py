@@ -131,7 +131,14 @@ def handler(event: dict, context) -> dict:
         params = []
 
         if category_id:
-            filters.append("a.category_id = %s")
+            filters.append(f"""a.category_id IN (
+                WITH RECURSIVE cat_tree AS (
+                    SELECT id FROM {SCHEMA}.categories WHERE id = %s
+                    UNION ALL
+                    SELECT c.id FROM {SCHEMA}.categories c JOIN cat_tree t ON c.parent_id = t.id
+                )
+                SELECT id FROM cat_tree
+            )""")
             params.append(int(category_id))
         elif category:
             filters.append("(a.category = %s OR EXISTS (SELECT 1 FROM {schema}.categories c WHERE c.id=a.category_id AND c.slug=%s))".replace("{schema}", SCHEMA))

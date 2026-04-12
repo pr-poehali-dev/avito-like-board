@@ -112,13 +112,15 @@ export default function SiteHeader({
   };
 
   const handleNav = (id: string) => {
-    if (onNavSection) { onNavSection(id); return; }
     if (id === "profile") {
       if (user) navigate(`/user/${user.id}`);
       else if (onNavProfile) onNavProfile();
-    } else if (id === "my-ads" && onNavMyAds) onNavMyAds();
+      return;
+    }
+    if (id === "messages") { navigate("/chat"); return; }
+    if (onNavSection) { onNavSection(id); return; }
+    if (id === "my-ads" && onNavMyAds) onNavMyAds();
     else if (id === "favorites" && onNavFavorites) onNavFavorites();
-    else if (id === "messages") navigate("/chat");
     else navigate("/");
   };
 

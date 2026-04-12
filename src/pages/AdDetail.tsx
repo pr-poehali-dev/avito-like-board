@@ -80,8 +80,17 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
         body: JSON.stringify({ action: "start_chat", user_id: ad.author_id }),
       });
       const d = await res.json();
-      if (d.ok) navigate(`/chat?id=${d.chat_id}`);
-      else toast.error(d.error || "Ошибка");
+      if (d.ok) {
+        // Передаём данные объявления через URL-параметры
+        const params = new URLSearchParams({
+          id: String(d.chat_id),
+          ad_id: String(ad.id),
+          ad_title: ad.title,
+          ad_price: String(ad.price),
+          ad_photo: ad.photos?.[0] || "",
+        });
+        navigate(`/chat?${params.toString()}`);
+      } else toast.error(d.error || "Ошибка");
     } catch { toast.error("Нет соединения"); } finally { setStartingChat(false); }
   };
 

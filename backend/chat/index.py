@@ -89,6 +89,10 @@ def fmt_msg(row, key_hex: str) -> dict:
         "content": decrypt_message(row[5], key_hex),
         "is_read": row[6],
         "created_at": row[7].isoformat() if row[7] else None,
+        "ad_id": row[8],
+        "ad_title": row[9],
+        "ad_price": row[10],
+        "ad_photo": row[11],
     }
 
 
@@ -210,7 +214,8 @@ def handler(event: dict, context) -> dict:
         key_hex = chat[1]
         cur.execute(f"""
             SELECT m.id, m.chat_id, m.sender_id, u.name, u.avatar_url,
-                   m.content, m.is_read, m.created_at
+                   m.content, m.is_read, m.created_at,
+                   m.ad_id, m.ad_title, m.ad_price, m.ad_photo
             FROM {SCHEMA}.messages m
             JOIN {SCHEMA}.users u ON u.id=m.sender_id
             WHERE m.chat_id=%s AND m.id > %s
@@ -257,6 +262,19 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return err("Сообщение слишком длинное")
 
+        # Прикреплённое объявление
+        ad_id = body.get("ad_id") or None
+        ad_title = (body.get("ad_title") or "").strip() or None
+        ad_price = body.get("ad_price") or None
+        ad_photo = (body.get("ad_photo") or "").strip() or None
+        if ad_id:
+            ad_id = int(ad_id)
+        if ad_price is not None:
+            try:
+                ad_price = int(ad_price)
+            except (ValueError, TypeError):
+                ad_price = None
+
         cur.execute(
             f"SELECT id, encrypt_key FROM {SCHEMA}.chats WHERE id=%s AND (user1_id=%s OR user2_id=%s)",
             (int(chat_id), user_id, user_id)
@@ -272,9 +290,9 @@ def handler(event: dict, context) -> dict:
         encrypted = encrypt_message(content, key_hex)
 
         cur.execute(f"""
-            INSERT INTO {SCHEMA}.messages (chat_id, sender_id, content)
-            VALUES (%s, %s, %s) RETURNING id, created_at
-        """, (int(chat_id), user_id, encrypted))
+            INSERT INTO {SCHEMA}.messages (chat_id, sender_id, content, ad_id, ad_title, ad_price, ad_photo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at
+        """, (int(chat_id), user_id, encrypted, ad_id, ad_title, ad_price, ad_photo))
         msg_id, created_at = cur.fetchone()
 
         cur.execute(f"UPDATE {SCHEMA}.chats SET last_message_at=NOW() WHERE id=%s", (int(chat_id),))

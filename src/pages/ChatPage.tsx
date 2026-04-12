@@ -23,6 +23,10 @@ interface Message {
   content: string;
   is_read: boolean;
   created_at: string;
+  ad_id?: number | null;
+  ad_title?: string | null;
+  ad_price?: number | null;
+  ad_photo?: string | null;
 }
 
 function formatTime(iso: string | null) {
@@ -55,7 +59,18 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const adGreetingSentRef = useRef(false);
   const sid = () => localStorage.getItem("session_id") || "";
+
+  // Данные объявления из URL (если пришли из карточки)
+  const adFromUrl = (() => {
+    const adId = searchParams.get("ad_id");
+    const adTitle = searchParams.get("ad_title");
+    const adPrice = searchParams.get("ad_price");
+    const adPhoto = searchParams.get("ad_photo");
+    if (!adId || !adTitle) return null;
+    return { ad_id: Number(adId), ad_title: adTitle, ad_price: adPrice ? Number(adPrice) : null, ad_photo: adPhoto || null };
+  })();
 
   // Категории для шапки
   useEffect(() => {
@@ -100,8 +115,32 @@ export default function ChatPage() {
     if (!activeChatId) return;
     setMessages([]);
     setLastMsgId(0);
+    adGreetingSentRef.current = false;
     loadMessages(activeChatId, 0, false);
   }, [activeChatId]);
+
+  // Отправляем мини-карточку объявления первым сообщением, если чат новый
+  useEffect(() => {
+    if (!adFromUrl || !activeChatId || !user || adGreetingSentRef.current) return;
+    // Ждём загрузки сообщений, затем если пусто — отправляем
+    const timer = setTimeout(async () => {
+      if (adGreetingSentRef.current) return;
+      adGreetingSentRef.current = true;
+      await fetch(CHAT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+        body: JSON.stringify({
+          action: "send_message",
+          chat_id: activeChatId,
+          content: "Здравствуйте! Интересует ваше объявление.",
+          ...adFromUrl,
+        }),
+      }).then(r => r.json()).then(d => { if (d.ok) loadMessages(activeChatId, lastMsgId, true); }).catch(() => {});
+      // Убираем параметры объявления из URL чтобы не отправить повторно
+      setSearchParams({ id: String(activeChatId) });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [activeChatId, user, adFromUrl]);
 
   // Polling каждые 3 сек
   useEffect(() => {
@@ -255,12 +294,38 @@ export default function ChatPage() {
                             {msg.sender_name[0]?.toUpperCase()}
                           </div>
                         )}
-                        <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${isMe ? "bg-[hsl(var(--accent))] text-white rounded-br-sm" : "bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] rounded-bl-sm"}`}>
-                          <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                          <p className={`text-[10px] mt-1 text-right ${isMe ? "text-white/70" : "text-[hsl(var(--muted-foreground))]"}`}>
-                            {formatTime(msg.created_at)}
-                            {isMe && <span className="ml-1">{msg.is_read ? "✓✓" : "✓"}</span>}
-                          </p>
+                        <div className={`max-w-[70%] rounded-2xl overflow-hidden ${isMe ? "bg-[hsl(var(--accent))] text-white rounded-br-sm" : "bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] rounded-bl-sm"}`}>
+                          {/* Мини-карточка объявления */}
+                          {msg.ad_id && msg.ad_title && (
+                            <button
+                              onClick={() => navigate(`/?ad=${msg.ad_id}`)}
+                              className={`w-full flex items-center gap-2.5 p-2.5 border-b text-left hover:opacity-90 transition-opacity ${isMe ? "border-white/20 bg-white/10" : "border-border bg-white"}`}
+                            >
+                              {msg.ad_photo ? (
+                                <img src={msg.ad_photo} alt={msg.ad_title} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                              ) : (
+                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${isMe ? "bg-white/20" : "bg-[hsl(var(--muted))]"}`}>
+                                  <Icon name="Image" size={18} className={isMe ? "text-white/60" : "text-[hsl(var(--muted-foreground))]"} />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className={`text-xs font-medium line-clamp-2 leading-tight ${isMe ? "text-white" : "text-[hsl(var(--foreground))]"}`}>{msg.ad_title}</p>
+                                {msg.ad_price != null && (
+                                  <p className={`text-xs font-bold mt-0.5 ${isMe ? "text-white/90" : "text-[hsl(var(--accent))]"}`}>
+                                    {msg.ad_price.toLocaleString("ru")} ₽
+                                  </p>
+                                )}
+                              </div>
+                              <Icon name="ExternalLink" size={12} className={`shrink-0 ${isMe ? "text-white/50" : "text-[hsl(var(--muted-foreground))]"}`} />
+                            </button>
+                          )}
+                          <div className="px-4 py-2.5">
+                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            <p className={`text-[10px] mt-1 text-right ${isMe ? "text-white/70" : "text-[hsl(var(--muted-foreground))]"}`}>
+                              {formatTime(msg.created_at)}
+                              {isMe && <span className="ml-1">{msg.is_read ? "✓✓" : "✓"}</span>}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     );

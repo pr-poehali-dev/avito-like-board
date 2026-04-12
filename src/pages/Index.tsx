@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import CreateAd from "@/pages/CreateAd";
 import EditAd from "@/pages/EditAd";
@@ -16,6 +17,7 @@ import {
 } from "./index/SectionViews";
 
 export default function Index() {
+  const navigate = useNavigate();
   const [section, setSection] = useState<Section>("home");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -636,9 +638,17 @@ export default function Index() {
                   const hasChildren = dbCategories.some((c) => c.parent_id === root.id);
                   const isOpen = openRootId === root.id;
                   const currentPathId = catPath.length > 0 ? catPath[catPath.length - 1] : root.id;
+                  const currentCat = dbCategories.find((c) => c.id === currentPathId);
                   const visibleItems = dbCategories.filter((c) =>
                     catPath.length === 0 ? c.parent_id === root.id : c.parent_id === currentPathId
                   );
+
+                  // строим URL для «Все в разделе»
+                  const allUrl = catPath.length === 0
+                    ? `/${root.slug}`
+                    : catPath.length === 1
+                      ? `/${root.slug}/${currentCat?.slug}`
+                      : `/${root.slug}/${currentCat?.slug}`;
 
                   return (
                     <div key={root.id} className="relative shrink-0">
@@ -646,11 +656,11 @@ export default function Index() {
                       <button
                         onClick={() => {
                           if (isOpen) { setOpenRootId(null); setCatPath([]); }
-                          else { setOpenRootId(root.id); setCatPath([]); }
+                          else if (hasChildren) { setOpenRootId(root.id); setCatPath([]); }
+                          else { navigate(`/${root.slug}`); }
                         }}
                         className={`flex items-center gap-1 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 ${
-                          isOpen || (selectedCategory === String(root.id) && section === "home")
-                            ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]"
+                          isOpen ? "border-[hsl(var(--accent))] text-[hsl(var(--accent))]"
                             : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
                         }`}
                       >
@@ -677,33 +687,31 @@ export default function Index() {
                                   <button onClick={() => setCatPath([])} className="hover:text-[hsl(var(--accent))] shrink-0 truncate">
                                     {root.name}
                                   </button>
-                                  {catPath.map((id, i) => (
-                                    <span key={id} className="flex items-center gap-1 shrink-0">
-                                      <span>/</span>
-                                      <button
-                                        onClick={() => setCatPath((p) => p.slice(0, i + 1))}
-                                        className="hover:text-[hsl(var(--accent))] truncate max-w-[80px]"
-                                      >
-                                        {dbCategories.find((c) => c.id === id)?.name}
-                                      </button>
-                                    </span>
-                                  ))}
+                                  {catPath.map((id, i) => {
+                                    const c = dbCategories.find((x) => x.id === id);
+                                    return (
+                                      <span key={id} className="flex items-center gap-1 shrink-0">
+                                        <span>/</span>
+                                        <button
+                                          onClick={() => setCatPath((p) => p.slice(0, i + 1))}
+                                          className="hover:text-[hsl(var(--accent))] truncate max-w-[80px]"
+                                        >
+                                          {c?.name}
+                                        </button>
+                                      </span>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
 
                             {/* «Все в разделе» */}
                             <button
-                              onClick={() => {
-                                setSelectedCategory(String(currentPathId));
-                                setSection("home");
-                                setOpenRootId(null);
-                                setCatPath([]);
-                              }}
+                              onClick={() => { navigate(allUrl); setOpenRootId(null); setCatPath([]); }}
                               className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors text-left"
                             >
                               <Icon name="LayoutGrid" size={13} />
-                              Все в «{dbCategories.find((c) => c.id === currentPathId)?.name}»
+                              Все в «{currentCat?.name ?? root.name}»
                             </button>
                             <div className="border-t border-border" />
 
@@ -711,6 +719,7 @@ export default function Index() {
                             <div className="overflow-y-auto max-h-[60vh]">
                               {visibleItems.map((cat) => {
                                 const hasSub = dbCategories.some((c) => c.parent_id === cat.id);
+                                const catUrl = `/${root.slug}/${cat.slug}`;
                                 return (
                                   <button
                                     key={cat.id}
@@ -718,8 +727,7 @@ export default function Index() {
                                       if (hasSub) {
                                         setCatPath((p) => [...p, cat.id]);
                                       } else {
-                                        setSelectedCategory(String(cat.id));
-                                        setSection("home");
+                                        navigate(catUrl);
                                         setOpenRootId(null);
                                         setCatPath([]);
                                       }
@@ -759,7 +767,7 @@ export default function Index() {
               ))}
               {/* Категории в мобильном меню */}
               {dbCategories.filter((c) => !c.parent_id).map((cat) => (
-                <button key={cat.id} onClick={() => { setSelectedCategory(String(cat.id)); setSection("home"); setMobileMenuOpen(false); }} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left ${selectedCategory === String(cat.id) && section === "home" ? "bg-[hsl(var(--accent))] text-white" : "text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`}>
+                <button key={cat.id} onClick={() => { navigate(`/${cat.slug}`); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]">
                   <Icon name="Tag" size={16} />{cat.name}
                 </button>
               ))}

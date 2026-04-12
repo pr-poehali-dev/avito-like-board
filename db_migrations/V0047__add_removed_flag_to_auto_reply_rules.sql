@@ -1,0 +1,2 @@
+ALTER TABLE t_p72465170_avito_like_board.auto_reply_rules
+  ADD COLUMN IF NOT EXISTS removed BOOLEAN NOT NULL DEFAULT FALSE;

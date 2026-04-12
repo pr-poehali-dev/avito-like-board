@@ -299,9 +299,72 @@ def handler(event: dict, context) -> dict:
         # Сбрасываем typing
         cur.execute(f"UPDATE {SCHEMA}.chat_typing SET updated_at='2000-01-01' WHERE chat_id=%s AND user_id=%s", (int(chat_id), user_id))
 
+        # ── Автоответ получателя ──────────────────────────────────────────────
+        # Находим другого участника чата
+        cur.execute(
+            f"SELECT user1_id, user2_id FROM {SCHEMA}.chats WHERE id=%s",
+            (int(chat_id),)
+        )
+        chat_row = cur.fetchone()
+        recipient_id = chat_row[1] if chat_row[0] == user_id else chat_row[0]
+
+        # Проверяем включён ли автоответ у получателя
+        cur.execute(
+            f"SELECT enabled, greeting FROM {SCHEMA}.auto_reply_settings WHERE user_id=%s",
+            (recipient_id,)
+        )
+        ar_settings = cur.fetchone()
+
+        # Проверяем — это первое сообщение от этого отправителя в чате?
+        cur.execute(
+            f"SELECT COUNT(*) FROM {SCHEMA}.messages WHERE chat_id=%s AND sender_id=%s",
+            (int(chat_id), user_id)
+        )
+        sender_msg_count = cur.fetchone()[0]
+
+        auto_reply_text = None
+
+        if ar_settings and ar_settings[0]:  # автоответ включён
+            # Загружаем правила получателя
+            cur.execute(
+                f"""SELECT question, answer, match_type FROM {SCHEMA}.auto_reply_rules
+                    WHERE user_id=%s AND enabled=TRUE AND removed=FALSE ORDER BY sort_order, id""",
+                (recipient_id,)
+            )
+            rules = cur.fetchall()
+
+            content_lower = content.lower().strip()
+            matched_answer = None
+
+            for rule_q, rule_a, match_type in rules:
+                q_lower = rule_q.lower().strip()
+                if match_type == 'exact':
+                    if content_lower == q_lower:
+                        matched_answer = rule_a
+                        break
+                else:  # partial
+                    if q_lower in content_lower or content_lower in q_lower:
+                        matched_answer = rule_a
+                        break
+
+            if matched_answer:
+                auto_reply_text = matched_answer
+            elif sender_msg_count == 1 and ar_settings[1]:
+                # Первое сообщение и есть приветствие
+                auto_reply_text = ar_settings[1]
+
+        if auto_reply_text:
+            encrypted_reply = encrypt_message(auto_reply_text, key_hex)
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.messages (chat_id, sender_id, content)
+                    VALUES (%s, %s, %s)""",
+                (int(chat_id), recipient_id, encrypted_reply)
+            )
+            cur.execute(f"UPDATE {SCHEMA}.chats SET last_message_at=NOW() WHERE id=%s", (int(chat_id),))
+
         conn.commit()
         conn.close()
-        return ok({"ok": True, "message_id": msg_id, "created_at": created_at.isoformat()})
+        return ok({"ok": True, "message_id": msg_id, "created_at": created_at.isoformat(), "auto_replied": auto_reply_text is not None})
 
     # ── typing — обновить статус набора текста ────────────────────────────────
     if action == "typing":
@@ -327,6 +390,109 @@ def handler(event: dict, context) -> dict:
             VALUES (%s, %s, NOW())
             ON CONFLICT (chat_id, user_id) DO UPDATE SET updated_at=NOW()
         """, (int(chat_id), user_id))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── auto_reply_get — получить настройки и правила автоответа ─────────────
+    if action == "auto_reply_get":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+
+        cur.execute(
+            f"SELECT enabled, greeting FROM {SCHEMA}.auto_reply_settings WHERE user_id=%s",
+            (user_id,)
+        )
+        row = cur.fetchone()
+        settings = {"enabled": row[0], "greeting": row[1]} if row else {"enabled": False, "greeting": ""}
+
+        cur.execute(
+            f"""SELECT id, question, answer, match_type, sort_order, enabled
+                FROM {SCHEMA}.auto_reply_rules WHERE user_id=%s AND removed=FALSE ORDER BY sort_order, id""",
+            (user_id,)
+        )
+        rules = [
+            {"id": r[0], "question": r[1], "answer": r[2],
+             "match_type": r[3], "sort_order": r[4], "enabled": r[5]}
+            for r in cur.fetchall()
+        ]
+
+        conn.close()
+        return ok({"ok": True, "settings": settings, "rules": rules})
+
+    # ── auto_reply_save_settings — сохранить вкл/выкл и приветствие ──────────
+    if action == "auto_reply_save_settings":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+
+        enabled = bool(body.get("enabled", False))
+        greeting = (body.get("greeting") or "").strip()
+
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.auto_reply_settings (user_id, enabled, greeting, updated_at)
+                VALUES (%s, %s, %s, NOW())
+                ON CONFLICT (user_id) DO UPDATE SET enabled=EXCLUDED.enabled, greeting=EXCLUDED.greeting, updated_at=NOW()""",
+            (user_id, enabled, greeting or None)
+        )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── auto_reply_rule_save — создать или обновить правило ──────────────────
+    if action == "auto_reply_rule_save":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+
+        rule_id = body.get("id")
+        question = (body.get("question") or "").strip()
+        answer = (body.get("answer") or "").strip()
+        match_type = body.get("match_type", "partial")
+        sort_order = int(body.get("sort_order") or 0)
+        rule_enabled = bool(body.get("enabled", True))
+
+        if not question or not answer:
+            conn.close()
+            return err("Укажите вопрос и ответ")
+        if match_type not in ("exact", "partial"):
+            match_type = "partial"
+
+        if rule_id:
+            cur.execute(
+                f"""UPDATE {SCHEMA}.auto_reply_rules
+                    SET question=%s, answer=%s, match_type=%s, sort_order=%s, enabled=%s
+                    WHERE id=%s AND user_id=%s""",
+                (question, answer, match_type, sort_order, rule_enabled, int(rule_id), user_id)
+            )
+        else:
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.auto_reply_rules (user_id, question, answer, match_type, sort_order, enabled)
+                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
+                (user_id, question, answer, match_type, sort_order, rule_enabled)
+            )
+            rule_id = cur.fetchone()[0]
+
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": rule_id})
+
+    # ── auto_reply_rule_delete — пометить правило как удалённое ─────────────
+    if action == "auto_reply_rule_delete":
+        if not user_id:
+            conn.close()
+            return err("Необходима авторизация", 401)
+
+        rule_id = body.get("id")
+        if not rule_id:
+            conn.close()
+            return err("Укажите id")
+
+        cur.execute(
+            f"UPDATE {SCHEMA}.auto_reply_rules SET removed=TRUE WHERE id=%s AND user_id=%s",
+            (int(rule_id), user_id)
+        )
         conn.commit()
         conn.close()
         return ok({"ok": True})

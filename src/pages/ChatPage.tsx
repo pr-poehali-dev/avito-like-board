@@ -207,8 +207,16 @@ export default function ChatPage() {
 
         {/* Левая колонка — список чатов */}
         <div className="w-72 shrink-0 bg-white rounded-2xl border border-border flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-border">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold text-sm">Сообщения</h2>
+            <button
+              onClick={() => navigate("/chat/auto-reply")}
+              className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors"
+              title="Настройки автоответа"
+            >
+              <Icon name="Bot" size={14} />
+              Автоответ
+            </button>
           </div>
           <div className="flex-1 overflow-y-auto">
             {chatsLoading && chats.length === 0 ? (

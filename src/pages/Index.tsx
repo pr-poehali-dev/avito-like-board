@@ -449,6 +449,7 @@ export default function Index() {
         onBack={() => setViewAdId(null)}
         onAddToFolder={(id) => openAddToFolder(id)}
         isFavorited={favorites.includes(viewAdId)}
+        currentUserId={user?.id ?? null}
       />
     );
   }

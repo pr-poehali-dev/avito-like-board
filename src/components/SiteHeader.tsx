@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
-import { DbCategory, User } from "@/pages/index/types";
+import { DbCategory, User, AUTH_URL } from "@/pages/index/types";
 
 interface SiteHeaderProps {
   dbCategories: DbCategory[];
@@ -38,6 +39,42 @@ export default function SiteHeader({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openRootId, setOpenRootId] = useState<number | null>(null);
   const [catPath, setCatPath] = useState<number[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const prevUnreadRef = useRef(0);
+
+  useEffect(() => {
+    if (!user) { setUnreadCount(0); return; }
+    const sid = localStorage.getItem("session_id");
+    if (!sid) return;
+
+    const checkUnread = () => {
+      fetch(AUTH_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Id": sid },
+        body: JSON.stringify({ action: "unread_count" }),
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.ok) {
+            const count = d.count || 0;
+            if (count > prevUnreadRef.current && prevUnreadRef.current >= 0) {
+              toast("Новое сообщение", {
+                description: "У вас есть непрочитанные сообщения",
+                action: { label: "Открыть", onClick: () => navigate("/chat") },
+                icon: "💬",
+              });
+            }
+            prevUnreadRef.current = count;
+            setUnreadCount(count);
+          }
+        })
+        .catch(() => {});
+    };
+
+    checkUnread();
+    const interval = setInterval(checkUnread, 10000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleLogoClick = () => {
     if (onLogoClick) onLogoClick(); else navigate("/");
@@ -107,6 +144,22 @@ export default function SiteHeader({
 
         {/* Правая часть — кнопки */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
+          {/* Кнопка сообщений с бейджем */}
+          {user && (
+            <button
+              onClick={() => navigate("/chat")}
+              className="relative p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+              title="Сообщения"
+            >
+              <Icon name="MessageCircle" size={20} className="text-[hsl(var(--muted-foreground))]" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
+
           <button
             onClick={onNewAd}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-[hsl(var(--accent))] text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors"

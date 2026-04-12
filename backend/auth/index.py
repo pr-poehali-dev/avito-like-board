@@ -337,5 +337,59 @@ def handler(event: dict, context) -> dict:
 
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "url": cdn_url})}
 
-    # me — проверяем и возвращаем расширенный профиль
+    # profile_get — публичный профиль пользователя по id
+    if action == "profile_get":
+        profile_id = qs.get("user_id") or body.get("user_id")
+        if not profile_id:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите user_id"})}
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT id, name, avatar_url, cover_url, city, about, created_at FROM {SCHEMA}.users WHERE id = %s",
+            (int(profile_id),)
+        )
+        u = cur.fetchone()
+        if not u:
+            conn.close()
+            return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "Пользователь не найден"})}
+        cur.execute(
+            f"SELECT COUNT(*) FROM {SCHEMA}.ads WHERE user_id = %s AND status = 'active'",
+            (int(profile_id),)
+        )
+        ads_count = cur.fetchone()[0]
+        conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "user": {
+            "id": u[0], "name": u[1], "avatar_url": u[2], "cover_url": u[3],
+            "city": u[4], "about": u[5],
+            "created_at": u[6].strftime("%d.%m.%Y") if u[6] else None,
+            "ads_count": ads_count,
+        }})}
+
+    # unread_count — количество непрочитанных сообщений
+    if action == "unread_count":
+        sid = (event.get("headers") or {}).get("X-Session-Id") or (event.get("headers") or {}).get("x-session-id")
+        if not sid:
+            return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "count": 0})}
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT user_id FROM {SCHEMA}.sessions WHERE id = %s AND expires_at > NOW()",
+            (sid,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "count": 0})}
+        user_id = row[0]
+        cur.execute(
+            f"""SELECT COUNT(*) FROM t_p72465170_avito_like_board.messages m
+                JOIN t_p72465170_avito_like_board.chats c ON c.id = m.chat_id
+                WHERE (c.user1_id = %s OR c.user2_id = %s)
+                  AND m.sender_id != %s AND m.is_read = FALSE""",
+            (user_id, user_id, user_id)
+        )
+        count = cur.fetchone()[0]
+        conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "count": count})}
+
     return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите action"})}

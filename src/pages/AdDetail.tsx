@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 
 const ADS_URL = "https://functions.poehali.dev/26941b84-1198-4969-8e13-07523f9f04d0";
+const CHAT_URL = "https://functions.poehali.dev/4961a627-e58a-4b80-bafb-720c53fa39f8";
 
 const CATEGORY_LABELS: Record<string, string> = {
   realty: "Недвижимость",
@@ -37,13 +39,15 @@ interface AdDetailProps {
   onBack: () => void;
   onAddToFolder: (adId: number) => void;
   isFavorited?: boolean;
+  currentUserId?: number | null;
 }
 
 function formatPrice(price: number) {
   return price.toLocaleString("ru-RU") + " ₽";
 }
 
-export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = false }: AdDetailProps) {
+export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = false, currentUserId }: AdDetailProps) {
+  const navigate = useNavigate();
   const [ad, setAd] = useState<AdDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -51,6 +55,7 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
   const [phoneVisible, setPhoneVisible] = useState(false);
   const [phone, setPhone] = useState<string | null>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
+  const [startingChat, setStartingChat] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -63,6 +68,22 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
       .catch(() => setError("Нет соединения"))
       .finally(() => setLoading(false));
   }, [adId]);
+
+  const startChat = async () => {
+    if (!currentUserId) { toast.error("Войдите, чтобы написать продавцу"); return; }
+    if (!ad) return;
+    setStartingChat(true);
+    try {
+      const res = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Id": localStorage.getItem("session_id") || "" },
+        body: JSON.stringify({ action: "start_chat", user_id: ad.author_id }),
+      });
+      const d = await res.json();
+      if (d.ok) navigate(`/chat?id=${d.chat_id}`);
+      else toast.error(d.error || "Ошибка");
+    } catch { toast.error("Нет соединения"); } finally { setStartingChat(false); }
+  };
 
   const showPhone = async () => {
     if (phoneVisible) return;
@@ -232,15 +253,18 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
             {/* Продавец */}
             <div className="bg-white rounded-2xl border border-border p-5">
               <p className="text-xs text-[hsl(var(--muted-foreground))] mb-3 font-medium uppercase tracking-wide">Продавец</p>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-11 h-11 rounded-full bg-[hsl(var(--accent))] flex items-center justify-center text-white font-bold text-lg">
+              <button
+                onClick={() => navigate(`/user/${ad.author_id}`)}
+                className="flex items-center gap-3 mb-4 hover:opacity-80 transition-opacity text-left w-full"
+              >
+                <div className="w-11 h-11 rounded-full bg-[hsl(var(--accent))] flex items-center justify-center text-white font-bold text-lg shrink-0">
                   {ad.author_name.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <p className="font-semibold">{ad.author_name}</p>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">Частное лицо</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">Посмотреть профиль →</p>
                 </div>
-              </div>
+              </button>
 
               {/* Телефон */}
               {phoneVisible && phone ? (
@@ -262,10 +286,27 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
                 </button>
               )}
 
-              <button className="w-full flex items-center justify-center gap-2 mt-2 border border-border py-3 rounded-xl text-sm font-semibold hover:bg-[hsl(var(--muted))] transition-colors">
-                <Icon name="MessageCircle" size={16} />
-                Написать сообщение
-              </button>
+              {/* Кнопка «Написать» — только не владельцу и только залогиненным */}
+              {ad.author_id !== currentUserId && (
+                currentUserId ? (
+                  <button
+                    onClick={startChat}
+                    disabled={startingChat}
+                    className="w-full flex items-center justify-center gap-2 mt-2 border border-[hsl(var(--accent))] text-[hsl(var(--accent))] py-3 rounded-xl text-sm font-semibold hover:bg-orange-50 transition-colors disabled:opacity-60"
+                  >
+                    <Icon name="MessageCircle" size={16} />
+                    {startingChat ? "Открываю чат..." : "Написать продавцу"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => toast.info("Войдите, чтобы написать продавцу")}
+                    className="w-full flex items-center justify-center gap-2 mt-2 border border-border py-3 rounded-xl text-sm font-semibold text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] transition-colors"
+                  >
+                    <Icon name="MessageCircle" size={16} />
+                    Написать продавцу
+                  </button>
+                )
+              )}
             </div>
 
             {/* Д��бавить в избранное */}

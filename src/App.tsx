@@ -10,6 +10,7 @@ import AdminApp from "./admin/AdminApp";
 import CategoryPage from "./pages/CategoryPage";
 import OfflinePage from "./pages/OfflinePage";
 import ChatPage from "./pages/ChatPage";
+import UserProfilePage from "./pages/UserProfilePage";
 import { ADS_URL } from "./pages/index/types";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/chat" element={<ChatPage />} />
+            <Route path="/user/:userId" element={<UserProfilePage />} />
             <Route path="/:slug" element={<CategoryPage />} />
             <Route path="/:slug/:subslug" element={<CategoryPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

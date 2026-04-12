@@ -1512,8 +1512,10 @@ def handler(event: dict, context) -> dict:
         if ads_cnt > 0:
             conn.close()
             return err(f"Нельзя удалить: в категории {ads_cnt} объявлений.")
-        cur.execute(f"UPDATE {SCHEMA}.categories SET updated_at=NOW() WHERE parent_id=%s", (int(cid),))
         cur.execute(f"UPDATE {SCHEMA}.ad_custom_field_categories SET category_id=NULL WHERE category_id=%s", (int(cid),))
+        cur.execute(f"UPDATE {SCHEMA}.categories SET updated_at=NOW() WHERE id=%s", (int(cid),))
+        cur.execute(f"UPDATE {SCHEMA}.categories SET parent_id=NULL WHERE parent_id=%s", (int(cid),))
+        cur.execute(f"DELETE FROM {SCHEMA}.categories WHERE id=%s", (int(cid),))
         conn.commit()
         conn.close()
         return ok({"ok": True})

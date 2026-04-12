@@ -1,34 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 
-const ADS_URL = "https://functions.poehali.dev/26941b84-1198-4969-8e13-07523f9f04d0";
-const FAV_URL = "https://functions.poehali.dev/47db8eb7-30bf-4234-9cbb-10b2e57a491c";
-
-const CATEGORIES = [
-  { id: "realty", label: "Недвижимость" },
-  { id: "auto", label: "Авто" },
-  { id: "electronics", label: "Электроника" },
-  { id: "clothes", label: "Одежда" },
-  { id: "furniture", label: "Мебель" },
-  { id: "services", label: "Услуги" },
-  { id: "animals", label: "Животные" },
-  { id: "hobbies", label: "Хобби" },
-];
-
-const CITIES = ["Москва", "СПб", "Казань", "Екатеринбург", "Новосибирск", "Самара"];
-
-interface PhotoItem {
-  preview: string;
-  mime: string;
-  data: string;
-}
-
-interface FavFolder {
-  id: number;
-  name: string;
-  count: number;
-}
+import { ADS_URL, FAV_URL, CATEGORIES, CITIES, CONDITIONS, PhotoItem, FavFolder } from "./createAd/types";
+import PhotoUploader from "./createAd/PhotoUploader";
+import FolderPicker from "./createAd/FolderPicker";
 
 interface CreateAdProps {
   onBack: () => void;
@@ -45,7 +21,6 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // Папки
   const [folders, setFolders] = useState<FavFolder[]>([]);
@@ -102,10 +77,7 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
       reader.onload = (e) => {
         const dataUrl = e.target?.result as string;
         const base64 = dataUrl.split(",")[1];
-        setPhotos((prev) => [
-          ...prev,
-          { preview: dataUrl, mime: file.type, data: base64 },
-        ]);
+        setPhotos((prev) => [...prev, { preview: dataUrl, mime: file.type, data: base64 }]);
       };
       reader.readAsDataURL(file);
     });
@@ -156,7 +128,6 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
 
       const adId = data.id;
 
-      // Добавляем в выбранные папки
       if (selectedFolderIds.length > 0) {
         await Promise.all(selectedFolderIds.map((fid) =>
           fetch(FAV_URL, {
@@ -195,53 +166,12 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
 
       <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-6">
 
-        {/* Фото */}
-        <div className="bg-white rounded-2xl border border-border p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">Фотографии</h2>
-            <span className="text-xs text-[hsl(var(--muted-foreground))]">{photos.length}/10</span>
-          </div>
-
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {photos.map((p, idx) => (
-              <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border border-border">
-                <img src={p.preview} alt="" className="w-full h-full object-cover" />
-                {idx === 0 && (
-                  <span className="absolute bottom-1 left-1 bg-[hsl(var(--accent))] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
-                    Главное
-                  </span>
-                )}
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                  {idx > 0 && (
-                    <button onClick={() => movePhoto(idx, idx - 1)} className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                      <Icon name="ChevronLeft" size={12} />
-                    </button>
-                  )}
-                  <button onClick={() => removePhoto(idx)} className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                    <Icon name="X" size={12} className="text-red-500" />
-                  </button>
-                  {idx < photos.length - 1 && (
-                    <button onClick={() => movePhoto(idx, idx + 1)} className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                      <Icon name="ChevronRight" size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-            {photos.length < 10 && (
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="aspect-square rounded-xl border-2 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--accent))] hover:bg-orange-50 transition-colors flex flex-col items-center justify-center gap-1 text-[hsl(var(--muted-foreground))]"
-              >
-                <Icon name="Plus" size={20} />
-                <span className="text-[10px] font-medium">Добавить</span>
-              </button>
-            )}
-          </div>
-
-          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
-          <p className="text-xs text-[hsl(var(--muted-foreground))] mt-3">До 10 фото. Первое фото — главное.</p>
-        </div>
+        <PhotoUploader
+          photos={photos}
+          onAdd={handleFiles}
+          onRemove={removePhoto}
+          onMove={movePhoto}
+        />
 
         {/* Основная информация */}
         <div className="bg-white rounded-2xl border border-border p-5 flex flex-col gap-4">
@@ -293,7 +223,7 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
           <div>
             <label className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5 block">Состояние</label>
             <div className="flex flex-wrap gap-2">
-              {["Новый", "Отличное", "Хорошее", "Удовлетворительное"].map((c) => (
+              {CONDITIONS.map((c) => (
                 <button
                   key={c}
                   onClick={() => setCondition(c)}
@@ -341,61 +271,17 @@ export default function CreateAd({ onBack, onSuccess }: CreateAdProps) {
           </div>
         </div>
 
-        {/* Папки избранного */}
-        <div className="bg-white rounded-2xl border border-border p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="font-semibold">Добавить в папку</h2>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Необязательно. Объявление сразу попадёт в выбранные папки</p>
-            </div>
-          </div>
-
-          {folders.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {folders.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => toggleFolder(f.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-all ${
-                    selectedFolderIds.includes(f.id)
-                      ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]"
-                      : "border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--foreground))]"
-                  }`}
-                >
-                  <Icon name={selectedFolderIds.includes(f.id) ? "CheckSquare" : "Square"} size={14} />
-                  {f.name}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {creatingFolder ? (
-            <div className="flex gap-2">
-              <input
-                autoFocus
-                placeholder="Название папки"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") createFolder(); if (e.key === "Escape") setCreatingFolder(false); }}
-                className="flex-1 px-4 py-2.5 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0"
-              />
-              <button onClick={createFolder} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">
-                Создать
-              </button>
-              <button onClick={() => setCreatingFolder(false)} className="px-3 py-2.5 rounded-xl text-sm border border-border hover:bg-[hsl(var(--muted))] transition-colors">
-                <Icon name="X" size={15} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setCreatingFolder(true)}
-              className="flex items-center gap-2 text-sm font-medium text-[hsl(var(--accent))] hover:opacity-80 transition-opacity"
-            >
-              <Icon name="FolderPlus" size={16} />
-              Создать новую папку
-            </button>
-          )}
-        </div>
+        <FolderPicker
+          folders={folders}
+          selectedFolderIds={selectedFolderIds}
+          newFolderName={newFolderName}
+          creatingFolder={creatingFolder}
+          onToggle={toggleFolder}
+          onNewFolderNameChange={setNewFolderName}
+          onCreateFolder={createFolder}
+          onStartCreating={() => setCreatingFolder(true)}
+          onCancelCreating={() => setCreatingFolder(false)}
+        />
 
         {error && (
           <div className="flex items-center gap-2 text-red-600 bg-red-50 px-4 py-3 rounded-xl text-sm border border-red-100">

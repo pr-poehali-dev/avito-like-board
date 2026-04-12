@@ -69,4 +69,9 @@ export const adminApi = {
   cfCreate: (data: Record<string, unknown>) => call({ action: "cf_create", ...data }),
   cfUpdate: (data: Record<string, unknown>) => call({ action: "cf_update", ...data }),
   cfRemove: (id: number) => call({ action: "cf_remove", id }),
+
+  cfFolderList: () => call({ action: "cf_folder_list" }),
+  cfFolderCreate: (data: Record<string, unknown>) => call({ action: "cf_folder_create", ...data }),
+  cfFolderUpdate: (data: Record<string, unknown>) => call({ action: "cf_folder_update", ...data }),
+  cfFolderRemove: (id: number) => call({ action: "cf_folder_remove", id }),
 };

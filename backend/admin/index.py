@@ -966,14 +966,14 @@ def handler(event: dict, context) -> dict:
             return err("Нет доступа", 401)
         cur = conn.cursor()
         cur.execute(f"""SELECT id, name, description, field_type, options,
-                               show_on_registration, user_editable, is_private, sort_order
+                               show_on_registration, user_editable, is_private, sort_order, folder_id
                         FROM {SCHEMA}.user_custom_fields ORDER BY sort_order, id""")
         rows = cur.fetchall()
         conn.close()
         return ok({"items": [
             {"id": r[0], "name": r[1], "description": r[2], "field_type": r[3],
              "options": r[4], "show_on_registration": r[5], "user_editable": r[6],
-             "is_private": r[7], "sort_order": r[8]}
+             "is_private": r[7], "sort_order": r[8], "folder_id": r[9]}
             for r in rows
         ]})
 
@@ -993,17 +993,19 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return err("Неверный тип поля")
         cur = conn.cursor()
+        folder_id = body.get("folder_id")
+        folder_id = int(folder_id) if folder_id else None
         cur.execute(
             f"""INSERT INTO {SCHEMA}.user_custom_fields
                 (name, description, field_type, options, show_on_registration,
-                 user_editable, is_private, sort_order, updated_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
+                 user_editable, is_private, sort_order, folder_id, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
             (name, body.get("description") or "", ft,
              body.get("options") or None,
              bool(body.get("show_on_registration")),
              body.get("user_editable") is not False,
              bool(body.get("is_private")),
-             int(body.get("sort_order") or 0))
+             int(body.get("sort_order") or 0), folder_id)
         )
         new_id = cur.fetchone()[0]
         conn.commit()
@@ -1030,17 +1032,19 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return err("Неверный тип поля")
         cur = conn.cursor()
+        folder_id = body.get("folder_id")
+        folder_id = int(folder_id) if folder_id else None
         cur.execute(
             f"""UPDATE {SCHEMA}.user_custom_fields SET name=%s, description=%s,
                 field_type=%s, options=%s, show_on_registration=%s,
-                user_editable=%s, is_private=%s, sort_order=%s, updated_at=NOW()
+                user_editable=%s, is_private=%s, sort_order=%s, folder_id=%s, updated_at=NOW()
                 WHERE id=%s""",
             (name, body.get("description") or "", ft,
              body.get("options") or None,
              bool(body.get("show_on_registration")),
              body.get("user_editable") is not False,
              bool(body.get("is_private")),
-             int(body.get("sort_order") or 0), int(cfid))
+             int(body.get("sort_order") or 0), folder_id, int(cfid))
         )
         conn.commit()
         conn.close()
@@ -1059,6 +1063,85 @@ def handler(event: dict, context) -> dict:
             return err("Не указан id поля")
         cur = conn.cursor()
         cur.execute(f"UPDATE {SCHEMA}.user_custom_fields SET updated_at=NOW() WHERE id=%s", (int(cfid),))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── CF FOLDERS LIST ────────────────────────────────────────────────────────
+    if action == "cf_folder_list":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        cur = conn.cursor()
+        cur.execute(f"SELECT id, name, sort_order FROM {SCHEMA}.user_custom_field_folders ORDER BY sort_order, id")
+        rows = cur.fetchall()
+        conn.close()
+        return ok({"items": [{"id": r[0], "name": r[1], "sort_order": r[2]} for r in rows]})
+
+    # ── CF FOLDERS CREATE ──────────────────────────────────────────────────────
+    if action == "cf_folder_create":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название папки обязательно")
+        cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.user_custom_field_folders (name, sort_order) VALUES (%s, %s) RETURNING id",
+            (name, int(body.get("sort_order") or 0))
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "id": new_id})
+
+    # ── CF FOLDERS UPDATE ──────────────────────────────────────────────────────
+    if action == "cf_folder_update":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        fid = body.get("id")
+        if not fid:
+            conn.close()
+            return err("Не указан id папки")
+        name = str(body.get("name") or "").strip()
+        if not name:
+            conn.close()
+            return err("Название папки обязательно")
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.user_custom_field_folders SET name=%s, sort_order=%s WHERE id=%s",
+            (name, int(body.get("sort_order") or 0), int(fid))
+        )
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
+
+    # ── CF FOLDERS REMOVE ──────────────────────────────────────────────────────
+    if action == "cf_folder_remove":
+        conn = get_conn()
+        admin = get_admin(headers, conn)
+        if not admin:
+            conn.close()
+            return err("Нет доступа", 401)
+        fid = body.get("id")
+        if not fid:
+            conn.close()
+            return err("Не указан id папки")
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.user_custom_fields SET folder_id=NULL WHERE folder_id=%s",
+            (int(fid),)
+        )
+        cur.execute(f"UPDATE {SCHEMA}.user_custom_field_folders SET sort_order=sort_order WHERE id=%s", (int(fid),))
         conn.commit()
         conn.close()
         return ok({"ok": True})

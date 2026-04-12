@@ -63,7 +63,11 @@ interface UserRow {
 interface CustomField {
   id: number; name: string; description: string; field_type: string;
   options: string | null; show_on_registration: boolean; user_editable: boolean;
-  is_private: boolean; sort_order: number;
+  is_private: boolean; sort_order: number; folder_id: number | null;
+}
+
+interface CfFolder {
+  id: number; name: string; sort_order: number;
 }
 
 const TABS = [
@@ -355,11 +359,14 @@ const FIELD_TYPE_OPTS = [
 
 const CF_DEFAULTS = {
   id: 0, name: "", description: "", field_type: "text", options: "",
-  show_on_registration: false, user_editable: true, is_private: false, sort_order: 0,
+  show_on_registration: false, user_editable: true, is_private: false, sort_order: 0, folder_id: 0,
 };
 
-function CfForm({ initial, onSave, onCancel }: {
-  initial: typeof CF_DEFAULTS; onSave: (data: Record<string, unknown>) => Promise<void>; onCancel: () => void;
+function CfForm({ initial, folders, onSave, onCancel }: {
+  initial: typeof CF_DEFAULTS;
+  folders: CfFolder[];
+  onSave: (data: Record<string, unknown>) => Promise<void>;
+  onCancel: () => void;
 }) {
   const [form, setForm] = useState({ ...initial });
   const [saving, setSaving] = useState(false);
@@ -368,7 +375,7 @@ function CfForm({ initial, onSave, onCancel }: {
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Укажите название поля"); return; }
     setSaving(true);
-    await onSave(form as unknown as Record<string, unknown>);
+    await onSave({ ...form, folder_id: form.folder_id || null });
     setSaving(false);
   };
 
@@ -381,8 +388,17 @@ function CfForm({ initial, onSave, onCancel }: {
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-gray-400 text-xs">Тип поля</label>
-          <Select value={form.field_type} onChange={(v) => set("field_type", v)} className="w-full"
-            options={FIELD_TYPE_OPTS} />
+          <Select value={form.field_type} onChange={(v) => set("field_type", v)} className="w-full" options={FIELD_TYPE_OPTS} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-gray-400 text-xs">Папка</label>
+          <Select value={String(form.folder_id || "")} onChange={(v) => set("folder_id", v ? Number(v) : 0)} className="w-full"
+            options={[{ value: "", label: "— без папки —" }, ...folders.map((f) => ({ value: String(f.id), label: f.name }))]} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-gray-400 text-xs">Порядок сортировки</label>
+          <input type="number" value={form.sort_order} onChange={(e) => set("sort_order", Number(e.target.value))}
+            className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full" />
         </div>
         <div className="flex flex-col gap-1 sm:col-span-2">
           <label className="text-gray-400 text-xs">Описание / подсказка</label>
@@ -398,11 +414,6 @@ function CfForm({ initial, onSave, onCancel }: {
               className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 resize-none" />
           </div>
         )}
-        <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Порядок сортировки</label>
-          <input type="number" value={form.sort_order} onChange={(e) => set("sort_order", Number(e.target.value))}
-            className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-28" />
-        </div>
       </div>
       <div className="flex flex-wrap gap-4">
         <Toggle checked={form.show_on_registration} onChange={(v) => set("show_on_registration", v)} label="Показывать при регистрации" />
@@ -417,13 +428,44 @@ function CfForm({ initial, onSave, onCancel }: {
   );
 }
 
+// Форма создания/редактирования папки (инлайн)
+function FolderForm({ initial, onSave, onCancel }: {
+  initial: { id: number; name: string; sort_order: number };
+  onSave: (data: Record<string, unknown>) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState({ ...initial });
+  const [saving, setSaving] = useState(false);
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <Input value={form.name} onChange={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="Название папки" className="flex-1" />
+      <input type="number" value={form.sort_order} onChange={(e) => setForm((p) => ({ ...p, sort_order: Number(e.target.value) }))}
+        placeholder="Порядок" className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-24" />
+      <SaveBtn saving={saving} onClick={async () => {
+        if (!form.name.trim()) { toast.error("Введите название"); return; }
+        setSaving(true); await onSave(form); setSaving(false);
+      }} label="Сохранить" />
+      <button onClick={onCancel} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-xl transition-colors">✕</button>
+    </div>
+  );
+}
+
 function CustomFieldsTab() {
   const [fields, setFields] = useState<CustomField[]>([]);
+  const [folders, setFolders] = useState<CfFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState<number | null>(null);
+  const [editFolderId, setEditFolderId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showFolderCreate, setShowFolderCreate] = useState(false);
+  const [activeFolderFilter, setActiveFolderFilter] = useState<number | null | "none">("none");
 
-  const load = async () => { const d = await adminApi.cfList(); setFields((d.items as CustomField[]) || []); setLoading(false); };
+  const load = async () => {
+    const [fd, fld] = await Promise.all([adminApi.cfList(), adminApi.cfFolderList()]);
+    setFields((fd.items as CustomField[]) || []);
+    setFolders((fld.items as CfFolder[]) || []);
+    setLoading(false);
+  };
   useEffect(() => { load(); }, []);
 
   const handleCreate = async (data: Record<string, unknown>) => {
@@ -431,13 +473,11 @@ function CustomFieldsTab() {
     if (d.ok) { toast.success("Поле создано"); setShowCreate(false); load(); }
     else toast.error(d.error || "Ошибка");
   };
-
   const handleUpdate = async (data: Record<string, unknown>) => {
     const d = await adminApi.cfUpdate(data);
     if (d.ok) { toast.success("Поле сохранено"); setEditId(null); load(); }
     else toast.error(d.error || "Ошибка");
   };
-
   const handleRemove = async (id: number) => {
     if (!confirm("Удалить поле?")) return;
     const d = await adminApi.cfRemove(id);
@@ -445,48 +485,153 @@ function CustomFieldsTab() {
     else toast.error(d.error || "Ошибка");
   };
 
+  const handleFolderCreate = async (data: Record<string, unknown>) => {
+    const d = await adminApi.cfFolderCreate(data);
+    if (d.ok) { toast.success("Папка создана"); setShowFolderCreate(false); load(); }
+    else toast.error(d.error || "Ошибка");
+  };
+  const handleFolderUpdate = async (data: Record<string, unknown>) => {
+    const d = await adminApi.cfFolderUpdate(data);
+    if (d.ok) { toast.success("Папка сохранена"); setEditFolderId(null); load(); }
+    else toast.error(d.error || "Ошибка");
+  };
+  const handleFolderRemove = async (id: number) => {
+    if (!confirm("Удалить папку? Поля в ней останутся, но без папки.")) return;
+    const d = await adminApi.cfFolderRemove(id);
+    if (d.ok) { toast.success("Папка удалена"); if (activeFolderFilter === id) setActiveFolderFilter("none"); load(); }
+    else toast.error(d.error || "Ошибка");
+  };
+
   const ftLabel = (ft: string) => FIELD_TYPE_OPTS.find((o) => o.value === ft)?.label || ft;
+
+  const visibleFields = activeFolderFilter === "none"
+    ? fields
+    : activeFolderFilter === null
+      ? fields.filter((f) => !f.folder_id)
+      : fields.filter((f) => f.folder_id === activeFolderFilter);
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
-        <p className="text-gray-400 text-sm">Дополнительные поля, отображаемые в профиле пользователя</p>
-        <button onClick={() => { setShowCreate(true); setEditId(null); }}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors">
-          + Добавить поле
-        </button>
+      {/* Заголовок + кнопки */}
+      <div className="flex flex-wrap justify-between items-center gap-3">
+        <p className="text-gray-400 text-sm">Дополнительные поля профиля пользователя</p>
+        <div className="flex gap-2">
+          <button onClick={() => { setShowFolderCreate(true); }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors border border-gray-700">
+            + Папка
+          </button>
+          <button onClick={() => { setShowCreate(true); setEditId(null); }}
+            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors">
+            + Добавить поле
+          </button>
+        </div>
       </div>
 
-      {showCreate && (
-        <CfForm initial={CF_DEFAULTS} onSave={handleCreate} onCancel={() => setShowCreate(false)} />
+      {/* Форма создания папки */}
+      {showFolderCreate && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
+          <p className="text-gray-400 text-xs mb-2">Новая папка</p>
+          <FolderForm initial={{ id: 0, name: "", sort_order: 0 }} onSave={handleFolderCreate} onCancel={() => setShowFolderCreate(false)} />
+        </div>
       )}
 
-      {fields.length === 0 && !showCreate ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl text-center py-16 text-gray-500 text-sm">
-          Нет дополнительных полей
+      {/* Список папок */}
+      {folders.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+            <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">Папки</span>
+          </div>
+          <div className="divide-y divide-gray-800/50">
+            {folders.map((folder) => (
+              <div key={folder.id}>
+                {editFolderId === folder.id ? (
+                  <div className="px-4 py-2">
+                    <FolderForm initial={{ ...folder }} onSave={handleFolderUpdate} onCancel={() => setEditFolderId(null)} />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800/30 group">
+                    <span className="text-gray-500 text-sm">📁</span>
+                    <button onClick={() => setActiveFolderFilter(activeFolderFilter === folder.id ? "none" : folder.id)}
+                      className={`flex-1 text-left text-sm font-medium transition-colors ${activeFolderFilter === folder.id ? "text-indigo-300" : "text-gray-300 hover:text-white"}`}>
+                      {folder.name}
+                      <span className="ml-2 text-xs text-gray-500">
+                        ({fields.filter((f) => f.folder_id === folder.id).length})
+                      </span>
+                    </button>
+                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => setEditFolderId(folder.id)}
+                        className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs rounded-lg transition-colors">
+                        Изменить
+                      </button>
+                      <button onClick={() => handleFolderRemove(folder.id)}
+                        className="px-2 py-1 bg-red-900/30 hover:bg-red-900/60 text-red-400 text-xs rounded-lg transition-colors">
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-      ) : (
+      )}
+
+      {/* Фильтр по папкам + форма создания поля */}
+      {folders.length > 0 && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-gray-500 text-xs">Показать:</span>
+          <button onClick={() => setActiveFolderFilter("none")}
+            className={`px-3 py-1 text-xs rounded-lg transition-colors ${activeFolderFilter === "none" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+            Все
+          </button>
+          <button onClick={() => setActiveFolderFilter(null)}
+            className={`px-3 py-1 text-xs rounded-lg transition-colors ${activeFolderFilter === null ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+            Без папки
+          </button>
+          {folders.map((folder) => (
+            <button key={folder.id} onClick={() => setActiveFolderFilter(folder.id)}
+              className={`px-3 py-1 text-xs rounded-lg transition-colors ${activeFolderFilter === folder.id ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+              📁 {folder.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showCreate && (
+        <CfForm initial={CF_DEFAULTS} folders={folders} onSave={handleCreate} onCancel={() => setShowCreate(false)} />
+      )}
+
+      {/* Таблица полей */}
+      {visibleFields.length === 0 && !showCreate ? (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl text-center py-16 text-gray-500 text-sm">
+          {activeFolderFilter === "none" ? "Нет дополнительных полей" : "В этой папке нет полей"}
+        </div>
+      ) : visibleFields.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800">
                 <th className="p-3 text-left text-gray-400 font-medium">Название</th>
                 <th className="p-3 text-left text-gray-400 font-medium">Тип</th>
-                <th className="p-3 text-center text-gray-400 font-medium">При регистрации</th>
-                <th className="p-3 text-center text-gray-400 font-medium">Редактируется</th>
+                <th className="p-3 text-left text-gray-400 font-medium">Папка</th>
+                <th className="p-3 text-center text-gray-400 font-medium">Регистрация</th>
+                <th className="p-3 text-center text-gray-400 font-medium">Редактирует</th>
                 <th className="p-3 text-center text-gray-400 font-medium">Личное</th>
-                <th className="p-3 text-center text-gray-400 font-medium">Порядок</th>
+                <th className="p-3 text-center text-gray-400 font-medium">№</th>
                 <th className="p-3 text-right text-gray-400 font-medium">Действия</th>
               </tr>
             </thead>
             <tbody>
-              {fields.map((f) => (
+              {visibleFields.map((f) => (
                 <>
                   <tr key={f.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
                     <td className="p-3 text-white font-medium">{f.name}</td>
                     <td className="p-3 text-gray-400">{ftLabel(f.field_type)}</td>
+                    <td className="p-3 text-gray-500 text-xs">
+                      {f.folder_id ? (folders.find((fd) => fd.id === f.folder_id)?.name ?? "—") : "—"}
+                    </td>
                     <td className="p-3 text-center">{f.show_on_registration ? <span className="text-green-400">✓</span> : <span className="text-gray-600">✗</span>}</td>
                     <td className="p-3 text-center">{f.user_editable ? <span className="text-green-400">✓</span> : <span className="text-gray-600">✗</span>}</td>
                     <td className="p-3 text-center">{f.is_private ? <span className="text-yellow-400">✓</span> : <span className="text-gray-600">✗</span>}</td>
@@ -505,10 +650,10 @@ function CustomFieldsTab() {
                     </td>
                   </tr>
                   {editId === f.id && (
-                    <tr key={`edit-${f.id}`}><td colSpan={7} className="px-4 pb-3">
+                    <tr key={`edit-${f.id}`}><td colSpan={8} className="px-4 pb-3">
                       <CfForm
-                        initial={{ ...CF_DEFAULTS, ...f, options: f.options || "", description: f.description || "" }}
-                        onSave={handleUpdate} onCancel={() => setEditId(null)} />
+                        initial={{ ...CF_DEFAULTS, ...f, options: f.options || "", description: f.description || "", folder_id: f.folder_id || 0 }}
+                        folders={folders} onSave={handleUpdate} onCancel={() => setEditId(null)} />
                     </td></tr>
                   )}
                 </>

@@ -102,10 +102,30 @@ def handler(event: dict, context) -> dict:
         condition = qs.get("condition") or body.get("condition") or ""
         search = qs.get("search") or body.get("search") or ""
         page = max(1, int(qs.get("page") or body.get("page") or 1))
-        per_page = min(int(qs.get("per_page") or body.get("per_page") or 40), 100)
 
         conn = get_conn()
         cur = conn.cursor()
+
+        # Читаем настройки из БД
+        cur.execute(
+            f"SELECT key, value FROM {SCHEMA}.settings WHERE key IN ('ads_per_page', 'ad_sort_by', 'ad_sort_order')"
+        )
+        cfg = {r[0]: r[1] for r in cur.fetchall()}
+        default_per_page = max(1, min(int(cfg.get("ads_per_page", 40)), 100))
+        per_page = min(int(qs.get("per_page") or body.get("per_page") or default_per_page), 100)
+
+        sort_col_map = {
+            "date": "a.created_at",
+            "edit_date": "a.updated_at",
+            "views": "a.views",
+            "title": "a.title",
+            "price": "a.price",
+        }
+        sort_by = cfg.get("ad_sort_by", "date")
+        sort_order = cfg.get("ad_sort_order", "desc").upper()
+        if sort_order not in ("ASC", "DESC"):
+            sort_order = "DESC"
+        order_expr = f"{sort_col_map.get(sort_by, 'a.created_at')} {sort_order}"
 
         filters = ["a.status = 'active'"]
         params = []
@@ -142,7 +162,7 @@ def handler(event: dict, context) -> dict:
                 JOIN {SCHEMA}.users u ON u.id = a.user_id
                 LEFT JOIN {SCHEMA}.categories cat ON cat.id = a.category_id
                 WHERE {where}
-                ORDER BY a.created_at DESC
+                ORDER BY {order_expr}
                 LIMIT %s OFFSET %s""",
             params + [per_page, (page - 1) * per_page]
         )

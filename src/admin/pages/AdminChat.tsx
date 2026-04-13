@@ -85,11 +85,11 @@ export default function AdminChat() {
   };
 
   const tabClass = (t: Tab) =>
-    `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${tab === t ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`;
+    `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${tab === t ? "bg-[hsl(var(--primary))] text-white" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`;
 
   return (
     <div className="p-6 max-w-4xl">
-      <h1 className="text-white text-xl font-bold mb-6">Управление чатом</h1>
+      <h1 className="text-[hsl(var(--foreground))] text-xl font-bold mb-6">Управление чатом</h1>
 
       <div className="flex gap-2 mb-6">
         <button className={tabClass("settings")} onClick={() => setTab("settings")}>Настройки</button>
@@ -99,44 +99,44 @@ export default function AdminChat() {
 
       {/* Вкладка: Настройки */}
       {tab === "settings" && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
-          <h2 className="text-white font-semibold mb-4">Основные настройки</h2>
-          <div className="flex items-center justify-between py-3 border-b border-gray-800">
+        <div className="bg-white rounded-xl border border-border p-6">
+          <h2 className="text-[hsl(var(--foreground))] font-semibold mb-4">Основные настройки</h2>
+          <div className="flex items-center justify-between py-3 border-b border-border">
             <div>
-              <p className="text-white text-sm font-medium">Чат между пользователями</p>
-              <p className="text-gray-400 text-xs mt-0.5">Разрешить пользователям переписываться друг с другом</p>
+              <p className="text-[hsl(var(--foreground))] text-sm font-medium">Чат между пользователями</p>
+              <p className="text-[hsl(var(--muted-foreground))] text-xs mt-0.5">Разрешить пользователям переписываться друг с другом</p>
             </div>
             <button
               onClick={() => setChatEnabled(v => !v)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${chatEnabled ? "bg-indigo-600" : "bg-gray-700"}`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${chatEnabled ? "bg-[hsl(var(--primary))]" : "bg-[hsl(var(--border))]"}`}
             >
               <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${chatEnabled ? "translate-x-6" : "translate-x-1"}`} />
             </button>
           </div>
           <div className="mt-4 flex items-center gap-3">
-            <button onClick={saveChatEnabled} disabled={saving} className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition-colors">
+            <button onClick={saveChatEnabled} disabled={saving} className="px-4 py-2 bg-[hsl(var(--primary))] text-white text-sm rounded-lg hover:opacity-90 disabled:opacity-60 transition-opacity">
               {saving ? "Сохранение..." : "Сохранить"}
             </button>
-            {saved && <span className="text-green-400 text-sm">✓ Сохранено</span>}
+            {saved && <span className="text-green-600 text-sm">✓ Сохранено</span>}
           </div>
         </div>
       )}
 
       {/* Вкладка: Список чатов */}
       {tab === "chats" && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
-            <h2 className="text-white font-semibold">Все диалоги</h2>
-            <button onClick={loadChats} className="text-gray-400 hover:text-white text-xs transition-colors">Обновить</button>
+        <div className="bg-white rounded-xl border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-[hsl(var(--foreground))] font-semibold">Все диалоги</h2>
+            <button onClick={loadChats} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] text-xs transition-colors">Обновить</button>
           </div>
           {chatsLoading ? (
-            <div className="flex items-center justify-center py-12 text-gray-500 text-sm">Загрузка...</div>
+            <div className="flex items-center justify-center py-12 text-[hsl(var(--muted-foreground))] text-sm">Загрузка...</div>
           ) : chats.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-gray-500 text-sm">Нет чатов</div>
+            <div className="flex items-center justify-center py-12 text-[hsl(var(--muted-foreground))] text-sm">Нет чатов</div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-500 text-xs border-b border-gray-800">
+                <tr className="text-[hsl(var(--muted-foreground))] text-xs border-b border-border">
                   <th className="px-6 py-3 text-left">ID</th>
                   <th className="px-6 py-3 text-left">Участники</th>
                   <th className="px-6 py-3 text-left">Сообщений</th>
@@ -145,11 +145,11 @@ export default function AdminChat() {
               </thead>
               <tbody>
                 {chats.map(c => (
-                  <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                    <td className="px-6 py-3 text-gray-400">#{c.id}</td>
-                    <td className="px-6 py-3 text-white">{c.user1_name} ↔ {c.user2_name}</td>
-                    <td className="px-6 py-3 text-gray-300">{c.msg_count}</td>
-                    <td className="px-6 py-3 text-gray-400">{c.last_message_at ? new Date(c.last_message_at).toLocaleString("ru") : "—"}</td>
+                  <tr key={c.id} className="border-b border-border hover:bg-[hsl(var(--muted))] transition-colors">
+                    <td className="px-6 py-3 text-[hsl(var(--muted-foreground))]">#{c.id}</td>
+                    <td className="px-6 py-3 text-[hsl(var(--foreground))]">{c.user1_name} ↔ {c.user2_name}</td>
+                    <td className="px-6 py-3 text-[hsl(var(--foreground))]">{c.msg_count}</td>
+                    <td className="px-6 py-3 text-[hsl(var(--muted-foreground))]">{c.last_message_at ? new Date(c.last_message_at).toLocaleString("ru") : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -161,40 +161,40 @@ export default function AdminChat() {
       {/* Вкладка: Фильтрация слов */}
       {tab === "words" && (
         <div className="space-y-4">
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
-            <h2 className="text-white font-semibold mb-4">Добавить слово</h2>
+          <div className="bg-white rounded-xl border border-border p-6">
+            <h2 className="text-[hsl(var(--foreground))] font-semibold mb-4">Добавить слово</h2>
             <div className="flex gap-3">
               <input
                 value={newWord}
                 onChange={e => setNewWord(e.target.value)}
                 placeholder="Слово или фраза"
-                className="flex-1 bg-gray-800 text-white text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-gray-500"
+                className="flex-1 bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))]"
               />
               <input
                 value={newReplacement}
                 onChange={e => setNewReplacement(e.target.value)}
                 placeholder="Замена"
-                className="w-28 bg-gray-800 text-white text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-gray-500"
+                className="w-28 bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))]"
               />
-              <button onClick={addWord} className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">
+              <button onClick={addWord} className="px-4 py-2 bg-[hsl(var(--primary))] text-white text-sm rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap">
                 Добавить
               </button>
             </div>
-            <p className="text-gray-500 text-xs mt-2">Слово будет автоматически заменяться при отправке сообщений</p>
+            <p className="text-[hsl(var(--muted-foreground))] text-xs mt-2">Слово будет автоматически заменяться при отправке сообщений</p>
           </div>
 
-          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-800">
-              <h2 className="text-white font-semibold">Список фильтров</h2>
+          <div className="bg-white rounded-xl border border-border overflow-hidden">
+            <div className="px-6 py-4 border-b border-border">
+              <h2 className="text-[hsl(var(--foreground))] font-semibold">Список фильтров</h2>
             </div>
             {wordsLoading ? (
-              <div className="flex items-center justify-center py-10 text-gray-500 text-sm">Загрузка...</div>
+              <div className="flex items-center justify-center py-10 text-[hsl(var(--muted-foreground))] text-sm">Загрузка...</div>
             ) : words.length === 0 ? (
-              <div className="flex items-center justify-center py-10 text-gray-500 text-sm">Нет фильтров</div>
+              <div className="flex items-center justify-center py-10 text-[hsl(var(--muted-foreground))] text-sm">Нет фильтров</div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-gray-500 text-xs border-b border-gray-800">
+                  <tr className="text-[hsl(var(--muted-foreground))] text-xs border-b border-border">
                     <th className="px-6 py-3 text-left">Слово</th>
                     <th className="px-6 py-3 text-left">Заменяется на</th>
                     <th className="px-6 py-3 text-right">Действие</th>
@@ -202,11 +202,11 @@ export default function AdminChat() {
                 </thead>
                 <tbody>
                   {words.map(w => (
-                    <tr key={w.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                      <td className="px-6 py-3 text-white font-mono">{w.word}</td>
-                      <td className="px-6 py-3 text-gray-300 font-mono">{w.replacement}</td>
+                    <tr key={w.id} className="border-b border-border hover:bg-[hsl(var(--muted))] transition-colors">
+                      <td className="px-6 py-3 text-[hsl(var(--foreground))] font-mono">{w.word}</td>
+                      <td className="px-6 py-3 text-[hsl(var(--muted-foreground))] font-mono">{w.replacement}</td>
                       <td className="px-6 py-3 text-right">
-                        <button onClick={() => removeWord(w.id)} className="text-red-400 hover:text-red-300 text-xs transition-colors">Удалить</button>
+                        <button onClick={() => removeWord(w.id)} className="text-red-500 hover:text-red-600 text-xs transition-colors">Удалить</button>
                       </td>
                     </tr>
                   ))}

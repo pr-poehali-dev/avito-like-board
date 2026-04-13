@@ -41,7 +41,7 @@ function Inp({ value, onChange, placeholder, type = "text", className = "" }: {
 }) {
   return (
     <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)}
-      className={`bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 ${className}`} />
+      className={`bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] ${className}`} />
   );
 }
 
@@ -51,7 +51,7 @@ function Sel({ value, onChange, options, className = "" }: {
 }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}
-      className={`bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${className}`}>
+      className={`bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] ${className}`}>
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -61,10 +61,10 @@ function Tog({ checked, onChange, label }: { checked: boolean; onChange: (v: boo
   return (
     <label className="flex items-center gap-2 cursor-pointer">
       <div onClick={() => onChange(!checked)}
-        className={`relative w-9 h-5 rounded-full transition-colors ${checked ? "bg-indigo-600" : "bg-gray-700"}`}>
+        className={`relative w-9 h-5 rounded-full transition-colors ${checked ? "bg-[hsl(var(--primary))]" : "bg-[hsl(var(--border))]"}`}>
         <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? "translate-x-4" : "translate-x-0.5"}`} />
       </div>
-      {label && <span className="text-sm text-gray-300">{label}</span>}
+      {label && <span className="text-sm text-[hsl(var(--muted-foreground))]">{label}</span>}
     </label>
   );
 }
@@ -74,9 +74,9 @@ function Btn({ onClick, children, variant = "primary", disabled = false, classNa
   variant?: "primary" | "secondary" | "danger"; disabled?: boolean; className?: string;
 }) {
   const cls = {
-    primary: "bg-indigo-600 hover:bg-indigo-500 text-white",
-    secondary: "bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700",
-    danger: "bg-red-900/30 hover:bg-red-900/60 text-red-400",
+    primary: "bg-[hsl(var(--primary))] hover:opacity-90 text-white",
+    secondary: "bg-[hsl(var(--muted))] hover:bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] border border-border",
+    danger: "bg-red-50 hover:bg-red-100 text-red-500",
   }[variant];
   return (
     <button onClick={onClick} disabled={disabled}
@@ -87,7 +87,7 @@ function Btn({ onClick, children, variant = "primary", disabled = false, classNa
 }
 
 function Spinner() {
-  return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
+  return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" /></div>;
 }
 
 // ─── Массовое добавление категорий ────────────────────────────────────────────

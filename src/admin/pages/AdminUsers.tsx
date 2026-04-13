@@ -9,7 +9,7 @@ function Input({ value, onChange, placeholder, type = "text", className = "" }: 
   return (
     <input type={type} value={value} placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className={`bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 ${className}`} />
+      className={`bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] ${className}`} />
   );
 }
 
@@ -19,7 +19,7 @@ function Select({ value, onChange, options, className = "" }: {
 }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}
-      className={`bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${className}`}>
+      className={`bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] ${className}`}>
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -29,10 +29,10 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   return (
     <label className="flex items-center gap-2 cursor-pointer">
       <div onClick={() => onChange(!checked)}
-        className={`relative w-10 h-5 rounded-full transition-colors ${checked ? "bg-indigo-600" : "bg-gray-700"}`}>
+        className={`relative w-10 h-5 rounded-full transition-colors ${checked ? "bg-[hsl(var(--primary))]" : "bg-[hsl(var(--border))]"}`}>
         <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
       </div>
-      {label && <span className="text-sm text-gray-300">{label}</span>}
+      {label && <span className="text-sm text-[hsl(var(--muted-foreground))]">{label}</span>}
     </label>
   );
 }
@@ -40,7 +40,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 function SaveBtn({ saving, onClick, label = "Сохранить" }: { saving: boolean; onClick: () => void; label?: string }) {
   return (
     <button onClick={onClick} disabled={saving}
-      className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+      className="flex items-center gap-2 px-5 py-2 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
       {saving ? <><div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</> : label}
     </button>
   );
@@ -174,48 +174,48 @@ function UsersTab() {
   return (
     <div className="flex flex-col gap-4">
       {/* Фильтр */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-        <h3 className="text-white font-semibold text-sm mb-4">Фильтр пользователей</h3>
+      <div className="bg-white border border-border rounded-2xl p-5">
+        <h3 className="text-[hsl(var(--foreground))] font-semibold text-sm mb-4">Фильтр пользователей</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-gray-400 text-xs">Поиск по логину / Email</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Поиск по логину / Email</label>
             <Input value={fStr("search")} onChange={(v) => setF("search", v)} placeholder="Логин или email" />
             <label className="flex items-center gap-2 mt-1 cursor-pointer">
               <input type="checkbox" checked={fBool("exact_match")} onChange={(e) => setF("exact_match", e.target.checked)} className="rounded accent-indigo-600" />
-              <span className="text-xs text-gray-400">Точное совпадение</span>
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">Точное совпадение</span>
             </label>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-gray-400 text-xs">Статус бана</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Статус бана</label>
             <Select value={fStr("banned")} onChange={(v) => setF("banned", v)}
               options={[{ value: "", label: "Все" }, { value: "1", label: "Только забаненные" }, { value: "0", label: "Не забаненные" }]} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-gray-400 text-xs">Запрет публикаций</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Запрет публикаций</label>
             <Select value={fStr("post_banned")} onChange={(v) => setF("post_banned", v)}
               options={[{ value: "", label: "Все" }, { value: "1", label: "Только с запретом" }, { value: "0", label: "Без запрета" }]} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-gray-400 text-xs">Запрет комментариев</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Запрет комментариев</label>
             <Select value={fStr("comment_banned")} onChange={(v) => setF("comment_banned", v)}
               options={[{ value: "", label: "Все" }, { value: "1", label: "С запретом" }, { value: "0", label: "Без запрета" }]} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-gray-400 text-xs">Дата регистрации</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Дата регистрации</label>
             <div className="flex gap-2">
               <Input value={fStr("reg_date_from")} onChange={(v) => setF("reg_date_from", v)} type="date" className="flex-1" />
               <Input value={fStr("reg_date_to")} onChange={(v) => setF("reg_date_to", v)} type="date" className="flex-1" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-gray-400 text-xs">Последнее посещение</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Последнее посещение</label>
             <div className="flex gap-2">
               <Input value={fStr("last_visit_from")} onChange={(v) => setF("last_visit_from", v)} type="date" className="flex-1" />
               <Input value={fStr("last_visit_to")} onChange={(v) => setF("last_visit_to", v)} type="date" className="flex-1" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-gray-400 text-xs">Кол-во публикаций (от / до)</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Кол-во публикаций (от / до)</label>
             <div className="flex gap-2">
               <Input value={fStr("posts_min")} onChange={(v) => setF("posts_min", v)} type="number" placeholder="от" className="flex-1" />
               <Input value={fStr("posts_max")} onChange={(v) => setF("posts_max", v)} type="number" placeholder="до" className="flex-1" />
@@ -223,10 +223,10 @@ function UsersTab() {
           </div>
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={applyFilter} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors">
+          <button onClick={applyFilter} className="px-4 py-2 bg-[hsl(var(--primary))] hover:opacity-90 text-white text-sm font-medium rounded-xl transition-colors">
             Применить фильтр
           </button>
-          <button onClick={resetFilter} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors">
+          <button onClick={resetFilter} className="px-4 py-2 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--foreground))] border border-border text-sm rounded-xl transition-colors">
             Сбросить
           </button>
         </div>
@@ -243,60 +243,60 @@ function UsersTab() {
         <Select value={fStr("per_page")} onChange={(v) => setF("per_page", v)}
           options={[{ value: "10", label: "10 на странице" }, { value: "25", label: "25 на странице" },
             { value: "50", label: "50 на странице" }, { value: "100", label: "100 на странице" }]} />
-        <button onClick={applyFilter} className="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors">
+        <button onClick={applyFilter} className="px-3 py-2 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--muted-foreground))] border border-border text-sm rounded-xl transition-colors">
           Применить
         </button>
-        <span className="text-gray-500 text-sm ml-auto">Всего: {total}</span>
+        <span className="text-[hsl(var(--muted-foreground))] text-sm ml-auto">Всего: {total}</span>
       </div>
 
       {/* Таблица */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-border rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-7 h-7 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : users.length === 0 ? (
-          <div className="text-center py-16 text-gray-500 text-sm">Пользователи не найдены</div>
+          <div className="text-center py-16 text-[hsl(var(--muted-foreground))] text-sm">Пользователи не найдены</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-800">
+                <tr className="border-b border-border">
                   <th className="p-3 text-left">
                     <input type="checkbox" checked={selected.length === users.length && users.length > 0}
                       onChange={toggleAll} className="rounded accent-indigo-600" />
                   </th>
-                  <th className="p-3 text-left text-gray-400 font-medium">Логин</th>
-                  <th className="p-3 text-left text-gray-400 font-medium">Email</th>
-                  <th className="p-3 text-left text-gray-400 font-medium">Регистрация</th>
-                  <th className="p-3 text-left text-gray-400 font-medium">Посещение</th>
-                  <th className="p-3 text-left text-gray-400 font-medium">Объявл.</th>
-                  <th className="p-3 text-left text-gray-400 font-medium">Статус</th>
-                  <th className="p-3 text-left text-gray-400 font-medium">Группа</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Логин</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Email</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Регистрация</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Посещение</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Объявл.</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Статус</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Группа</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                  <tr key={u.id} className="border-b border-border/50 hover:bg-[hsl(var(--muted))]">
                     <td className="p-3">
                       <input type="checkbox" checked={selected.includes(u.id)} onChange={() => toggleSelect(u.id)} className="rounded accent-indigo-600" />
                     </td>
-                    <td className="p-3 text-white font-medium">{u.username || "—"}</td>
-                    <td className="p-3 text-gray-400">{u.email}</td>
-                    <td className="p-3 text-gray-400">{fmtDate(u.reg_date)}</td>
-                    <td className="p-3 text-gray-400">{fmtDate(u.last_visit)}</td>
-                    <td className="p-3 text-gray-300">{u.posts_count}</td>
+                    <td className="p-3 text-[hsl(var(--foreground))] font-medium">{u.username || "—"}</td>
+                    <td className="p-3 text-[hsl(var(--muted-foreground))]">{u.email}</td>
+                    <td className="p-3 text-[hsl(var(--muted-foreground))]">{fmtDate(u.reg_date)}</td>
+                    <td className="p-3 text-[hsl(var(--muted-foreground))]">{fmtDate(u.last_visit)}</td>
+                    <td className="p-3 text-[hsl(var(--muted-foreground))]">{u.posts_count}</td>
                     <td className="p-3">
                       <div className="flex gap-1 flex-wrap">
-                        {u.is_banned && <span className="px-1.5 py-0.5 bg-red-900/50 text-red-400 text-xs rounded-md">Бан</span>}
-                        {!u.can_post && <span className="px-1.5 py-0.5 bg-orange-900/50 text-orange-400 text-xs rounded-md">-пост</span>}
-                        {!u.can_comment && <span className="px-1.5 py-0.5 bg-yellow-900/50 text-yellow-400 text-xs rounded-md">-коммент</span>}
+                        {u.is_banned && <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-xs rounded-md">Бан</span>}
+                        {!u.can_post && <span className="px-1.5 py-0.5 bg-orange-50 text-orange-600 text-xs rounded-md">-пост</span>}
+                        {!u.can_comment && <span className="px-1.5 py-0.5 bg-yellow-50 text-yellow-600 text-xs rounded-md">-коммент</span>}
                         {u.is_banned === false && u.can_post && u.can_comment && (
-                          <span className="px-1.5 py-0.5 bg-green-900/50 text-green-400 text-xs rounded-md">Активен</span>
+                          <span className="px-1.5 py-0.5 bg-green-50 text-green-600 text-xs rounded-md">Активен</span>
                         )}
                       </div>
                     </td>
-                    <td className="p-3 text-gray-400">{u.group_name || "—"}</td>
+                    <td className="p-3 text-[hsl(var(--muted-foreground))]">{u.group_name || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -309,36 +309,36 @@ function UsersTab() {
       {totalPages > 1 && (
         <div className="flex items-center gap-2 justify-center">
           <button onClick={() => goPage(Math.max(1, appliedFilter.page - 1))} disabled={appliedFilter.page === 1}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-gray-300 text-sm rounded-lg transition-colors">←</button>
-          <span className="text-gray-400 text-sm">{appliedFilter.page} / {totalPages}</span>
+            className="px-3 py-1.5 bg-[hsl(var(--muted))] hover:opacity-80 disabled:opacity-40 text-[hsl(var(--muted-foreground))] text-sm rounded-lg transition-colors">←</button>
+          <span className="text-[hsl(var(--muted-foreground))] text-sm">{appliedFilter.page} / {totalPages}</span>
           <button onClick={() => goPage(Math.min(totalPages, appliedFilter.page + 1))} disabled={appliedFilter.page === totalPages}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-gray-300 text-sm rounded-lg transition-colors">→</button>
+            className="px-3 py-1.5 bg-[hsl(var(--muted))] hover:opacity-80 disabled:opacity-40 text-[hsl(var(--muted-foreground))] text-sm rounded-lg transition-colors">→</button>
         </div>
       )}
 
       {/* Групповые действия */}
       {selected.length > 0 && (
-        <div className="bg-gray-900 border border-indigo-800/50 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-          <span className="text-indigo-300 text-sm font-medium">Выбрано: {selected.length}</span>
+        <div className="bg-white border border-[hsl(var(--primary))]/30 rounded-2xl p-4 flex flex-wrap items-center gap-3">
+          <span className="text-[hsl(var(--primary))] text-sm font-medium">Выбрано: {selected.length}</span>
           <Select value={bulkAction} onChange={setBulkAction}
             options={[{ value: "", label: "Выберите действие..." },
               { value: "ban", label: "Забанить" }, { value: "unban", label: "Разбанить" },
               { value: "change_group", label: "Изменить группу" },
               { value: "allow_post", label: "Разрешить публикации" }, { value: "deny_post", label: "Запретить публикации" }]} />
           <SaveBtn saving={bulkApplying} onClick={applyBulk} label="Применить" />
-          <button onClick={() => setSelected([])} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">Снять выбор</button>
+          <button onClick={() => setSelected([])} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] text-sm transition-colors">Снять выбор</button>
         </div>
       )}
 
       {/* Модальное окно выбора группы */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
-            <h3 className="text-white font-semibold mb-4">Выберите группу</h3>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white border border-border rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="text-[hsl(var(--foreground))] font-semibold mb-4">Выберите группу</h3>
             <Select value={bulkGroupId} onChange={setBulkGroupId} className="w-full mb-4"
               options={[{ value: "", label: "— выберите группу —" }, ...groups.map((g) => ({ value: String(g.id), label: g.name }))]} />
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors">Отмена</button>
+              <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--foreground))] border border-border text-sm rounded-xl transition-colors">Отмена</button>
               <SaveBtn saving={bulkApplying} onClick={applyBulkGroup} label="Применить" />
             </div>
           </div>
@@ -380,38 +380,38 @@ function CfForm({ initial, folders, onSave, onCancel }: {
   };
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-5 flex flex-col gap-3">
+    <div className="bg-[hsl(var(--muted))]/50 border border-border rounded-xl p-5 flex flex-col gap-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Название поля *</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Название поля *</label>
           <Input value={form.name} onChange={(v) => set("name", v)} placeholder="Например: Город" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Тип поля</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Тип поля</label>
           <Select value={form.field_type} onChange={(v) => set("field_type", v)} className="w-full" options={FIELD_TYPE_OPTS} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Папка</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Папка</label>
           <Select value={String(form.folder_id || "")} onChange={(v) => set("folder_id", v ? Number(v) : 0)} className="w-full"
             options={[{ value: "", label: "— без папки —" }, ...folders.map((f) => ({ value: String(f.id), label: f.name }))]} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Порядок сортировки</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Порядок сортировки</label>
           <input type="number" value={form.sort_order} onChange={(e) => set("sort_order", Number(e.target.value))}
-            className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full" />
+            className="bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] w-full" />
         </div>
         <div className="flex flex-col gap-1 sm:col-span-2">
-          <label className="text-gray-400 text-xs">Описание / подсказка</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Описание / подсказка</label>
           <textarea value={form.description} onChange={(e) => set("description", e.target.value)}
             rows={2} placeholder="Подсказка для пользователя"
-            className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 resize-none" />
+            className="bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] resize-none" />
         </div>
         {form.field_type === "select" && (
           <div className="flex flex-col gap-1 sm:col-span-2">
-            <label className="text-gray-400 text-xs">Варианты списка (по одному на строку)</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Варианты списка (по одному на строку)</label>
             <textarea value={form.options || ""} onChange={(e) => set("options", e.target.value)}
               rows={4} placeholder={"Вариант 1\nВариант 2\nВариант 3"}
-              className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 resize-none" />
+              className="bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] resize-none" />
           </div>
         )}
       </div>
@@ -422,7 +422,7 @@ function CfForm({ initial, folders, onSave, onCancel }: {
       </div>
       <div className="flex gap-2 pt-1">
         <SaveBtn saving={saving} onClick={handleSave} />
-        <button onClick={onCancel} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-xl transition-colors">Отмена</button>
+        <button onClick={onCancel} className="px-4 py-2 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--muted-foreground))] text-sm rounded-xl transition-colors">Отмена</button>
       </div>
     </div>
   );
@@ -440,12 +440,12 @@ function FolderForm({ initial, onSave, onCancel }: {
     <div className="flex items-center gap-2 py-1">
       <Input value={form.name} onChange={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="Название папки" className="flex-1" />
       <input type="number" value={form.sort_order} onChange={(e) => setForm((p) => ({ ...p, sort_order: Number(e.target.value) }))}
-        placeholder="Порядок" className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-24" />
+        placeholder="Порядок" className="bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] w-24" />
       <SaveBtn saving={saving} onClick={async () => {
         if (!form.name.trim()) { toast.error("Введите название"); return; }
         setSaving(true); await onSave(form); setSaving(false);
       }} label="Сохранить" />
-      <button onClick={onCancel} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-xl transition-colors">✕</button>
+      <button onClick={onCancel} className="px-3 py-2 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--muted-foreground))] text-sm rounded-xl transition-colors">✕</button>
     </div>
   );
 }
@@ -510,20 +510,20 @@ function CustomFieldsTab() {
       ? fields.filter((f) => !f.folder_id)
       : fields.filter((f) => f.folder_id === activeFolderFilter);
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="flex flex-col gap-4">
       {/* Заголовок + кнопки */}
       <div className="flex flex-wrap justify-between items-center gap-3">
-        <p className="text-gray-400 text-sm">Дополнительные поля профиля пользователя</p>
+        <p className="text-[hsl(var(--muted-foreground))] text-sm">Дополнительные поля профиля пользователя</p>
         <div className="flex gap-2">
           <button onClick={() => { setShowFolderCreate(true); }}
-            className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors border border-gray-700">
+            className="flex items-center gap-1.5 px-3 py-2 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--foreground))] border border-border text-sm rounded-xl transition-colors">
             + Папка
           </button>
           <button onClick={() => { setShowCreate(true); setEditId(null); }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors">
+            className="flex items-center gap-1.5 px-4 py-2 bg-[hsl(var(--primary))] hover:opacity-90 text-white text-sm font-medium rounded-xl transition-colors">
             + Добавить поле
           </button>
         </div>
@@ -531,19 +531,19 @@ function CustomFieldsTab() {
 
       {/* Форма создания папки */}
       {showFolderCreate && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
-          <p className="text-gray-400 text-xs mb-2">Новая папка</p>
+        <div className="bg-white border border-border rounded-xl px-4 py-3">
+          <p className="text-[hsl(var(--muted-foreground))] text-xs mb-2">Новая папка</p>
           <FolderForm initial={{ id: 0, name: "", sort_order: 0 }} onSave={handleFolderCreate} onCancel={() => setShowFolderCreate(false)} />
         </div>
       )}
 
       {/* Список папок */}
       {folders.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
-            <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">Папки</span>
+        <div className="bg-white border border-border rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <span className="text-[hsl(var(--muted-foreground))] text-xs font-medium uppercase tracking-wider">Папки</span>
           </div>
-          <div className="divide-y divide-gray-800/50">
+          <div className="divide-y divide-border/50">
             {folders.map((folder) => (
               <div key={folder.id}>
                 {editFolderId === folder.id ? (
@@ -551,22 +551,22 @@ function CustomFieldsTab() {
                     <FolderForm initial={{ ...folder }} onSave={handleFolderUpdate} onCancel={() => setEditFolderId(null)} />
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800/30 group">
-                    <span className="text-gray-500 text-sm">📁</span>
+                  <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-[hsl(var(--muted))] group">
+                    <span className="text-[hsl(var(--muted-foreground))] text-sm">📁</span>
                     <button onClick={() => setActiveFolderFilter(activeFolderFilter === folder.id ? "none" : folder.id)}
-                      className={`flex-1 text-left text-sm font-medium transition-colors ${activeFolderFilter === folder.id ? "text-indigo-300" : "text-gray-300 hover:text-white"}`}>
+                      className={`flex-1 text-left text-sm font-medium transition-colors ${activeFolderFilter === folder.id ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))]"}`}>
                       {folder.name}
-                      <span className="ml-2 text-xs text-gray-500">
+                      <span className="ml-2 text-xs text-[hsl(var(--muted-foreground))]">
                         ({fields.filter((f) => f.folder_id === folder.id).length})
                       </span>
                     </button>
                     <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => setEditFolderId(folder.id)}
-                        className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs rounded-lg transition-colors">
+                        className="px-2 py-1 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--foreground))] text-xs rounded-lg transition-colors">
                         Изменить
                       </button>
                       <button onClick={() => handleFolderRemove(folder.id)}
-                        className="px-2 py-1 bg-red-900/30 hover:bg-red-900/60 text-red-400 text-xs rounded-lg transition-colors">
+                        className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs rounded-lg transition-colors">
                         Удалить
                       </button>
                     </div>
@@ -581,18 +581,18 @@ function CustomFieldsTab() {
       {/* Фильтр по папкам + форма создания поля */}
       {folders.length > 0 && (
         <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-gray-500 text-xs">Показать:</span>
+          <span className="text-[hsl(var(--muted-foreground))] text-xs">Показать:</span>
           <button onClick={() => setActiveFolderFilter("none")}
-            className={`px-3 py-1 text-xs rounded-lg transition-colors ${activeFolderFilter === "none" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+            className={`px-3 py-1 text-xs rounded-lg transition-colors ${activeFolderFilter === "none" ? "bg-[hsl(var(--primary))] text-white" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"}`}>
             Все
           </button>
           <button onClick={() => setActiveFolderFilter(null)}
-            className={`px-3 py-1 text-xs rounded-lg transition-colors ${activeFolderFilter === null ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+            className={`px-3 py-1 text-xs rounded-lg transition-colors ${activeFolderFilter === null ? "bg-[hsl(var(--primary))] text-white" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"}`}>
             Без папки
           </button>
           {folders.map((folder) => (
             <button key={folder.id} onClick={() => setActiveFolderFilter(folder.id)}
-              className={`px-3 py-1 text-xs rounded-lg transition-colors ${activeFolderFilter === folder.id ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+              className={`px-3 py-1 text-xs rounded-lg transition-colors ${activeFolderFilter === folder.id ? "bg-[hsl(var(--primary))] text-white" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"}`}>
               📁 {folder.name}
             </button>
           ))}
@@ -605,45 +605,45 @@ function CustomFieldsTab() {
 
       {/* Таблица полей */}
       {visibleFields.length === 0 && !showCreate ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl text-center py-16 text-gray-500 text-sm">
+        <div className="bg-white border border-border rounded-2xl text-center py-16 text-[hsl(var(--muted-foreground))] text-sm">
           {activeFolderFilter === "none" ? "Нет дополнительных полей" : "В этой папке нет полей"}
         </div>
       ) : visibleFields.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-border rounded-2xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-800">
-                <th className="p-3 text-left text-gray-400 font-medium">Название</th>
-                <th className="p-3 text-left text-gray-400 font-medium">Тип</th>
-                <th className="p-3 text-left text-gray-400 font-medium">Папка</th>
-                <th className="p-3 text-center text-gray-400 font-medium">Регистрация</th>
-                <th className="p-3 text-center text-gray-400 font-medium">Редактирует</th>
-                <th className="p-3 text-center text-gray-400 font-medium">Личное</th>
-                <th className="p-3 text-center text-gray-400 font-medium">№</th>
-                <th className="p-3 text-right text-gray-400 font-medium">Действия</th>
+              <tr className="border-b border-border">
+                <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Название</th>
+                <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Тип</th>
+                <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Папка</th>
+                <th className="p-3 text-center text-[hsl(var(--muted-foreground))] font-medium">Регистрация</th>
+                <th className="p-3 text-center text-[hsl(var(--muted-foreground))] font-medium">Редактирует</th>
+                <th className="p-3 text-center text-[hsl(var(--muted-foreground))] font-medium">Личное</th>
+                <th className="p-3 text-center text-[hsl(var(--muted-foreground))] font-medium">№</th>
+                <th className="p-3 text-right text-[hsl(var(--muted-foreground))] font-medium">Действия</th>
               </tr>
             </thead>
             <tbody>
               {visibleFields.map((f) => (
                 <>
-                  <tr key={f.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                    <td className="p-3 text-white font-medium">{f.name}</td>
-                    <td className="p-3 text-gray-400">{ftLabel(f.field_type)}</td>
-                    <td className="p-3 text-gray-500 text-xs">
+                  <tr key={f.id} className="border-b border-border/50 hover:bg-[hsl(var(--muted))]">
+                    <td className="p-3 text-[hsl(var(--foreground))] font-medium">{f.name}</td>
+                    <td className="p-3 text-[hsl(var(--muted-foreground))]">{ftLabel(f.field_type)}</td>
+                    <td className="p-3 text-[hsl(var(--muted-foreground))] text-xs">
                       {f.folder_id ? (folders.find((fd) => fd.id === f.folder_id)?.name ?? "—") : "—"}
                     </td>
-                    <td className="p-3 text-center">{f.show_on_registration ? <span className="text-green-400">✓</span> : <span className="text-gray-600">✗</span>}</td>
-                    <td className="p-3 text-center">{f.user_editable ? <span className="text-green-400">✓</span> : <span className="text-gray-600">✗</span>}</td>
-                    <td className="p-3 text-center">{f.is_private ? <span className="text-yellow-400">✓</span> : <span className="text-gray-600">✗</span>}</td>
-                    <td className="p-3 text-center text-gray-400">{f.sort_order}</td>
+                    <td className="p-3 text-center">{f.show_on_registration ? <span className="text-green-600">✓</span> : <span className="text-[hsl(var(--muted-foreground))]">✗</span>}</td>
+                    <td className="p-3 text-center">{f.user_editable ? <span className="text-green-600">✓</span> : <span className="text-[hsl(var(--muted-foreground))]">✗</span>}</td>
+                    <td className="p-3 text-center">{f.is_private ? <span className="text-yellow-600">✓</span> : <span className="text-[hsl(var(--muted-foreground))]">✗</span>}</td>
+                    <td className="p-3 text-center text-[hsl(var(--muted-foreground))]">{f.sort_order}</td>
                     <td className="p-3 text-right">
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => { setEditId(f.id); setShowCreate(false); }}
-                          className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-lg transition-colors">
+                          className="px-2.5 py-1 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--foreground))] text-xs rounded-lg transition-colors">
                           Изменить
                         </button>
                         <button onClick={() => handleRemove(f.id)}
-                          className="px-2.5 py-1 bg-red-900/30 hover:bg-red-900/60 text-red-400 text-xs rounded-lg transition-colors">
+                          className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs rounded-lg transition-colors">
                           Удалить
                         </button>
                       </div>
@@ -694,26 +694,26 @@ function GroupForm({ initial, allGroups, onSave, onCancel }: {
   const otherGroups = allGroups.filter((g) => g.id !== form.id);
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-5 flex flex-col gap-4">
+    <div className="bg-[hsl(var(--muted))]/50 border border-border rounded-xl p-5 flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Название группы *</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Название группы *</label>
           <Input value={form.name} onChange={(v) => set("name", v)} placeholder="Администраторы" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Краткое название (макс. 20 символов)</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Краткое название (макс. 20 символов)</label>
           <Input value={form.short_name || ""} onChange={(v) => set("short_name", v.slice(0, 20))} placeholder="Админы" className="w-full" />
         </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-gray-400 text-xs">Разрешение на самостоятельное удаление аккаунта</label>
+        <label className="text-[hsl(var(--muted-foreground))] text-xs">Разрешение на самостоятельное удаление аккаунта</label>
         <div className="flex flex-col gap-2">
           {[{ v: 1, l: "Запретить удаление" }, { v: 2, l: "Разрешить самостоятельное удаление" }, { v: 3, l: "Отправлять запрос администрации" }].map((opt) => (
             <label key={opt.v} className="flex items-center gap-2 cursor-pointer">
               <input type="radio" name={`adp-${form.id}`} checked={form.account_deletion_policy === opt.v}
                 onChange={() => set("account_deletion_policy", opt.v)} className="accent-indigo-600" />
-              <span className="text-sm text-gray-300">{opt.l}</span>
+              <span className="text-sm text-[hsl(var(--foreground))]">{opt.l}</span>
             </label>
           ))}
         </div>
@@ -729,7 +729,7 @@ function GroupForm({ initial, allGroups, onSave, onCancel }: {
         <Toggle checked={form.is_temporary} onChange={(v) => set("is_temporary", v)} label="Временное размещение в группе" />
         {form.is_temporary && (
           <div className="flex flex-col gap-1 ml-12">
-            <label className="text-gray-400 text-xs">Основная группа по окончании срока *</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Основная группа по окончании срока *</label>
             <Select value={String(form.default_group_id || "")} onChange={(v) => set("default_group_id", v ? Number(v) : 0)} className="w-full max-w-xs"
               options={[{ value: "", label: "— выберите группу —" }, ...otherGroups.map((g) => ({ value: String(g.id), label: g.name }))]} />
           </div>
@@ -738,7 +738,7 @@ function GroupForm({ initial, allGroups, onSave, onCancel }: {
 
       <div className="flex gap-2 pt-1">
         <SaveBtn saving={saving} onClick={handleSave} />
-        <button onClick={onCancel} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-xl transition-colors">Отмена</button>
+        <button onClick={onCancel} className="px-4 py-2 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--muted-foreground))] text-sm rounded-xl transition-colors">Отмена</button>
       </div>
     </div>
   );
@@ -772,14 +772,14 @@ function GroupsTab() {
     else toast.error(d.error || "Ошибка");
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
-        <p className="text-gray-400 text-sm">Группы определяют права и возможности пользователей</p>
+        <p className="text-[hsl(var(--muted-foreground))] text-sm">Группы определяют права и возможности пользователей</p>
         <button onClick={() => { setShowCreate(true); setEditId(null); }}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors">
+          className="flex items-center gap-2 px-4 py-2 bg-[hsl(var(--primary))] hover:opacity-90 text-white text-sm font-medium rounded-xl transition-colors">
           + Добавить группу
         </button>
       </div>
@@ -788,36 +788,36 @@ function GroupsTab() {
         <GroupForm initial={GROUP_DEFAULTS} allGroups={groups} onSave={handleCreate} onCancel={() => setShowCreate(false)} />
       )}
 
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-border rounded-2xl overflow-hidden">
         {groups.length === 0 ? (
-          <div className="text-center py-16 text-gray-500 text-sm">Нет групп</div>
+          <div className="text-center py-16 text-[hsl(var(--muted-foreground))] text-sm">Нет групп</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-800">
-                <th className="p-3 text-left text-gray-400 font-medium w-10">ID</th>
-                <th className="p-3 text-left text-gray-400 font-medium">Название</th>
-                <th className="p-3 text-left text-gray-400 font-medium">Краткое</th>
-                <th className="p-3 text-center text-gray-400 font-medium">Админ</th>
-                <th className="p-3 text-right text-gray-400 font-medium">Действия</th>
+              <tr className="border-b border-border">
+                <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium w-10">ID</th>
+                <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Название</th>
+                <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Краткое</th>
+                <th className="p-3 text-center text-[hsl(var(--muted-foreground))] font-medium">Админ</th>
+                <th className="p-3 text-right text-[hsl(var(--muted-foreground))] font-medium">Действия</th>
               </tr>
             </thead>
             <tbody>
               {groups.map((g) => (
                 <>
-                  <tr key={g.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                    <td className="p-3 text-gray-500">{g.id}</td>
-                    <td className="p-3 text-white font-medium">{g.name}</td>
-                    <td className="p-3 text-gray-400">{g.short_name || "—"}</td>
-                    <td className="p-3 text-center">{g.can_access_admin ? <span className="text-green-400">✓</span> : <span className="text-gray-600">✗</span>}</td>
+                  <tr key={g.id} className="border-b border-border/50 hover:bg-[hsl(var(--muted))]">
+                    <td className="p-3 text-[hsl(var(--muted-foreground))]">{g.id}</td>
+                    <td className="p-3 text-[hsl(var(--foreground))] font-medium">{g.name}</td>
+                    <td className="p-3 text-[hsl(var(--muted-foreground))]">{g.short_name || "—"}</td>
+                    <td className="p-3 text-center">{g.can_access_admin ? <span className="text-green-600">✓</span> : <span className="text-[hsl(var(--muted-foreground))]">✗</span>}</td>
                     <td className="p-3 text-right">
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => { setEditId(g.id); setShowCreate(false); }}
-                          className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-lg transition-colors">
+                          className="px-2.5 py-1 bg-[hsl(var(--muted))] hover:opacity-80 text-[hsl(var(--foreground))] text-xs rounded-lg transition-colors">
                           Изменить
                         </button>
                         <button onClick={() => handleRemove(g.id)}
-                          className="px-2.5 py-1 bg-red-900/30 hover:bg-red-900/60 text-red-400 text-xs rounded-lg transition-colors">
+                          className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs rounded-lg transition-colors">
                           Удалить
                         </button>
                       </div>
@@ -849,15 +849,15 @@ export default function AdminUsers() {
   return (
     <div className="max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-white text-2xl font-bold">Пользователи</h1>
-        <p className="text-gray-400 text-sm mt-1">Управление пользователями, группами и полями профиля</p>
+        <h1 className="text-[hsl(var(--foreground))] text-2xl font-bold">Пользователи</h1>
+        <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1">Управление пользователями, группами и полями профиля</p>
       </div>
 
-      <div className="flex gap-1 mb-6 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 mb-6 bg-white border border-border rounded-xl p-1 w-fit">
         {TABS.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-              activeTab === tab.id ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"
+              activeTab === tab.id ? "bg-[hsl(var(--primary))] text-white" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"
             }`}>
             {tab.label}
           </button>

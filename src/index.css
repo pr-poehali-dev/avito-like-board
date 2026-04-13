@@ -4,44 +4,44 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 20 10% 10%;
+    --background: 210 20% 97%;
+    --foreground: 220 20% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 20 10% 10%;
+    --card-foreground: 220 20% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 20 10% 10%;
+    --popover-foreground: 220 20% 12%;
 
-    --primary: 20 10% 10%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 222 80% 52%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 15% 94%;
-    --secondary-foreground: 20 10% 10%;
+    --secondary: 210 15% 93%;
+    --secondary-foreground: 220 20% 20%;
 
-    --muted: 30 10% 93%;
-    --muted-foreground: 20 5% 50%;
+    --muted: 210 15% 93%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 28 90% 55%;
+    --accent: 222 80% 52%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 30 10% 88%;
-    --input: 30 10% 88%;
-    --ring: 20 10% 10%;
+    --border: 210 15% 88%;
+    --input: 210 15% 88%;
+    --ring: 222 80% 52%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 20 10% 10%;
-    --sidebar-primary: 20 10% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 30 15% 94%;
-    --sidebar-accent-foreground: 20 10% 10%;
-    --sidebar-border: 30 10% 88%;
-    --sidebar-ring: 28 90% 55%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 12%;
+    --sidebar-primary: 222 80% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 15% 93%;
+    --sidebar-accent-foreground: 220 20% 12%;
+    --sidebar-border: 210 15% 88%;
+    --sidebar-ring: 222 80% 52%;
   }
 }
 
@@ -58,10 +58,10 @@
 
 @layer utilities {
   .animate-fade-in {
-    animation: fadeIn 0.4s ease forwards;
+    animation: fadeIn 0.3s ease forwards;
   }
   .animate-slide-up {
-    animation: slideUp 0.4s ease forwards;
+    animation: slideUp 0.3s ease forwards;
   }
   .hover-lift {
     transition:
@@ -86,7 +86,7 @@
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;

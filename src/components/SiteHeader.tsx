@@ -301,6 +301,11 @@ export default function SiteHeader({
                       )}
                     </button>
                     <div className="my-1 border-t border-border" />
+                    <button onClick={() => { navigate("/admin"); setUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+                      <Icon name="LayoutDashboard" size={15} className="text-[hsl(var(--muted-foreground))]" />Панель управления
+                    </button>
+                    <div className="my-1 border-t border-border" />
                     <button onClick={() => { onLogout?.(); setUserMenuOpen(false); }}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 transition-colors text-left">
                       <Icon name="LogOut" size={15} />Выйти

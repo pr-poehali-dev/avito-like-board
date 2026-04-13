@@ -73,10 +73,10 @@ const DEFAULTS: GeneralSettings = {
 // ─── UI atoms ─────────────────────────────────────────────────────────────────
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start gap-3 py-5 border-b border-gray-800 last:border-0">
+    <div className="flex flex-col sm:flex-row sm:items-start gap-3 py-5 border-b border-border last:border-0">
       <div className="sm:w-64 shrink-0">
-        <p className="text-sm font-medium text-gray-200">{label}</p>
-        {hint && <p className="text-xs text-gray-500 mt-0.5 leading-snug">{hint}</p>}
+        <p className="text-sm font-medium text-[hsl(var(--foreground))]">{label}</p>
+        {hint && <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 leading-snug">{hint}</p>}
       </div>
       <div className="flex-1">{children}</div>
     </div>
@@ -93,7 +93,7 @@ function TextInput({ value, onChange, placeholder, maxLength, type = "text" }: {
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       maxLength={maxLength}
-      className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500"
+      className="w-full bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))]"
     />
   );
 }
@@ -103,7 +103,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${checked ? "bg-indigo-600" : "bg-gray-700"}`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] focus:ring-offset-2 ${checked ? "bg-[hsl(var(--primary))]" : "bg-[hsl(var(--border))]"}`}
     >
       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} />
     </button>
@@ -113,9 +113,9 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 // ─── Вкладка заглушка ─────────────────────────────────────────────────────────
 function StubTab({ label }: { label: string }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center mt-6">
+    <div className="bg-white border border-border rounded-2xl p-10 text-center mt-6">
       <div className="text-3xl mb-3">🔧</div>
-      <p className="text-gray-400 text-sm">Раздел «{label}» будет реализован в следующей части</p>
+      <p className="text-[hsl(var(--muted-foreground))] text-sm">Раздел «{label}» будет реализован в следующей части</p>
     </div>
   );
 }
@@ -186,14 +186,14 @@ function GeneralSettingsTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-7 h-7 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
     <div>
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800 px-6">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border px-6">
         {/* Название сайта */}
         <Field label="Название сайта" hint="Отображается в теге <title> и заголовке страниц">
           <TextInput value={form.site_name} onChange={(v) => set("site_name", v)} placeholder="Моя домашняя страница" maxLength={100} />
@@ -229,7 +229,7 @@ function GeneralSettingsTab() {
               placeholder="Краткое описание сайта..."
               maxLength={200}
               rows={3}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 resize-none"
+              className="w-full bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] resize-none"
             />
             <div className="flex justify-between mt-1">
               {errors.meta_description
@@ -253,13 +253,13 @@ function GeneralSettingsTab() {
             <select
               value={form.timezone}
               onChange={(e) => set("timezone", e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
             >
               {TIMEZONES.map((tz) => (
                 <option key={tz} value={tz}>{tz}</option>
               ))}
             </select>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
               <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
               </svg>
@@ -281,7 +281,7 @@ function GeneralSettingsTab() {
           <div className="flex items-center gap-3">
             <Toggle checked={form.site_offline} onChange={(v) => set("site_offline", v)} />
             {form.site_offline && (
-              <span className="text-xs bg-red-900/40 text-red-400 border border-red-800 px-2 py-1 rounded-lg font-medium">
+              <span className="text-xs bg-red-50 text-red-600 border border-red-200 px-2 py-1 rounded-lg font-medium">
                 ⚠ Сайт недоступен для посетителей
               </span>
             )}
@@ -294,7 +294,7 @@ function GeneralSettingsTab() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+          className="flex items-center gap-2 px-6 py-2.5 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-opacity"
         >
           {saving ? (
             <>
@@ -354,7 +354,7 @@ function NumberInput({ value, onChange, min = 0, step = 1 }: {
       min={min}
       step={step}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="w-40 bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      className="w-40 bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
     />
   );
 }
@@ -450,7 +450,7 @@ function SecuritySettingsTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-7 h-7 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -459,13 +459,13 @@ function SecuritySettingsTab() {
 
   return (
     <div>
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800 px-6">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border px-6">
 
         {/* Адрес входа в админку */}
         <Field label="Адрес входа в админку" hint="URL-путь панели управления. После изменения будет выполнен автоматический редирект">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-gray-500 text-sm font-mono">{window.location.origin}</span>
+              <span className="text-[hsl(var(--muted-foreground))] text-sm font-mono">{window.location.origin}</span>
               <TextInput
                 value={form.admin_path}
                 onChange={(v) => set("admin_path", v)}
@@ -474,7 +474,7 @@ function SecuritySettingsTab() {
             </div>
             {errors.admin_path && <p className="text-red-400 text-xs">{errors.admin_path}</p>}
             {form.admin_path !== "/admin" && form.admin_path.startsWith("/") && (
-              <div className="flex items-start gap-2 bg-indigo-900/20 border border-indigo-700/40 text-indigo-300 text-xs px-3 py-2 rounded-lg">
+              <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-xs px-3 py-2 rounded-lg">
                 <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="mt-0.5 shrink-0">
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
@@ -489,7 +489,7 @@ function SecuritySettingsTab() {
           <div className="flex items-center gap-3">
             <Toggle checked={form.display_php_errors} onChange={(v) => set("display_php_errors", v)} />
             {form.display_php_errors && (
-              <span className="text-xs bg-amber-900/30 text-amber-400 border border-amber-700/50 px-2 py-1 rounded-lg">
+              <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-lg">
                 ⚠ Не рекомендуется в production
               </span>
             )}
@@ -509,13 +509,13 @@ function SecuritySettingsTab() {
               onChange={(e) => set("allowed_admin_ips", e.target.value)}
               placeholder={"192.168.1.1\n10.0.*.*"}
               rows={5}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 resize-none font-mono"
+              className="w-full bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] resize-none font-mono"
             />
             {errors.allowed_admin_ips && <p className="text-red-400 text-xs">{errors.allowed_admin_ips}</p>}
             <button
               onClick={handleAddMyIp}
               disabled={ipLoading}
-              className="self-start flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50"
+              className="self-start flex items-center gap-1.5 text-xs text-[hsl(var(--primary))] hover:opacity-80 transition-opacity disabled:opacity-50"
             >
               <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" />
@@ -568,7 +568,7 @@ function SecuritySettingsTab() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+          className="flex items-center gap-2 px-6 py-2.5 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-opacity"
         >
           {saving ? (
             <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</>
@@ -639,7 +639,7 @@ const DATE_FORMATS = [
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div className="px-6 pt-5 pb-2">
-      <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">{children}</p>
+      <p className="text-xs font-semibold text-[hsl(var(--primary))] uppercase tracking-widest">{children}</p>
     </div>
   );
 }
@@ -1149,12 +1149,12 @@ function SimpleTab<T extends Record<string, unknown>>({ group, defaults, childre
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800 px-6">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border px-6">
         {children(form, set, errors)}
       </div>
       <div className="flex justify-end">
         <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+          className="flex items-center gap-2 px-6 py-2.5 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-opacity">
           {saving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</> : <>
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -1311,7 +1311,7 @@ function UsersTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800 px-6">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border px-6">
         <Field label="Метод авторизации">
           <SelectField value={form.auth_method} onChange={(v) => set("auth_method", v)}
             options={[{ value: "login", label: "По логину" }, { value: "email", label: "По E-mail" }]} />
@@ -1355,7 +1355,7 @@ function UsersTab() {
       </div>
       <div className="flex justify-end">
         <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+          className="flex items-center gap-2 px-6 py-2.5 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-opacity">
           {saving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</> : <>
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />

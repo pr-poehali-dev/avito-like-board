@@ -26,8 +26,8 @@ function StatusBadge({ code }: { code: number }) {
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-semibold ${
         isError
-          ? "bg-red-900/40 text-red-400 border border-red-800/50"
-          : "bg-emerald-900/40 text-emerald-400 border border-emerald-800/50"
+          ? "bg-red-100 text-red-600 border border-red-200"
+          : "bg-emerald-100 text-emerald-700 border border-emerald-200"
       }`}
     >
       {code}
@@ -37,14 +37,14 @@ function StatusBadge({ code }: { code: number }) {
 
 function ActionBadge({ action }: { action: string }) {
   const colors: Record<string, string> = {
-    login: "bg-indigo-900/40 text-indigo-400 border-indigo-800/50",
-    logout: "bg-gray-800 text-gray-400 border-gray-700",
-    settings_save: "bg-amber-900/40 text-amber-400 border-amber-800/50",
-    ql_create: "bg-emerald-900/40 text-emerald-400 border-emerald-800/50",
-    ql_update: "bg-blue-900/40 text-blue-400 border-blue-800/50",
-    ql_delete: "bg-red-900/40 text-red-400 border-red-800/50",
+    login: "bg-blue-100 text-blue-700 border-blue-200",
+    logout: "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] border-border",
+    settings_save: "bg-amber-100 text-amber-700 border-amber-200",
+    ql_create: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    ql_update: "bg-blue-100 text-blue-700 border-blue-200",
+    ql_delete: "bg-red-100 text-red-600 border-red-200",
   };
-  const cls = colors[action] || "bg-gray-800 text-gray-400 border-gray-700";
+  const cls = colors[action] || "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] border-border";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono border ${cls}`}>
       {action}

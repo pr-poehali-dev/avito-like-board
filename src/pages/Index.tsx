@@ -29,8 +29,6 @@ export default function Index() {
   const [condition, setCondition] = useState("all");
   const [favorites, setFavorites] = useState<number[]>([2, 5]);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [mobileMenuOpen] = useState(false);
-  const [userMenuOpen] = useState(false);
 
   // Categories from DB
   const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
@@ -232,7 +230,6 @@ export default function Index() {
   const toggleFavorite = (id: number) => {
     setFavorites((prev) => prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]);
   };
-  void toggleFavorite; // используется через favorites state
 
   const sid = () => localStorage.getItem("session_id") || "";
 
@@ -401,9 +398,6 @@ export default function Index() {
       toast.success("Добавлено в папку", { description: folderName });
     }
   };
-
-  void mobileMenuOpen;
-  void userMenuOpen;
 
   const navItems = [
     { id: "home" as Section, label: "Главная", icon: "Home" },

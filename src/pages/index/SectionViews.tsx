@@ -46,7 +46,7 @@ export function HomeSection({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         <div
           className="col-span-2 row-span-2 relative rounded-2xl overflow-hidden min-h-[180px] flex flex-col justify-end p-6 cursor-pointer group"
-          style={{ background: "linear-gradient(135deg, hsl(var(--accent)) 0%, #ff8c42 100%)" }}
+          style={{ background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(235 70% 65%) 100%)" }}
           onClick={() => {}}
         >
           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 70% 30%, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
@@ -198,10 +198,10 @@ export function HomeSection({
 
         {/* Правая панель */}
         <aside className="hidden lg:flex flex-col gap-4 w-72 shrink-0">
-          <div className="rounded-2xl p-5 text-white" style={{ background: "linear-gradient(135deg, hsl(var(--accent)) 0%, #ff8c42 100%)" }}>
+          <div className="rounded-2xl p-5 text-white" style={{ background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(235 70% 65%) 100%)" }}>
             <p className="font-bold text-lg leading-tight mb-1">Подай объявление</p>
             <p className="text-white/80 text-sm mb-4">Бесплатно и за 2 минуты</p>
-            <button onClick={openNewAd} className="w-full bg-white text-[hsl(var(--accent))] font-bold py-2.5 rounded-xl text-sm hover:bg-orange-50 transition-colors">Подать объявление</button>
+            <button onClick={openNewAd} className="w-full bg-white text-[hsl(var(--primary))] font-bold py-2.5 rounded-xl text-sm hover:opacity-90 transition-opacity">Подать объявление</button>
           </div>
           <div className="bg-white rounded-2xl border border-border p-5">
             <p className="font-bold mb-3">Популярные категории</p>

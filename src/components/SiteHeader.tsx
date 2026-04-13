@@ -258,12 +258,6 @@ export default function SiteHeader({
             </>
           )}
 
-          <button onClick={onNewAd}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-[hsl(var(--accent))] text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors ml-1">
-            <Icon name="Plus" size={15} />
-            Подать объявление
-          </button>
-
           {user ? (
             <div className="relative">
               <button onClick={() => setUserMenuOpen((v) => !v)}

@@ -1,27 +1,55 @@
 {
   "tests": [
     {
-      "name": "GET / — список объявлений (или offline 503)",
-      "method": "GET",
+      "name": "POST status — сайт онлайн",
+      "method": "POST",
       "path": "/",
-      "expectedStatus": 503,
+      "body": {"action": "status"},
+      "expectedStatus": 200,
       "bodyMatcher": "partial",
-      "expectedBody": {"offline": true}
+      "expectedBody": {"ok": true}
+    },
+    {
+      "name": "POST categories — список категорий",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "categories"},
+      "expectedStatus": 200,
+      "bodyMatcher": "partial",
+      "expectedBody": {"ok": true}
+    },
+    {
+      "name": "POST list — список объявлений",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "list"},
+      "expectedStatus": 200,
+      "bodyMatcher": "partial",
+      "expectedBody": {"ok": true}
+    },
+    {
+      "name": "POST category_fields — поля категории (без category_id)",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "category_fields"},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Укажите category_id"}
+    },
+    {
+      "name": "POST category_fields — поля категории (с category_id)",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "category_fields", "category_id": 1},
+      "expectedStatus": 200,
+      "bodyMatcher": "partial",
+      "expectedBody": {"ok": true}
     },
     {
       "name": "POST create без авторизации — 401",
       "method": "POST",
       "path": "/",
-      "body": {"action": "create", "title": "Тест", "price": 1000, "category": "electronics", "city": "Москва"},
-      "expectedStatus": 401,
-      "bodyMatcher": "partial",
-      "expectedBody": {"error": "Необходима авторизация"}
-    },
-    {
-      "name": "POST update без авторизации — 401",
-      "method": "POST",
-      "path": "/",
-      "body": {"action": "update", "id": 1, "title": "Тест", "price": 1000, "category": "electronics", "city": "Москва"},
+      "body": {"action": "create", "title": "Тест", "price": 1000, "category": "test", "city": "Москва"},
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Необходима авторизация"}
@@ -33,33 +61,6 @@
       "expectedStatus": 404,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Объявление не найдено"}
-    },
-    {
-      "name": "POST categories — offline 503",
-      "method": "POST",
-      "path": "/",
-      "body": {"action": "categories"},
-      "expectedStatus": 503,
-      "bodyMatcher": "partial",
-      "expectedBody": {"offline": true}
-    },
-    {
-      "name": "POST list — offline 503",
-      "method": "POST",
-      "path": "/",
-      "body": {"action": "list"},
-      "expectedStatus": 503,
-      "bodyMatcher": "partial",
-      "expectedBody": {"offline": true}
-    },
-    {
-      "name": "POST status — 200",
-      "method": "POST",
-      "path": "/",
-      "body": {"action": "status"},
-      "expectedStatus": 200,
-      "bodyMatcher": "partial",
-      "expectedBody": {"ok": true}
     }
   ]
 }

@@ -13,6 +13,7 @@ import ChatPage from "./pages/ChatPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import AutoReplyPage from "./pages/AutoReplyPage";
 import AdPage from "./pages/AdPage";
+import CreateListingPage from "./pages/CreateListingPage";
 import { ADS_URL } from "./pages/index/types";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/chat/auto-reply" element={<AutoReplyPage />} />
             <Route path="/ad/:adId" element={<AdPage />} />
+            <Route path="/listing/new" element={<CreateListingPage />} />
             <Route path="/user/:userId" element={<UserProfilePage />} />
             <Route path="/:slug" element={<CategoryPage />} />
             <Route path="/:slug/:subslug" element={<CategoryPage />} />

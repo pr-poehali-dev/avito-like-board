@@ -241,6 +241,35 @@ def handler(event: dict, context) -> dict:
         ]
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "ads": ads, "total": total, "page": page, "per_page": per_page})}
 
+    # category_fields — поля категории для формы добавления объявления
+    if action == "category_fields":
+        category_id = body.get("category_id") or qs.get("category_id")
+        if not category_id:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите category_id"})}
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"""SELECT f.id, f.name, f.description, f.placeholder, f.field_type,
+                       f.options, f.is_optional, f.default_value, f.sort_order
+                FROM {SCHEMA}.ad_custom_fields f
+                JOIN {SCHEMA}.ad_custom_field_categories fc ON fc.field_id = f.id
+                WHERE fc.category_id = %s
+                ORDER BY f.sort_order""",
+            (int(category_id),)
+        )
+        rows = cur.fetchall()
+        conn.close()
+        fields = [
+            {
+                "id": r[0], "name": r[1], "description": r[2],
+                "placeholder": r[3], "field_type": r[4],
+                "options": r[5], "is_optional": r[6],
+                "default_value": r[7], "sort_order": r[8],
+            }
+            for r in rows
+        ]
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "fields": fields})}
+
     # create — создать объявление с фотографиями
     if action == "create":
         conn = get_conn()
@@ -259,6 +288,8 @@ def handler(event: dict, context) -> dict:
         city = (body.get("city") or "").strip()
         condition = (body.get("condition") or "Хорошее").strip()
         photos_b64 = body.get("photos") or []
+        admin_field_values = body.get("admin_field_values") or {}
+        user_custom_fields = body.get("user_custom_fields") or []
 
         if not title or not price or not city:
             conn.close()
@@ -288,6 +319,32 @@ def handler(event: dict, context) -> dict:
             (user_id, title, description, price, category, category_id, city, condition, photo_urls)
         )
         ad_id = cur.fetchone()[0]
+
+        # Сохраняем значения полей из админки
+        for field_id_str, value in admin_field_values.items():
+            if value is not None and str(value).strip() != "":
+                try:
+                    field_id = int(field_id_str)
+                    cur.execute(
+                        f"""INSERT INTO {SCHEMA}.ad_custom_field_values (ad_id, field_id, value)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (ad_id, field_id) DO UPDATE SET value = EXCLUDED.value""",
+                        (ad_id, field_id, str(value))
+                    )
+                except Exception:
+                    pass
+
+        # Сохраняем пользовательские (кастомные) поля
+        for i, ucf in enumerate(user_custom_fields):
+            name = (ucf.get("name") or "").strip()
+            value = (ucf.get("value") or "").strip()
+            if name:
+                cur.execute(
+                    f"""INSERT INTO {SCHEMA}.ad_user_custom_fields (ad_id, field_name, field_value, sort_order)
+                        VALUES (%s, %s, %s, %s)""",
+                    (ad_id, name, value, ucf.get("sort_order", i))
+                )
+
         conn.commit()
         conn.close()
 

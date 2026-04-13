@@ -380,7 +380,7 @@ export default function SiteHeader({
                           )}
                           <button
                             onClick={() => { navigate(allUrl); setOpenRootId(null); setCatPath([]); }}
-                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[hsl(var(--accent))] hover:bg-orange-50 transition-colors text-left"
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[hsl(var(--accent))] hover:bg-[hsl(var(--muted))] transition-colors text-left"
                           >
                             <Icon name="LayoutGrid" size={13} />
                             Все в «{currentCat?.name ?? root.name}»

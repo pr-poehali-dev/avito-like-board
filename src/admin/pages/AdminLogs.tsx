@@ -87,12 +87,12 @@ export default function AdminLogs() {
     <div className="max-w-6xl">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-white text-2xl font-bold">Журнал событий</h1>
-          <p className="text-gray-400 text-sm mt-1">Все действия администраторов и обращения к серверу</p>
+          <h1 className="text-[hsl(var(--foreground))] text-2xl font-bold">Журнал событий</h1>
+          <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1">Все действия администраторов и обращения к серверу</p>
         </div>
         <button
           onClick={() => load(level, page)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] text-sm rounded-lg transition-colors"
         >
           <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <polyline points="23 4 23 10 17 10" />
@@ -104,13 +104,13 @@ export default function AdminLogs() {
 
       {/* Фильтры */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
+        <div className="flex gap-1 bg-white border border-border rounded-xl p-1">
           {LEVELS.map((l) => (
             <button
               key={l.id}
               onClick={() => handleLevel(l.id)}
               className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                level === l.id ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"
+                level === l.id ? "bg-[hsl(var(--primary))] text-white" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
               }`}
             >
               {l.label}
@@ -122,57 +122,57 @@ export default function AdminLogs() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по действию, IP, пользователю..."
-            className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600"
+            className="w-full bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))]"
           />
         </div>
-        <span className="text-gray-500 text-sm">Всего: {total}</span>
+        <span className="text-[hsl(var(--muted-foreground))] text-sm">Всего: {total}</span>
       </div>
 
       {/* Таблица */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-border rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-7 h-7 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-4xl mb-3">📋</div>
-            <p className="text-gray-500 text-sm">Нет записей</p>
+            <p className="text-[hsl(var(--muted-foreground))] text-sm">Нет записей</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium text-xs uppercase tracking-wide">Время</th>
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium text-xs uppercase tracking-wide">Действие</th>
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium text-xs uppercase tracking-wide">Детали</th>
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium text-xs uppercase tracking-wide">Пользователь</th>
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium text-xs uppercase tracking-wide">IP</th>
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium text-xs uppercase tracking-wide">Код</th>
+                <tr className="border-b border-border">
+                  <th className="text-left px-4 py-3 text-[hsl(var(--muted-foreground))] font-medium text-xs uppercase tracking-wide">Время</th>
+                  <th className="text-left px-4 py-3 text-[hsl(var(--muted-foreground))] font-medium text-xs uppercase tracking-wide">Действие</th>
+                  <th className="text-left px-4 py-3 text-[hsl(var(--muted-foreground))] font-medium text-xs uppercase tracking-wide">Детали</th>
+                  <th className="text-left px-4 py-3 text-[hsl(var(--muted-foreground))] font-medium text-xs uppercase tracking-wide">Пользователь</th>
+                  <th className="text-left px-4 py-3 text-[hsl(var(--muted-foreground))] font-medium text-xs uppercase tracking-wide">IP</th>
+                  <th className="text-left px-4 py-3 text-[hsl(var(--muted-foreground))] font-medium text-xs uppercase tracking-wide">Код</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800/50">
+              <tbody className="divide-y divide-border">
                 {filtered.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-800/30 transition-colors">
-                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap font-mono">
+                  <tr key={log.id} className="hover:bg-[hsl(var(--muted))] transition-colors">
+                    <td className="px-4 py-3 text-[hsl(var(--muted-foreground))] text-xs whitespace-nowrap font-mono">
                       {log.created_at.replace("T", " ").slice(0, 19)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <ActionBadge action={log.action} />
                     </td>
-                    <td className="px-4 py-3 text-gray-300 max-w-xs">
+                    <td className="px-4 py-3 text-[hsl(var(--foreground))] max-w-xs">
                       <span className="truncate block" title={log.details}>{log.details || "—"}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                    <td className="px-4 py-3 text-[hsl(var(--muted-foreground))] text-xs whitespace-nowrap">
                       {log.user_name ? (
                         <div>
-                          <p className="text-gray-200">{log.user_name}</p>
-                          <p className="text-gray-600">{log.user_email}</p>
+                          <p className="text-[hsl(var(--foreground))]">{log.user_name}</p>
+                          <p className="text-[hsl(var(--muted-foreground))]">{log.user_email}</p>
                         </div>
-                      ) : <span className="text-gray-600">—</span>}
+                      ) : <span className="text-[hsl(var(--muted-foreground))]">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs font-mono whitespace-nowrap">
+                    <td className="px-4 py-3 text-[hsl(var(--muted-foreground))] text-xs font-mono whitespace-nowrap">
                       {log.ip || "—"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -192,17 +192,17 @@ export default function AdminLogs() {
           <button
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            className="px-4 py-2 bg-gray-900 border border-gray-800 text-gray-400 text-sm rounded-xl hover:text-white disabled:opacity-30 transition-colors"
+            className="px-4 py-2 bg-white border border-border text-[hsl(var(--foreground))] text-sm rounded-xl hover:bg-[hsl(var(--muted))] disabled:opacity-30 transition-colors"
           >
             ← Назад
           </button>
-          <span className="text-gray-500 text-sm">
+          <span className="text-[hsl(var(--muted-foreground))] text-sm">
             Стр. {page + 1} из {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
-            className="px-4 py-2 bg-gray-900 border border-gray-800 text-gray-400 text-sm rounded-xl hover:text-white disabled:opacity-30 transition-colors"
+            className="px-4 py-2 bg-white border border-border text-[hsl(var(--foreground))] text-sm rounded-xl hover:bg-[hsl(var(--muted))] disabled:opacity-30 transition-colors"
           >
             Вперёд →
           </button>

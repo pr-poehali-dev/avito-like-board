@@ -235,7 +235,7 @@ function GeneralSettingsTab() {
               {errors.meta_description
                 ? <p className="text-red-400 text-xs">{errors.meta_description}</p>
                 : <span />}
-              <span className={`text-xs ${form.meta_description.length > 180 ? "text-amber-400" : "text-gray-500"}`}>
+              <span className={`text-xs ${form.meta_description.length > 180 ? "text-amber-500" : "text-[hsl(var(--muted-foreground))]"}`}>
                 {form.meta_description.length} / 200
               </span>
             </div>
@@ -653,7 +653,7 @@ function SelectField({ value, onChange, options }: {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      className="w-full bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
     >
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
@@ -708,7 +708,7 @@ function AdsSettingsTab() {
   const SaveButton = () => (
     <div className="flex justify-end mt-6">
       <button onClick={handleSave} disabled={saving}
-        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+        className="flex items-center gap-2 px-6 py-2.5 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-opacity">
         {saving
           ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</>
           : <>
@@ -724,7 +724,7 @@ function AdsSettingsTab() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-7 h-7 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -732,7 +732,7 @@ function AdsSettingsTab() {
     <div className="flex flex-col gap-4">
 
       {/* ── Отображение ── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border">
         <SectionTitle>Отображение</SectionTitle>
         <Field label="Объявлений на страницу" hint="Основной список">
           <div><NumberInput value={form.ads_per_page} onChange={(v) => set("ads_per_page", v)} min={1} />
@@ -784,7 +784,7 @@ function AdsSettingsTab() {
       </div>
 
       {/* ── Поиск ── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border">
         <SectionTitle>Поиск</SectionTitle>
         <Field label="Объявлений на странице поиска">
           <div><NumberInput value={form.ads_per_page_search} onChange={(v) => set("ads_per_page_search", v)} min={1} />
@@ -805,7 +805,7 @@ function AdsSettingsTab() {
       </div>
 
       {/* ── Сортировка ── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border">
         <SectionTitle>Сортировка</SectionTitle>
         <Field label="Сортировка объявлений">
           <div className="grid grid-cols-2 gap-2">
@@ -822,7 +822,7 @@ function AdsSettingsTab() {
       </div>
 
       {/* ── Модерация ── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border">
         <SectionTitle>Модерация и ограничения</SectionTitle>
         <Field label="Макс. объявлений на модерации" hint="0 — без ограничений">
           <div><NumberInput value={form.max_pending_ads} onChange={(v) => set("max_pending_ads", v)} min={0} />
@@ -837,7 +837,7 @@ function AdsSettingsTab() {
       </div>
 
       {/* ── Прочее ── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border">
         <SectionTitle>Прочее</SectionTitle>
         <Field label="Склонять даты" hint="Склонение дат при выводе тегом {date}">
           <Toggle checked={form.decline_dates} onChange={(v) => set("decline_dates", v)} />
@@ -851,7 +851,7 @@ function AdsSettingsTab() {
       </div>
 
       {/* ── IndexNow ── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border">
         <SectionTitle>IndexNow</SectionTitle>
         <Field label="Включить IndexNow" hint="Автоматически уведомлять поисковые системы о новых объявлениях">
           <Toggle checked={form.indexnow_enabled} onChange={(v) => set("indexnow_enabled", v)} />
@@ -870,14 +870,14 @@ function AdsSettingsTab() {
         )}
         {form.indexnow_enabled && (
           <div className="px-6 py-4">
-            <div className="bg-indigo-900/20 border border-indigo-700/40 rounded-xl p-4 text-sm">
-              <p className="text-indigo-300 font-semibold mb-2">Необходима настройка файла</p>
-              <p className="text-gray-400 text-xs mb-3">Создайте файл в корне сайта:</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm">
+              <p className="text-blue-700 font-semibold mb-2">Необходима настройка файла</p>
+              <p className="text-[hsl(var(--muted-foreground))] text-xs mb-3">Создайте файл в корне сайта:</p>
               <div className="flex flex-col gap-1.5">
-                <div className="bg-gray-900 rounded-lg px-3 py-2 font-mono text-xs text-emerald-400">
+                <div className="bg-[hsl(var(--muted))] border border-border rounded-lg px-3 py-2 font-mono text-xs text-emerald-700">
                   Имя файла: ff7c909509a52d37fae7ec184e1bf4ab.txt
                 </div>
-                <div className="bg-gray-900 rounded-lg px-3 py-2 font-mono text-xs text-emerald-400">
+                <div className="bg-[hsl(var(--muted))] border border-border rounded-lg px-3 py-2 font-mono text-xs text-emerald-700">
                   Содержимое: ff7c909509a52d37fae7ec184e1bf4ab
                 </div>
               </div>
@@ -993,7 +993,7 @@ function OptimizationSettingsTab() {
     <div className="flex flex-col gap-4">
 
       {/* ── Кеширование ── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border">
         <SectionTitle>Кеширование</SectionTitle>
 
         <Field label="Включить кеширование" hint="Глобальное включение/выключение всех механизмов кеша">
@@ -1075,7 +1075,7 @@ function OptimizationSettingsTab() {
       </div>
 
       {/* ── Учёт просмотров ── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border">
         <SectionTitle>Учёт просмотров</SectionTitle>
 
         <Field label="Вести учёт последних просмотров" hint="Сохранять историю просмотренных объявлений">
@@ -1091,7 +1091,7 @@ function OptimizationSettingsTab() {
       </div>
 
       {/* ── Подсчёт данных ── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
+      <div className="bg-white border border-border rounded-2xl divide-y divide-border">
         <SectionTitle>Подсчёт данных</SectionTitle>
 
         <Field label="Подсчёт объявлений в категориях" hint="Добавляет один запрос к БД, увеличивает расход памяти">

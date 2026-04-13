@@ -589,45 +589,45 @@ function AdsTable({ forceStatus }: AdsTableProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-800">
+                <tr className="border-b border-border">
                   <th className="p-3 w-9">
                     <input type="checkbox"
                       checked={selected.length === ads.length && ads.length > 0}
-                      onChange={toggleAll} className="rounded accent-indigo-600" />
+                      onChange={toggleAll} className="rounded accent-[hsl(var(--primary))]" />
                   </th>
-                  <th className="p-3 text-left text-gray-400 font-medium">Объявление</th>
-                  <th className="p-3 text-left text-gray-400 font-medium hidden lg:table-cell">Автор</th>
-                  <th className="p-3 text-left text-gray-400 font-medium hidden md:table-cell">Дата</th>
-                  <th className="p-3 text-right text-gray-400 font-medium">Цена</th>
-                  <th className="p-3 text-center text-gray-400 font-medium hidden sm:table-cell">Просм.</th>
-                  <th className="p-3 text-center text-gray-400 font-medium">Статус</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Объявление</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium hidden lg:table-cell">Автор</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium hidden md:table-cell">Дата</th>
+                  <th className="p-3 text-right text-[hsl(var(--muted-foreground))] font-medium">Цена</th>
+                  <th className="p-3 text-center text-[hsl(var(--muted-foreground))] font-medium hidden sm:table-cell">Просм.</th>
+                  <th className="p-3 text-center text-[hsl(var(--muted-foreground))] font-medium">Статус</th>
                 </tr>
               </thead>
               <tbody>
                 {ads.map((ad) => (
                   <tr key={ad.id}
-                    className={`border-b border-gray-800/50 hover:bg-gray-800/30 cursor-pointer ${selected.includes(ad.id) ? "bg-indigo-900/10" : ""}`}
+                    className={`border-b border-border hover:bg-[hsl(var(--muted))] cursor-pointer ${selected.includes(ad.id) ? "bg-[hsl(var(--primary))]/5" : ""}`}
                     onClick={() => setOpenAdId(ad.id)}>
                     <td className="p-3" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selected.includes(ad.id)}
-                        onChange={() => toggleSelect(ad.id)} className="rounded accent-indigo-600" />
+                        onChange={() => toggleSelect(ad.id)} className="rounded accent-[hsl(var(--primary))]" />
                     </td>
                     <td className="p-3">
-                      <p className="text-white font-medium line-clamp-1 hover:text-indigo-300 transition-colors">{ad.title}</p>
-                      <p className="text-gray-500 text-xs mt-0.5">
+                      <p className="text-[hsl(var(--foreground))] font-medium line-clamp-1">{ad.title}</p>
+                      <p className="text-[hsl(var(--muted-foreground))] text-xs mt-0.5">
                         #{ad.id} · {ad.city}
-                        {ad.category && <span className="ml-1 text-gray-600">· {ad.category}</span>}
+                        {ad.category && <span className="ml-1">· {ad.category}</span>}
                       </p>
                     </td>
                     <td className="p-3 hidden lg:table-cell">
-                      <p className="text-gray-300 text-sm">{ad.author_name || "—"}</p>
-                      <p className="text-gray-500 text-xs">{ad.author_email}</p>
+                      <p className="text-[hsl(var(--foreground))] text-sm">{ad.author_name || "—"}</p>
+                      <p className="text-[hsl(var(--muted-foreground))] text-xs">{ad.author_email}</p>
                     </td>
-                    <td className="p-3 text-gray-400 text-xs hidden md:table-cell whitespace-nowrap">
+                    <td className="p-3 text-[hsl(var(--muted-foreground))] text-xs hidden md:table-cell whitespace-nowrap">
                       {fmtDate(ad.created_at)}
                     </td>
-                    <td className="p-3 text-right text-gray-300 whitespace-nowrap">{fmtPrice(ad.price)}</td>
-                    <td className="p-3 text-center text-gray-500 text-xs hidden sm:table-cell">{ad.views}</td>
+                    <td className="p-3 text-right text-[hsl(var(--foreground))] whitespace-nowrap">{fmtPrice(ad.price)}</td>
+                    <td className="p-3 text-center text-[hsl(var(--muted-foreground))] text-xs hidden sm:table-cell">{ad.views}</td>
                     <td className="p-3 text-center"><StatusBadge status={ad.status} /></td>
                   </tr>
                 ))}
@@ -641,17 +641,17 @@ function AdsTable({ forceStatus }: AdsTableProps) {
       {totalPages > 1 && (
         <div className="flex items-center gap-2 justify-center">
           <button onClick={() => goPage(Math.max(1, applied.page - 1))} disabled={applied.page === 1}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-gray-300 text-sm rounded-lg transition-colors">←</button>
-          <span className="text-gray-400 text-sm">{applied.page} / {totalPages}</span>
+            className="px-3 py-1.5 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--secondary))] disabled:opacity-40 text-[hsl(var(--foreground))] text-sm rounded-lg transition-colors">←</button>
+          <span className="text-[hsl(var(--muted-foreground))] text-sm">{applied.page} / {totalPages}</span>
           <button onClick={() => goPage(Math.min(totalPages, applied.page + 1))} disabled={applied.page === totalPages}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-gray-300 text-sm rounded-lg transition-colors">→</button>
+            className="px-3 py-1.5 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--secondary))] disabled:opacity-40 text-[hsl(var(--foreground))] text-sm rounded-lg transition-colors">→</button>
         </div>
       )}
 
       {/* Групповые действия */}
       {selected.length > 0 && (
-        <div className="bg-gray-900 border border-indigo-800/50 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-          <span className="text-indigo-300 text-sm font-medium">Выбрано: {selected.length}</span>
+        <div className="bg-white border border-[hsl(var(--primary))]/30 rounded-2xl p-4 flex flex-wrap items-center gap-3">
+          <span className="text-[hsl(var(--primary))] text-sm font-medium">Выбрано: {selected.length}</span>
           <Sel value={bulkStatus} onChange={setBulkStatus}
             options={[
               { value: "", label: "Изменить статус на..." },
@@ -662,11 +662,11 @@ function AdsTable({ forceStatus }: AdsTableProps) {
               { value: "archived", label: "В архив" },
             ]} />
           <button onClick={applyBulk} disabled={applying || !bulkStatus}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+            className="flex items-center gap-2 px-4 py-2 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-opacity">
             {applying ? <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : null}
             Применить
           </button>
-          <button onClick={() => setSelected([])} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">Снять выбор</button>
+          <button onClick={() => setSelected([])} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] text-sm transition-colors">Снять выбор</button>
         </div>
       )}
 

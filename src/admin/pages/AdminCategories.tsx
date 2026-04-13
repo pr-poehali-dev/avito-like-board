@@ -144,46 +144,46 @@ function BulkAddCategories({ flat, onDone, onCancel }: BulkAddProps) {
   const errCount = progress.filter((p) => p.status === "err").length;
 
   return (
-    <div className="bg-gray-900 border border-indigo-800/40 rounded-2xl p-5 flex flex-col gap-4">
+    <div className="bg-white border border-border rounded-2xl p-5 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-white font-semibold text-sm">Массовое добавление категорий</h3>
-          <p className="text-gray-500 text-xs mt-0.5">Введите названия — по одному на строку</p>
+          <h3 className="text-[hsl(var(--foreground))] font-semibold text-sm">Массовое добавление категорий</h3>
+          <p className="text-[hsl(var(--muted-foreground))] text-xs mt-0.5">Введите названия — по одному на строку</p>
         </div>
-        <button onClick={onCancel} className="text-gray-500 hover:text-white transition-colors text-lg leading-none">✕</button>
+        <button onClick={onCancel} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors text-lg leading-none">✕</button>
       </div>
 
       {!started ? (
         <>
           <div className="flex flex-col gap-1.5">
-            <label className="text-gray-400 text-xs">Родительская категория (необязательно)</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Родительская категория (необязательно)</label>
             <select value={parentId} onChange={(e) => setParentId(e.target.value)}
-              className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              className="bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]">
               <option value="">— корневые категории —</option>
               {parentOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-gray-400 text-xs">Названия категорий <span className="text-gray-600">(одна строка — одна категория)</span></label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Названия категорий <span className="opacity-60">(одна строка — одна категория)</span></label>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={8}
               placeholder={"Транспорт\nАвтомобили\nМотоциклы\nГрузовые авто\nЗапчасти"}
-              className="bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 resize-none font-mono"
+              className="bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] resize-none font-mono"
             />
-            <p className="text-gray-600 text-xs">
-              {lines.length > 0 ? <span className="text-indigo-400">{lines.length} категорий будет создано</span> : "Введите хотя бы одно название"}
+            <p className="text-[hsl(var(--muted-foreground))] text-xs">
+              {lines.length > 0 ? <span className="text-[hsl(var(--primary))]">{lines.length} категорий будет создано</span> : "Введите хотя бы одно название"}
             </p>
           </div>
 
           <div className="flex gap-2 justify-end">
-            <button onClick={onCancel} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-xl transition-colors border border-gray-700">
+            <button onClick={onCancel} className="px-4 py-2 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] text-sm rounded-xl transition-colors border border-border">
               Отмена
             </button>
             <button onClick={handleRun} disabled={!lines.length || saving}
-              className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+              className="flex items-center gap-2 px-5 py-2 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-opacity">
               Создать {lines.length > 0 && `${lines.length} категорий`}
             </button>
           </div>
@@ -192,28 +192,28 @@ function BulkAddCategories({ flat, onDone, onCancel }: BulkAddProps) {
         <div className="flex flex-col gap-2">
           <div className="max-h-64 overflow-y-auto flex flex-col gap-1">
             {progress.map((p, i) => (
-              <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-800/50">
+              <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[hsl(var(--muted))]">
                 <span className="text-base leading-none shrink-0">
                   {p.status === "pending" ? "⏳" : p.status === "ok" ? "✅" : "❌"}
                 </span>
-                <span className="text-sm text-gray-300 flex-1 truncate">{p.name}</span>
+                <span className="text-sm text-[hsl(var(--foreground))] flex-1 truncate">{p.name}</span>
               </div>
             ))}
           </div>
           {!saving && (
             <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-gray-500">
-                <span className="text-green-400">{doneCount} создано</span>
-                {errCount > 0 && <span className="text-red-400 ml-2">{errCount} ошибок</span>}
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                <span className="text-green-600">{doneCount} создано</span>
+                {errCount > 0 && <span className="text-red-500 ml-2">{errCount} ошибок</span>}
               </p>
-              <button onClick={onCancel} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors">
+              <button onClick={onCancel} className="px-4 py-2 bg-[hsl(var(--primary))] hover:opacity-90 text-white text-sm font-semibold rounded-xl transition-opacity">
                 Готово
               </button>
             </div>
           )}
           {saving && (
-            <div className="flex items-center gap-2 text-gray-500 text-xs pt-1">
-              <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center gap-2 text-[hsl(var(--muted-foreground))] text-xs pt-1">
+              <div className="w-3.5 h-3.5 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" />
               Создаю категории...
             </div>
           )}
@@ -283,54 +283,54 @@ function CatForm({ initial, flatCats, onSave, onCancel }: {
   const parentOpts = buildSelectOpts(flatCats.filter((f) => f.cat.id !== form.id));
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-5 flex flex-col gap-4">
+    <div className="bg-[hsl(var(--muted))] border border-border rounded-xl p-5 flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Название *</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Название *</label>
           <Inp value={form.name} onChange={(v) => { set("name", v); if (!slugEdited) set("slug", slugify(v)); }} placeholder="Транспорт" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Альтернативное название</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Альтернативное название</label>
           <Inp value={form.alt_name} onChange={(v) => set("alt_name", v)} placeholder="Необязательно" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Родительская категория</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Родительская категория</label>
           <Sel value={String(form.parent_id || "")} onChange={(v) => set("parent_id", v ? Number(v) : 0)} className="w-full"
             options={[{ value: "", label: "— корневая категория —" }, ...parentOpts]} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">URL-псевдоним (slug)</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">URL-псевдоним (slug)</label>
           <Inp value={form.slug} onChange={(v) => { set("slug", v); setSlugEdited(true); }} placeholder="transport" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Мета-заголовок (Title)</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Мета-заголовок (Title)</label>
           <Inp value={form.meta_title} onChange={(v) => set("meta_title", v)} placeholder="SEO заголовок" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Порядок сортировки</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Порядок сортировки</label>
           <input type="number" value={form.sort_order} onChange={(e) => set("sort_order", Number(e.target.value))}
-            className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full" />
+            className="bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] w-full" />
         </div>
         <div className="flex flex-col gap-1 sm:col-span-2">
-          <label className="text-gray-400 text-xs">Мета-описание (Description)</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Мета-описание (Description)</label>
           <textarea value={form.meta_description} onChange={(e) => set("meta_description", e.target.value)}
             rows={2} placeholder="SEO описание"
-            className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 resize-none" />
+            className="bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] resize-none" />
         </div>
         <div className="flex flex-col gap-1 sm:col-span-2">
-          <label className="text-gray-400 text-xs">Краткое описание</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Краткое описание</label>
           <textarea value={form.short_description} onChange={(e) => set("short_description", e.target.value)}
             rows={3} placeholder="Описание для страницы категории"
-            className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 resize-none" />
+            className="bg-[hsl(var(--muted))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] resize-none" />
         </div>
       </div>
       <Tog checked={form.show_in_menu} onChange={(v) => set("show_in_menu", v)} label="Показывать в главном меню" />
       <div className="flex gap-2 pt-1">
         <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+          className="flex items-center gap-2 px-5 py-2 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-opacity">
           {saving ? <><div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</> : "Сохранить"}
         </button>
-        <button onClick={onCancel} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-xl transition-colors">Отмена</button>
+        <button onClick={onCancel} className="px-4 py-2 bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] text-sm rounded-xl transition-colors">Отмена</button>
       </div>
     </div>
   );
@@ -347,16 +347,16 @@ function CatNode({ cat, depth, flatCats, expanded, onToggle, onEdit, onAddChild,
 
   return (
     <div>
-      <div className={`flex items-center gap-2 py-2 px-3 hover:bg-gray-800/40 rounded-lg group ${editId === cat.id ? "bg-indigo-900/20" : ""}`}
+      <div className={`flex items-center gap-2 py-2 px-3 hover:bg-[hsl(var(--muted))] rounded-lg group ${editId === cat.id ? "bg-[hsl(var(--primary))]/10" : ""}`}
         style={{ paddingLeft: `${12 + depth * 20}px` }}>
         <button onClick={() => onToggle(cat.id)}
-          className={`w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors text-xs ${!hasChildren ? "invisible" : ""}`}>
+          className={`w-5 h-5 flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors text-xs ${!hasChildren ? "invisible" : ""}`}>
           {isExpanded ? "▼" : "▶"}
         </button>
-        <span className="text-gray-500 text-xs w-8 shrink-0">#{cat.id}</span>
-        <span className="text-white text-sm font-medium flex-1 truncate">{cat.name}</span>
-        {cat.slug && <span className="text-gray-600 text-xs hidden sm:block truncate max-w-[120px]">/{cat.slug}</span>}
-        <span className="text-gray-500 text-xs shrink-0">{cat.ads_count} объявл.</span>
+        <span className="text-[hsl(var(--muted-foreground))] text-xs w-8 shrink-0">#{cat.id}</span>
+        <span className="text-[hsl(var(--foreground))] text-sm font-medium flex-1 truncate">{cat.name}</span>
+        {cat.slug && <span className="text-[hsl(var(--muted-foreground))] text-xs hidden sm:block truncate max-w-[120px]">/{cat.slug}</span>}
+        <span className="text-[hsl(var(--muted-foreground))] text-xs shrink-0">{cat.ads_count} объявл.</span>
         <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <Btn onClick={() => onEdit(cat)} variant="secondary" className="!text-xs !py-1 !px-2">✏️</Btn>
           <Btn onClick={() => onAddChild(cat.id)} variant="secondary" className="!text-xs !py-1 !px-2">+</Btn>
@@ -455,7 +455,7 @@ function CategoriesTab() {
           <Btn onClick={() => toggleAll(true)} variant="secondary">Развернуть всё</Btn>
           <Btn onClick={() => toggleAll(false)} variant="secondary">Свернуть всё</Btn>
         </div>
-        <span className="text-gray-500 text-sm">Всего: {flat.length}</span>
+        <span className="text-[hsl(var(--muted-foreground))] text-sm">Всего: {flat.length}</span>
       </div>
 
       {/* Массовое добавление */}
@@ -478,11 +478,11 @@ function CategoriesTab() {
       )}
 
       {tree.length === 0 && !showCreate ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl text-center py-16 text-gray-500 text-sm">
+        <div className="bg-white border border-border rounded-2xl text-center py-16 text-[hsl(var(--muted-foreground))] text-sm">
           Нет категорий. Создайте первую.
         </div>
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden py-2">
+        <div className="bg-white border border-border rounded-2xl overflow-hidden py-2">
           {tree.map((cat) => (
             <CatNode key={cat.id} cat={cat} depth={0} flatCats={flat}
               expanded={expanded} onToggle={onToggle} onEdit={onEdit}
@@ -513,18 +513,18 @@ function MultiCheck({ label, items, selected, onChange }: {
     onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-gray-400 text-xs">{label}</label>
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 flex flex-col gap-1.5 max-h-40 overflow-y-auto">
+      <label className="text-[hsl(var(--muted-foreground))] text-xs">{label}</label>
+      <div className="bg-[hsl(var(--muted))] border border-border rounded-xl p-3 flex flex-col gap-1.5 max-h-40 overflow-y-auto">
         {items.length === 0
-          ? <span className="text-gray-600 text-xs italic">Нет доступных элементов</span>
+          ? <span className="text-[hsl(var(--muted-foreground))] text-xs italic">Нет доступных элементов</span>
           : items.map((item) => (
             <label key={item.id} className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={selected.includes(item.id)} onChange={() => toggle(item.id)} className="rounded accent-indigo-600" />
-              <span className="text-sm text-gray-300">{item.name}</span>
+              <input type="checkbox" checked={selected.includes(item.id)} onChange={() => toggle(item.id)} className="rounded accent-[hsl(var(--primary))]" />
+              <span className="text-sm text-[hsl(var(--foreground))]">{item.name}</span>
             </label>
           ))}
       </div>
-      {selected.length > 0 && <p className="text-xs text-indigo-400">Выбрано: {selected.length}</p>}
+      {selected.length > 0 && <p className="text-xs text-[hsl(var(--primary))]">Выбрано: {selected.length}</p>}
     </div>
   );
 }
@@ -551,47 +551,47 @@ function AcfForm({ initial, folders, flatCats, groups, onSave, onCancel }: {
   const allCats = flatCats.map(({ cat, depth }) => ({ id: cat.id, name: "— ".repeat(depth) + cat.name }));
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-5 flex flex-col gap-4">
+    <div className="bg-[hsl(var(--muted))] border border-border rounded-xl p-5 flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Название поля *</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Название поля *</label>
           <Inp value={form.name} onChange={(v) => set("name", v)} placeholder="Пробег" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Тип поля</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Тип поля</label>
           <Sel value={form.field_type} onChange={(v) => set("field_type", v)} className="w-full" options={FIELD_TYPES} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Папка</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Папка</label>
           <Sel value={String(form.folder_id || "")} onChange={(v) => set("folder_id", v ? Number(v) : 0)} className="w-full"
             options={[{ value: "", label: "— без папки —" }, ...folders.map((f) => ({ value: String(f.id), label: f.name }))]} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Подсказка (placeholder)</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Подсказка (placeholder)</label>
           <Inp value={form.placeholder} onChange={(v) => set("placeholder", v)} placeholder="Введите значение..." className="w-full" />
         </div>
         <div className="flex flex-col gap-1 sm:col-span-2">
-          <label className="text-gray-400 text-xs">Описание поля</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Описание поля</label>
           <textarea value={form.description} onChange={(e) => set("description", e.target.value)}
             rows={2} placeholder="Пояснение для пользователя"
-            className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 resize-none" />
+            className="bg-[hsl(var(--card))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] resize-none" />
         </div>
         {form.field_type === "select" && (
           <div className="flex flex-col gap-1 sm:col-span-2">
-            <label className="text-gray-400 text-xs">Варианты списка (по одному на строку)</label>
+            <label className="text-[hsl(var(--muted-foreground))] text-xs">Варианты списка (по одному на строку)</label>
             <textarea value={form.options} onChange={(e) => set("options", e.target.value)}
               rows={4} placeholder={"Вариант 1\nВариант 2\nВариант 3"}
-              className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 resize-none" />
+              className="bg-[hsl(var(--card))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] resize-none" />
           </div>
         )}
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Значение по умолчанию</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Значение по умолчанию</label>
           <Inp value={form.default_value} onChange={(v) => set("default_value", v)} placeholder="Необязательно" className="w-full" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-gray-400 text-xs">Порядок сортировки</label>
+          <label className="text-[hsl(var(--muted-foreground))] text-xs">Порядок сортировки</label>
           <input type="number" value={form.sort_order} onChange={(e) => set("sort_order", Number(e.target.value))}
-            className="bg-gray-800 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full" />
+            className="bg-[hsl(var(--card))] border border-border text-[hsl(var(--foreground))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] w-full" />
         </div>
       </div>
 
@@ -608,10 +608,10 @@ function AcfForm({ initial, folders, flatCats, groups, onSave, onCancel }: {
 
       <div className="flex gap-2 pt-1">
         <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+          className="flex items-center gap-2 px-5 py-2 bg-[hsl(var(--primary))] hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-opacity">
           {saving ? <><div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />Сохраняю...</> : "Сохранить"}
         </button>
-        <button onClick={onCancel} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-xl transition-colors">Отмена</button>
+        <button onClick={onCancel} className="px-4 py-2 bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] text-sm rounded-xl transition-colors">Отмена</button>
       </div>
     </div>
   );
@@ -709,51 +709,51 @@ function AdFieldsTab() {
       {/* Левая панель: папки */}
       <div className="w-56 shrink-0 flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">Папки</span>
-          <button onClick={() => setShowFolderCreate(true)} className="text-indigo-400 hover:text-indigo-300 text-xs transition-colors">+ Папка</button>
+          <span className="text-[hsl(var(--muted-foreground))] text-xs font-medium uppercase tracking-wider">Папки</span>
+          <button onClick={() => setShowFolderCreate(true)} className="text-[hsl(var(--primary))] hover:opacity-80 text-xs transition-opacity">+ Папка</button>
         </div>
 
         {showFolderCreate && (
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 flex flex-col gap-2">
+          <div className="bg-[hsl(var(--muted))] border border-border rounded-xl p-3 flex flex-col gap-2">
             <Inp value={folderForm.name} onChange={(v) => setFolderForm((p) => ({ ...p, name: v }))} placeholder="Название" className="w-full" />
             <div className="flex gap-2">
-              <button onClick={handleFolderCreate} className="flex-1 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded-lg transition-colors">Создать</button>
-              <button onClick={() => setShowFolderCreate(false)} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs rounded-lg transition-colors">✕</button>
+              <button onClick={handleFolderCreate} className="flex-1 py-1 bg-[hsl(var(--primary))] hover:opacity-90 text-white text-xs rounded-lg transition-opacity">Создать</button>
+              <button onClick={() => setShowFolderCreate(false)} className="px-2 py-1 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] text-xs rounded-lg">✕</button>
             </div>
           </div>
         )}
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-border rounded-2xl overflow-hidden">
           <button onClick={() => setActiveFolderId("all")}
-            className={`w-full text-left px-3 py-2.5 text-sm transition-colors border-b border-gray-800 ${activeFolderId === "all" ? "bg-indigo-600/20 text-indigo-300" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}>
-            Все поля <span className="text-xs text-gray-500 ml-1">({fields.length})</span>
+            className={`w-full text-left px-3 py-2.5 text-sm transition-colors border-b border-border ${activeFolderId === "all" ? "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`}>
+            Все поля <span className="text-xs opacity-60 ml-1">({fields.length})</span>
           </button>
           <button onClick={() => setActiveFolderId(null)}
-            className={`w-full text-left px-3 py-2.5 text-sm transition-colors border-b border-gray-800 ${activeFolderId === null ? "bg-indigo-600/20 text-indigo-300" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}>
-            Без папки <span className="text-xs text-gray-500 ml-1">({fields.filter((f) => !f.folder_id).length})</span>
+            className={`w-full text-left px-3 py-2.5 text-sm transition-colors border-b border-border ${activeFolderId === null ? "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`}>
+            Без папки <span className="text-xs opacity-60 ml-1">({fields.filter((f) => !f.folder_id).length})</span>
           </button>
           {folders.map((folder) => (
-            <div key={folder.id} className="border-b border-gray-800 last:border-0">
+            <div key={folder.id} className="border-b border-border last:border-0">
               {editFolderId === folder.id ? (
                 <div className="p-2 flex flex-col gap-2">
                   <Inp value={editFolderForm.name} onChange={(v) => setEditFolderForm((p) => ({ ...p, name: v }))} className="w-full" />
                   <div className="flex gap-1">
-                    <button onClick={handleFolderUpdate} className="flex-1 py-1 bg-indigo-600 text-white text-xs rounded-lg">Сохранить</button>
-                    <button onClick={() => setEditFolderId(null)} className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded-lg">✕</button>
+                    <button onClick={handleFolderUpdate} className="flex-1 py-1 bg-[hsl(var(--primary))] text-white text-xs rounded-lg">Сохранить</button>
+                    <button onClick={() => setEditFolderId(null)} className="px-2 py-1 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] text-xs rounded-lg">✕</button>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center group">
                   <button onClick={() => setActiveFolderId(folder.id)}
-                    className={`flex-1 text-left px-3 py-2.5 text-sm transition-colors ${activeFolderId === folder.id ? "bg-indigo-600/20 text-indigo-300" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}>
+                    className={`flex-1 text-left px-3 py-2.5 text-sm transition-colors ${activeFolderId === folder.id ? "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`}>
                     📁 {folder.name}
-                    <span className="text-xs text-gray-500 ml-1">({fields.filter((f) => f.folder_id === folder.id).length})</span>
+                    <span className="text-xs opacity-60 ml-1">({fields.filter((f) => f.folder_id === folder.id).length})</span>
                   </button>
                   <div className="flex gap-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => { setEditFolderId(folder.id); setEditFolderForm({ ...folder }); }}
-                      className="p-1 text-gray-500 hover:text-white rounded text-xs">✏️</button>
+                      className="p-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] rounded text-xs">✏️</button>
                     <button onClick={() => handleFolderRemove(folder.id)}
-                      className="p-1 text-red-600 hover:text-red-400 rounded text-xs">🗑</button>
+                      className="p-1 text-red-500 hover:text-red-600 rounded text-xs">🗑</button>
                   </div>
                 </div>
               )}
@@ -765,9 +765,9 @@ function AdFieldsTab() {
       {/* Правая панель: поля */}
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         <div className="flex justify-between items-center">
-          <p className="text-gray-400 text-sm">
+          <p className="text-[hsl(var(--muted-foreground))] text-sm">
             {activeFolderId === "all" ? "Все поля" : activeFolderId === null ? "Без папки" : `Папка: ${folders.find((f) => f.id === activeFolderId)?.name}`}
-            <span className="text-gray-600 ml-2">({visibleFields.length})</span>
+            <span className="opacity-60 ml-2">({visibleFields.length})</span>
           </p>
           <Btn onClick={() => { setShowCreate(true); setEditId(null); }} variant="primary">+ Добавить поле</Btn>
         </div>
@@ -779,36 +779,36 @@ function AdFieldsTab() {
         )}
 
         {visibleFields.length === 0 && !showCreate ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl text-center py-16 text-gray-500 text-sm">
+          <div className="bg-white border border-border rounded-2xl text-center py-16 text-[hsl(var(--muted-foreground))] text-sm">
             Нет полей в выбранной папке
           </div>
         ) : (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div className="bg-white border border-border rounded-2xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="p-3 text-left text-gray-400 font-medium">Название</th>
-                  <th className="p-3 text-left text-gray-400 font-medium">Тип</th>
-                  <th className="p-3 text-left text-gray-400 font-medium hidden md:table-cell">Категории</th>
-                  <th className="p-3 text-center text-gray-400 font-medium">Необяз.</th>
-                  <th className="p-3 text-right text-gray-400 font-medium">Действия</th>
+                <tr className="border-b border-border">
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Название</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium">Тип</th>
+                  <th className="p-3 text-left text-[hsl(var(--muted-foreground))] font-medium hidden md:table-cell">Категории</th>
+                  <th className="p-3 text-center text-[hsl(var(--muted-foreground))] font-medium">Необяз.</th>
+                  <th className="p-3 text-right text-[hsl(var(--muted-foreground))] font-medium">Действия</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleFields.map((f) => (
                   <>
-                    <tr key={f.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                    <tr key={f.id} className="border-b border-border hover:bg-[hsl(var(--muted))]">
                       <td className="p-3">
-                        <p className="text-white font-medium">{f.name}</p>
-                        {f.folder_name && <p className="text-gray-600 text-xs">📁 {f.folder_name}</p>}
+                        <p className="text-[hsl(var(--foreground))] font-medium">{f.name}</p>
+                        {f.folder_name && <p className="text-[hsl(var(--muted-foreground))] text-xs">📁 {f.folder_name}</p>}
                       </td>
-                      <td className="p-3 text-gray-400">{ftLabel(f.field_type)}</td>
-                      <td className="p-3 text-gray-500 text-xs hidden md:table-cell">
+                      <td className="p-3 text-[hsl(var(--muted-foreground))]">{ftLabel(f.field_type)}</td>
+                      <td className="p-3 text-[hsl(var(--muted-foreground))] text-xs hidden md:table-cell">
                         {f.categories.length === 0
-                          ? <span className="text-gray-600">Все категории</span>
+                          ? <span className="opacity-60">Все категории</span>
                           : f.categories.map((c) => c.name).join(", ")}
                       </td>
-                      <td className="p-3 text-center">{f.is_optional ? <span className="text-green-400">✓</span> : <span className="text-gray-600">✗</span>}</td>
+                      <td className="p-3 text-center">{f.is_optional ? <span className="text-green-600">✓</span> : <span className="text-[hsl(var(--muted-foreground))]">✗</span>}</td>
                       <td className="p-3 text-right">
                         <div className="flex gap-1.5 justify-end">
                           <Btn onClick={() => { setEditId(f.id); setShowCreate(false); }} variant="secondary" className="!text-xs !py-1">Изменить</Btn>
@@ -842,15 +842,15 @@ export default function AdminCategories() {
   return (
     <div className="max-w-6xl">
       <div className="mb-6">
-        <h1 className="text-white text-2xl font-bold">Категории</h1>
-        <p className="text-gray-400 text-sm mt-1">Управление деревом категорий и дополнительными полями объявлений</p>
+        <h1 className="text-[hsl(var(--foreground))] text-2xl font-bold">Категории</h1>
+        <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1">Управление деревом категорий и дополнительными полями объявлений</p>
       </div>
 
-      <div className="flex gap-1 mb-6 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 mb-6 bg-white border border-border rounded-xl p-1 w-fit">
         {TABS.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-              activeTab === tab.id ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"
+              activeTab === tab.id ? "bg-[hsl(var(--primary))] text-white" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"
             }`}>
             {tab.label}
           </button>

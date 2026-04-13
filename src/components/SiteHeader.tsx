@@ -179,6 +179,15 @@ export default function SiteHeader({
 
         {/* Правая часть — кнопки */}
         <div className="hidden md:flex items-center gap-1.5 shrink-0">
+          {/* Кнопка подачи объявления */}
+          <button
+            onClick={() => navigate("/listing/new")}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[hsl(var(--accent))] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
+          >
+            <Icon name="Plus" size={16} className="text-white" />
+            Подать объявление
+          </button>
+
           {user && (
             <>
               {/* Сообщения */}
@@ -422,6 +431,14 @@ export default function SiteHeader({
                 <Icon name={item.icon as "Home"} size={16} />{item.label}
               </button>
             ))}
+            {/* Кнопка подачи объявления в мобильном меню */}
+            <button
+              onClick={() => { navigate("/listing/new"); setMobileMenuOpen(false); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-left bg-[hsl(var(--accent))] text-white"
+            >
+              <Icon name="Plus" size={16} className="text-white" />Подать объявление
+            </button>
+
             {user && (
               <>
                 <button onClick={() => { handleNav("profile"); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]">

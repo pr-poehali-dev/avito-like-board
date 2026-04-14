@@ -1,5 +1,47 @@
+import { useState as useLocalState, useRef, useEffect as useLocalEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { Ad, FavFolder, DbCategory, User, FALLBACK_CATEGORIES, CITIES, MESSAGES, formatPrice } from "./types";
+
+function CardMenu({ adId, onOpen, onFavorite, isFavorited }: { adId: number; onOpen: () => void; onFavorite: () => void; isFavorited: boolean }) {
+  const [open, setOpen] = useLocalState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLocalEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const handle = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); setOpen(false); };
+
+  return (
+    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+        className="w-7 h-7 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition-all hover:scale-110"
+      >
+        <Icon name="MoreVertical" size={13} className="text-[hsl(var(--foreground))]" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-9 w-44 bg-white rounded-xl shadow-lg border border-border z-50 overflow-hidden animate-fade-in">
+          <button onClick={handle(onOpen)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+            <Icon name="Eye" size={14} className="text-[hsl(var(--muted-foreground))]" />
+            Посмотреть
+          </button>
+          <button onClick={handle(onFavorite)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+            <Icon name="Heart" size={14} className={isFavorited ? "text-red-500" : "text-[hsl(var(--muted-foreground))]"} />
+            {isFavorited ? "Убрать из избранного" : "В избранное"}
+          </button>
+          <button onClick={handle(() => { if (navigator.share) { navigator.share({ title: "Объявление", url: `${window.location.origin}/ad/${adId}` }); } else { navigator.clipboard.writeText(`${window.location.origin}/ad/${adId}`); } })} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
+            <Icon name="Share2" size={14} className="text-[hsl(var(--muted-foreground))]" />
+            Поделиться
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── HomeSection ──────────────────────────────────────────────────────────────
 interface HomeSectionProps {
@@ -164,9 +206,14 @@ export function HomeSection({
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-4xl">{ad.image || "📦"}</div>
                       )}
-                      <button onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }} className={`absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all hover:scale-110 ${favorites.includes(ad.id) ? "bg-[hsl(var(--accent))]" : "bg-white"}`}>
-                        <Icon name="Heart" size={13} className={favorites.includes(ad.id) ? "text-white" : "text-[hsl(var(--accent))]"} />
-                      </button>
+                      <div className="absolute top-2 right-2 z-10">
+                        <CardMenu
+                          adId={ad.id}
+                          onOpen={() => setViewAdId(ad.id)}
+                          onFavorite={() => openAddToFolder(ad.id)}
+                          isFavorited={favorites.includes(ad.id)}
+                        />
+                      </div>
                     </div>
                     <div className="p-3">
                       <p className="font-semibold text-[hsl(var(--foreground))] text-sm leading-tight mb-1 line-clamp-2">{ad.title}</p>

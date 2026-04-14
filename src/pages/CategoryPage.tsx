@@ -3,8 +3,10 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import SiteHeader from "@/components/SiteHeader";
 import AuthModal from "./index/AuthModal";
+import FavoriteModal from "@/components/FavoriteModal";
 import { useAuth } from "@/hooks/useAuth";
-import { ADS_URL, FAV_URL, Ad, DbCategory, formatPrice } from "./index/types";
+import { useFavorites } from "@/hooks/useFavorites";
+import { ADS_URL, Ad, DbCategory, formatPrice } from "./index/types";
 
 export default function CategoryPage() {
   const { slug, subslug } = useParams<{ slug: string; subslug?: string }>();
@@ -32,29 +34,12 @@ export default function CategoryPage() {
   const [adsPerPage, setAdsPerPage] = useState(0);
   const [adsPage, setAdsPage] = useState(1);
   const [carouselIndex, setCarouselIndex] = useState<Record<number, number>>({});
-  const [favorites, setFavorites] = useState<Set<number>>(new Set());
 
-  const toggleFavorite = async (e: React.MouseEvent, adId: number) => {
-    e.stopPropagation();
-    if (!user) { openAuth("login"); return; }
-    const isFav = favorites.has(adId);
-    setFavorites(prev => {
-      const s = new Set(prev);
-      if (isFav) { s.delete(adId); } else { s.add(adId); }
-      return s;
-    });
-    fetch(FAV_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Session-Id": localStorage.getItem("session_id") || "" },
-      body: JSON.stringify({ action: isFav ? "remove" : "add", ad_id: adId }),
-    }).catch(() => {
-      setFavorites(prev => {
-        const s = new Set(prev);
-        if (isFav) { s.add(adId); } else { s.delete(adId); }
-        return s;
-      });
-    });
-  };
+  const {
+    favSet, favFolders, addToFolderAdId, setAddToFolderAdId,
+    adFolderIds, newFolderName, setNewFolderName,
+    openFavoriteModal, toggleAdInFolder, createFolder,
+  } = useFavorites(user, openAuth);
 
   useEffect(() => {
     fetch(ADS_URL, {
@@ -216,10 +201,10 @@ export default function CategoryPage() {
                         </div>
                       )}
                       <button
-                        onClick={(e) => toggleFavorite(e, ad.id)}
-                        className={`absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition-all hover:scale-110 ${favorites.has(ad.id) ? "text-red-500" : "text-[hsl(var(--muted-foreground))]"}`}
+                        onClick={(e) => { e.stopPropagation(); openFavoriteModal(ad.id); }}
+                        className={`absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition-all hover:scale-110 ${favSet.has(ad.id) ? "text-red-500" : "text-[hsl(var(--muted-foreground))]"}`}
                       >
-                        <Icon name="Heart" size={13} className={favorites.has(ad.id) ? "fill-red-500" : ""} />
+                        <Icon name="Heart" size={13} className={favSet.has(ad.id) ? "fill-red-500" : ""} />
                       </button>
                       {photos.length > 1 && (
                         <div className="absolute bottom-2 right-2 flex gap-1">
@@ -338,6 +323,19 @@ export default function CategoryPage() {
         submitAuth={submitAuth}
         sendCode={sendCode}
       />
+
+      {addToFolderAdId !== null && (
+        <FavoriteModal
+          adId={addToFolderAdId}
+          favFolders={favFolders}
+          adFolderIds={adFolderIds}
+          newFolderName={newFolderName}
+          setNewFolderName={setNewFolderName}
+          onToggleFolder={toggleAdInFolder}
+          onCreateFolder={createFolder}
+          onClose={() => setAddToFolderAdId(null)}
+        />
+      )}
     </div>
   );
 }

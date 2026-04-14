@@ -1,5 +1,6 @@
 import { useState as useLocalState, useRef, useEffect as useLocalEffect } from "react";
 import Icon from "@/components/ui/icon";
+import FavoriteModal from "@/components/FavoriteModal";
 import { Ad, FavFolder, DbCategory, User, FALLBACK_CATEGORIES, CITIES, MESSAGES, formatPrice } from "./types";
 
 function CardMenu({ adId, onOpen, onFavorite, isFavorited }: { adId: number; onOpen: () => void; onFavorite: () => void; isFavorited: boolean }) {
@@ -627,31 +628,17 @@ export function FavoritesSection({
         </div>
       )}
 
-      {/* Глобальный модал: добавить объявление в папку избранного */}
       {addToFolderAdId !== null && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setAddToFolderAdId(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-slide-up">
-            <button onClick={() => setAddToFolderAdId(null)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[hsl(var(--muted))]"><Icon name="X" size={16} /></button>
-            <h3 className="font-bold text-lg mb-1">Сохранить в избранное</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Выберите папки</p>
-            <div className="flex flex-col gap-2 max-h-56 overflow-y-auto mb-3">
-              {favFolders.length === 0 && (<p className="text-sm text-center text-[hsl(var(--muted-foreground))] py-3">Нет папок — создайте первую ниже</p>)}
-              {favFolders.map((f) => (
-                <button key={f.id} onClick={() => toggleAdInFolder(f.id, addToFolderAdId)} className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all text-left ${adFolderIds.includes(f.id) ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]" : "border-border hover:border-[hsl(var(--accent))]"}`}>
-                  <Icon name={adFolderIds.includes(f.id) ? "CheckSquare" : "Square"} size={16} />
-                  <span className="flex-1 truncate">{f.name}</span>
-                  <span className="text-xs text-[hsl(var(--muted-foreground))]">{f.count}</span>
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2 mb-3">
-              <input placeholder="Новая папка..." value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createFolder()} className="flex-1 px-3 py-2.5 bg-[hsl(var(--muted))] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] border-0" />
-              <button onClick={createFolder} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">+</button>
-            </div>
-            <button onClick={() => setAddToFolderAdId(null)} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Готово</button>
-          </div>
-        </div>
+        <FavoriteModal
+          adId={addToFolderAdId}
+          favFolders={favFolders}
+          adFolderIds={adFolderIds}
+          newFolderName={newFolderName}
+          setNewFolderName={setNewFolderName}
+          onToggleFolder={toggleAdInFolder}
+          onCreateFolder={createFolder}
+          onClose={() => setAddToFolderAdId(null)}
+        />
       )}
     </div>
   );

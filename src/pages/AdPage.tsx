@@ -3,7 +3,9 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import AdDetail from "./AdDetail";
 import SiteHeader from "@/components/SiteHeader";
 import AuthModal from "./index/AuthModal";
+import FavoriteModal from "@/components/FavoriteModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useFavorites } from "@/hooks/useFavorites";
 import { ADS_URL, DbCategory, FAV_URL } from "./index/types";
 
 const sid = () => localStorage.getItem("session_id") || "";
@@ -18,8 +20,13 @@ export default function AdPage() {
   const [adTitle, setAdTitle] = useState<string>("");
   const [adCategory, setAdCategory] = useState<string>("");
   const [adCategorySlug, setAdCategorySlug] = useState<string>("");
-  const [isFavorited, setIsFavorited] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const {
+    favSet, favFolders, addToFolderAdId, setAddToFolderAdId,
+    adFolderIds, newFolderName, setNewFolderName,
+    openFavoriteModal, toggleAdInFolder, createFolder, initFavSet,
+  } = useFavorites(user, openAuth);
 
   useEffect(() => {
     fetch(ADS_URL, {
@@ -35,20 +42,14 @@ export default function AdPage() {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
       body: JSON.stringify({ action: "check", ad_id: Number(adId) }),
-    }).then(r => r.json()).then(d => { if (d.ok) setIsFavorited(!!d.favorited); }).catch(() => {});
+    }).then(r => r.json()).then(d => {
+      if (d.ok && d.favorited) initFavSet([Number(adId)]);
+    }).catch(() => {});
   }, [adId, user]);
 
-  const handleAddToFolder = async (id: number) => {
-    if (!user) { openAuth("login"); return; }
-    const res = await fetch(FAV_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-      body: JSON.stringify({ action: isFavorited ? "remove" : "add", ad_id: id }),
-    }).then(r => r.json());
-    if (res.ok) setIsFavorited(f => !f);
-  };
-
   if (!adId) return null;
+
+  const numericId = Number(adId);
 
   return (
     <div className="min-h-screen bg-[hsl(var(--background))]">
@@ -90,10 +91,10 @@ export default function AdPage() {
       </div>
 
       <AdDetail
-        adId={Number(adId)}
+        adId={numericId}
         onBack={() => navigate(-1)}
-        onAddToFolder={handleAddToFolder}
-        isFavorited={isFavorited}
+        onAddToFolder={(id) => openFavoriteModal(id)}
+        isFavorited={favSet.has(numericId)}
         currentUserId={user?.id ?? null}
         onAdLoaded={(title, category, categorySlug) => { setAdTitle(title); setAdCategory(category); setAdCategorySlug(categorySlug || ""); }}
       />
@@ -112,6 +113,19 @@ export default function AdPage() {
         submitAuth={auth.submitAuth}
         sendCode={auth.sendCode}
       />
+
+      {addToFolderAdId !== null && (
+        <FavoriteModal
+          adId={addToFolderAdId}
+          favFolders={favFolders}
+          adFolderIds={adFolderIds}
+          newFolderName={newFolderName}
+          setNewFolderName={setNewFolderName}
+          onToggleFolder={toggleAdInFolder}
+          onCreateFolder={createFolder}
+          onClose={() => setAddToFolderAdId(null)}
+        />
+      )}
     </div>
   );
 }

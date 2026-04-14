@@ -5,7 +5,9 @@ import Icon from "@/components/ui/icon";
 import SiteHeader from "@/components/SiteHeader";
 import AuthModal from "./index/AuthModal";
 import { useAuth } from "@/hooks/useAuth";
-import { ADS_URL, CHAT_URL, PROFILE_URL, FAV_URL, DbCategory, formatPrice } from "./index/types";
+import { ADS_URL, CHAT_URL, PROFILE_URL, DbCategory, formatPrice } from "./index/types";
+import FavoriteModal from "@/components/FavoriteModal";
+import { useFavorites } from "@/hooks/useFavorites";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -117,23 +119,16 @@ function AdCard({ ad, isOwner, onOpen, isFavorited, onFavorite }: { ad: AdItem; 
 // ─── Tab: Ads ─────────────────────────────────────────────────────────────────
 function AdsTab({ profile }: { profile: Profile }) {
   const navigate = useNavigate();
+  const { user, openAuth } = useAuth();
   const [ads, setAds] = useState<AdItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("active");
-  const [favSet, setFavSet] = useState<Set<number>>(new Set());
 
-  const toggleFav = async (e: React.MouseEvent, adId: number) => {
-    e.stopPropagation();
-    const isFav = favSet.has(adId);
-    setFavSet(prev => { const s = new Set(prev); if (isFav) { s.delete(adId); } else { s.add(adId); } return s; });
-    fetch(FAV_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-      body: JSON.stringify({ action: isFav ? "remove" : "add", ad_id: adId }),
-    }).catch(() => {
-      setFavSet(prev => { const s = new Set(prev); if (isFav) { s.add(adId); } else { s.delete(adId); } return s; });
-    });
-  };
+  const {
+    favSet, favFolders, addToFolderAdId, setAddToFolderAdId,
+    adFolderIds, newFolderName, setNewFolderName,
+    openFavoriteModal, toggleAdInFolder, createFolder,
+  } = useFavorites(user, openAuth);
 
   useEffect(() => {
     setLoading(true);
@@ -178,9 +173,22 @@ function AdsTab({ profile }: { profile: Profile }) {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {ads.map(ad => (
-            <AdCard key={ad.id} ad={ad} isOwner={!!profile.is_owner} onOpen={() => navigate(`/ad/${ad.id}`)} isFavorited={favSet.has(ad.id)} onFavorite={(e) => toggleFav(e, ad.id)} />
+            <AdCard key={ad.id} ad={ad} isOwner={!!profile.is_owner} onOpen={() => navigate(`/ad/${ad.id}`)} isFavorited={favSet.has(ad.id)} onFavorite={(e) => { e.stopPropagation(); openFavoriteModal(ad.id); }} />
           ))}
         </div>
+      )}
+
+      {addToFolderAdId !== null && (
+        <FavoriteModal
+          adId={addToFolderAdId}
+          favFolders={favFolders}
+          adFolderIds={adFolderIds}
+          newFolderName={newFolderName}
+          setNewFolderName={setNewFolderName}
+          onToggleFolder={toggleAdInFolder}
+          onCreateFolder={createFolder}
+          onClose={() => setAddToFolderAdId(null)}
+        />
       )}
     </div>
   );

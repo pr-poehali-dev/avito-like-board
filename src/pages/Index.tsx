@@ -12,6 +12,7 @@ import {
   User, Ad, Section, FavFolder, DbCategory,
 } from "./index/types";
 import AuthModal from "./index/AuthModal";
+import FavoriteModal from "@/components/FavoriteModal";
 import {
   HomeSection, CategoriesSection, MyAdsSection,
   MessagesSection, FavoritesSection, ProfileSection, ContactsSection,
@@ -635,6 +636,19 @@ export default function Index() {
         submitAuth={submitAuth}
         sendCode={sendCode}
       />
+
+      {addToFolderAdId !== null && (
+        <FavoriteModal
+          adId={addToFolderAdId}
+          favFolders={favFolders}
+          adFolderIds={adFolderIds}
+          newFolderName={newFolderName}
+          setNewFolderName={setNewFolderName}
+          onToggleFolder={toggleAdInFolder}
+          onCreateFolder={createFolder}
+          onClose={() => setAddToFolderAdId(null)}
+        />
+      )}
     </div>
   );
 }

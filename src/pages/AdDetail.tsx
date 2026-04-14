@@ -306,23 +306,25 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
             )}
           </div>
 
-          {/* Блок 3: Избранное + жалоба */}
-          <div className="bg-white rounded-2xl border border-border p-5 flex flex-col gap-2">
-            <button
-              onClick={() => onAddToFolder(ad.id)}
-              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all ${isFavorited ? "border-red-300 bg-red-50 text-red-500" : "border-border text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] hover:bg-orange-50"}`}
-            >
-              <Icon name="Heart" size={15} className={isFavorited ? "fill-red-500" : ""} />
-              {isFavorited ? "В избранном" : "В избранное"}
-            </button>
-            <button
-              onClick={() => toast.info("Жалоба отправлена")}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border border-border text-[hsl(var(--muted-foreground))] hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all"
-            >
-              <Icon name="Flag" size={15} />
-              Пожаловаться
-            </button>
-          </div>
+          {/* Блок 3: Избранное + жалоба — только для не-владельцев */}
+          {ad.author_id !== currentUserId && (
+            <div className="bg-white rounded-2xl border border-border p-5 flex flex-col gap-2">
+              <button
+                onClick={() => onAddToFolder(ad.id)}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all ${isFavorited ? "border-red-300 bg-red-50 text-red-500" : "border-border text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] hover:bg-orange-50"}`}
+              >
+                <Icon name="Heart" size={15} className={isFavorited ? "fill-red-500" : ""} />
+                {isFavorited ? "В избранном" : "В избранное"}
+              </button>
+              <button
+                onClick={() => toast.info("Жалоба отправлена")}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border border-border text-[hsl(var(--muted-foreground))] hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all"
+              >
+                <Icon name="Flag" size={15} />
+                Пожаловаться
+              </button>
+            </div>
+          )}
 
         </div>
       </div>

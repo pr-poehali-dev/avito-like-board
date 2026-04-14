@@ -629,6 +629,13 @@ export function FavoritesSection({
                         <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1"><Icon name="MapPin" size={10} />{ad.city}</span>
                         <span className="text-xs text-[hsl(var(--muted-foreground))]">{ad.date}</span>
                       </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }}
+                        className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl border border-border text-xs text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] hover:bg-orange-50 transition-all"
+                      >
+                        <Icon name="FolderInput" size={12} />
+                        Переместить в папку
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -662,7 +669,10 @@ export function FavoritesSection({
           setNewFolderName={setNewFolderName}
           onToggleFolder={toggleAdInFolder}
           onCreateFolder={createFolder}
-          onClose={() => setAddToFolderAdId(null)}
+          onClose={() => {
+            setAddToFolderAdId(null);
+            if (activeFolderId !== null) loadFolderAds(activeFolderId);
+          }}
         />
       )}
     </div>

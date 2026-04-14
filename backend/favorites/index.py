@@ -65,7 +65,7 @@ def handler(event: dict, context) -> dict:
             f"""SELECT f.id, f.name, f.created_at, COUNT(i.id) as cnt
                 FROM {SCHEMA}.favorite_folders f
                 LEFT JOIN {SCHEMA}.favorite_items i ON i.folder_id = f.id
-                WHERE f.user_id = %s AND f.folder_type = %s
+                WHERE f.user_id = %s AND f.folder_type = %s AND f.name != '__no_folder__'
                 GROUP BY f.id, f.name, f.created_at
                 ORDER BY f.created_at ASC""",
             (uid, folder_type)
@@ -217,6 +217,90 @@ def handler(event: dict, context) -> dict:
         ]
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "ads": ads})}
 
+    # add — добавить в избранное без папки (системная папка __no_folder__)
+    if action == "add":
+        ad_id = body.get("ad_id")
+        conn = get_conn()
+        cur = conn.cursor()
+        uid, err = require_auth(event, cur, conn)
+        if err:
+            return err
+        # Найти или создать системную папку пользователя
+        cur.execute(
+            f"SELECT id FROM {SCHEMA}.favorite_folders WHERE user_id = %s AND name = '__no_folder__' AND folder_type = 'favorites'",
+            (uid,)
+        )
+        row = cur.fetchone()
+        if row:
+            fid = row[0]
+        else:
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.favorite_folders (user_id, name, folder_type) VALUES (%s, '__no_folder__', 'favorites') RETURNING id",
+                (uid,)
+            )
+            fid = cur.fetchone()[0]
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.favorite_items (folder_id, ad_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+            (fid, ad_id)
+        )
+        conn.commit()
+        conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+
+    # remove — убрать из избранного без папки
+    if action == "remove":
+        ad_id = body.get("ad_id")
+        conn = get_conn()
+        cur = conn.cursor()
+        uid, err = require_auth(event, cur, conn)
+        if err:
+            return err
+        cur.execute(
+            f"""DELETE FROM {SCHEMA}.favorite_items i
+                USING {SCHEMA}.favorite_folders f
+                WHERE i.folder_id = f.id AND f.user_id = %s AND f.name = '__no_folder__'
+                AND i.ad_id = %s""",
+            (uid, ad_id)
+        )
+        conn.commit()
+        conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+
+    # check — проверить есть ли объявление в избранном (в любой папке)
+    if action == "check":
+        ad_id = qs.get("ad_id") or body.get("ad_id")
+        conn = get_conn()
+        cur = conn.cursor()
+        uid, err = require_auth(event, cur, conn)
+        if err:
+            return err
+        cur.execute(
+            f"""SELECT COUNT(*) FROM {SCHEMA}.favorite_items i
+                JOIN {SCHEMA}.favorite_folders f ON f.id = i.folder_id
+                WHERE f.user_id = %s AND i.ad_id = %s AND f.folder_type = 'favorites'""",
+            (uid, ad_id)
+        )
+        count = cur.fetchone()[0]
+        conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "favorited": count > 0})}
+
+    # list_favorited — получить список всех id объявлений в избранном пользователя
+    if action == "list_favorited":
+        conn = get_conn()
+        cur = conn.cursor()
+        uid, err = require_auth(event, cur, conn)
+        if err:
+            return err
+        cur.execute(
+            f"""SELECT DISTINCT i.ad_id FROM {SCHEMA}.favorite_items i
+                JOIN {SCHEMA}.favorite_folders f ON f.id = i.folder_id
+                WHERE f.user_id = %s AND f.folder_type = 'favorites'""",
+            (uid,)
+        )
+        ad_ids = [r[0] for r in cur.fetchall()]
+        conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "ad_ids": ad_ids})}
+
     # my_ad_folders — в каких папках (по типу) находится объявление
     if action == "my_ad_folders":
         ad_id = qs.get("ad_id") or body.get("ad_id")
@@ -227,12 +311,14 @@ def handler(event: dict, context) -> dict:
         if err:
             return err
         cur.execute(
-            f"""SELECT i.folder_id FROM {SCHEMA}.favorite_items i
+            f"""SELECT i.folder_id, f.name FROM {SCHEMA}.favorite_items i
                 JOIN {SCHEMA}.favorite_folders f ON f.id = i.folder_id
                 WHERE f.user_id = %s AND i.ad_id = %s AND f.folder_type = %s""",
             (uid, ad_id, folder_type)
         )
-        folder_ids = [r[0] for r in cur.fetchall()]
+        rows = cur.fetchall()
+        # Системная папка __no_folder__ возвращается как -1
+        folder_ids = [-1 if r[1] == '__no_folder__' else r[0] for r in rows]
         conn.close()
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "folder_ids": folder_ids})}
 

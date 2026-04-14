@@ -167,6 +167,14 @@ export default function Index() {
   useEffect(() => { if (user) loadMyAds(); }, [user]);
   useEffect(() => { if (section === "favorites" && user) loadFolders(); }, [section, user]);
   useEffect(() => {
+    if (!user) { setFavorites([]); return; }
+    fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "list_favorited" }),
+    }).then(r => r.json()).then(d => { if (d.ok) setFavorites(d.ad_ids); }).catch(() => {});
+  }, [user]);
+  useEffect(() => {
     if (section === "my-ads" && user) {
       loadMyAdsFolders();
       if (myAdsApi.length > 0) loadMyAdsFolderMap(myAdsApi.map((a) => a.id));
@@ -316,19 +324,32 @@ export default function Index() {
   };
 
   const toggleAdInFolder = async (folderId: number, adId: number) => {
+    if (folderId === -1) {
+      const isIn = adFolderIds.includes(-1);
+      const newIds = isIn ? adFolderIds.filter(id => id !== -1) : [...adFolderIds, -1];
+      setAdFolderIds(newIds);
+      setFavorites((prev) => newIds.length > 0 ? (prev.includes(adId) ? prev : [...prev, adId]) : prev.filter(id => id !== adId));
+      await fetch(FAV_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+        body: JSON.stringify({ action: isIn ? "remove" : "add", ad_id: adId }),
+      });
+      if (isIn) { toast("Убрано из избранного"); } else { toast.success("Добавлено в избранное"); }
+      return;
+    }
     const inFolder = adFolderIds.includes(folderId);
     const folderName = favFolders.find((f) => f.id === folderId)?.name || "папку";
-    await fetch(FAV_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-      body: JSON.stringify({ action: inFolder ? "remove_item" : "add_item", folder_id: folderId, ad_id: adId }),
-    });
     const newIds = inFolder ? adFolderIds.filter((id) => id !== folderId) : [...adFolderIds, folderId];
     setAdFolderIds(newIds);
     const nowInAnyFolder = newIds.length > 0;
     setFavorites((prev) =>
       nowInAnyFolder ? (prev.includes(adId) ? prev : [...prev, adId]) : prev.filter((id) => id !== adId)
     );
+    await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: inFolder ? "remove_item" : "add_item", folder_id: folderId, ad_id: adId }),
+    });
     loadFolders();
     if (inFolder) {
       toast("Убрано из папки", { description: folderName, icon: "📂" });

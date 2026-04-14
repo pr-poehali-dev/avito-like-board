@@ -38,8 +38,10 @@ export default function CategoryPage() {
   const {
     favSet, favFolders, addToFolderAdId, setAddToFolderAdId,
     adFolderIds, newFolderName, setNewFolderName,
-    openFavoriteModal, toggleAdInFolder, createFolder,
+    loadFavSet, openFavoriteModal, toggleAdInFolder, createFolder,
   } = useFavorites(user, openAuth);
+
+  useEffect(() => { loadFavSet(); }, [user]);
 
   useEffect(() => {
     fetch(ADS_URL, {

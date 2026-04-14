@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "name": "GET folders без авторизации — 401",
+      "name": "folders без авторизации — 401",
       "method": "POST",
       "path": "/",
       "body": {"action": "folders"},
@@ -10,10 +10,28 @@
       "expectedBody": {"error": "Необходима авторизация"}
     },
     {
-      "name": "create_folder без авторизации — 401",
+      "name": "add без авторизации — 401",
       "method": "POST",
       "path": "/",
-      "body": {"action": "create_folder", "name": "Тест"},
+      "body": {"action": "add", "ad_id": 1},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Необходима авторизация"}
+    },
+    {
+      "name": "check без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "check", "ad_id": 1},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Необходима авторизация"}
+    },
+    {
+      "name": "list_favorited без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "list_favorited"},
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Необходима авторизация"}

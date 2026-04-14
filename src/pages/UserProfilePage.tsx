@@ -127,8 +127,10 @@ function AdsTab({ profile }: { profile: Profile }) {
   const {
     favSet, favFolders, addToFolderAdId, setAddToFolderAdId,
     adFolderIds, newFolderName, setNewFolderName,
-    openFavoriteModal, toggleAdInFolder, createFolder,
+    loadFavSet, openFavoriteModal, toggleAdInFolder, createFolder,
   } = useFavorites(user, openAuth);
+
+  useEffect(() => { loadFavSet(); }, [user]);
 
   useEffect(() => {
     setLoading(true);

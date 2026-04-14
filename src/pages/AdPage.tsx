@@ -6,9 +6,8 @@ import AuthModal from "./index/AuthModal";
 import FavoriteModal from "@/components/FavoriteModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/hooks/useFavorites";
-import { ADS_URL, DbCategory, FAV_URL } from "./index/types";
+import { ADS_URL, DbCategory } from "./index/types";
 
-const sid = () => localStorage.getItem("session_id") || "";
 
 export default function AdPage() {
   const { adId } = useParams<{ adId: string }>();
@@ -25,7 +24,7 @@ export default function AdPage() {
   const {
     favSet, favFolders, addToFolderAdId, setAddToFolderAdId,
     adFolderIds, newFolderName, setNewFolderName,
-    openFavoriteModal, toggleAdInFolder, createFolder, initFavSet,
+    loadFavSet, openFavoriteModal, toggleAdInFolder, createFolder,
   } = useFavorites(user, openAuth);
 
   useEffect(() => {
@@ -36,16 +35,7 @@ export default function AdPage() {
     }).then(r => r.json()).then(d => { if (d.ok) setDbCategories(d.categories); }).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (!adId || !user) return;
-    fetch(FAV_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-      body: JSON.stringify({ action: "check", ad_id: Number(adId) }),
-    }).then(r => r.json()).then(d => {
-      if (d.ok && d.favorited) initFavSet([Number(adId)]);
-    }).catch(() => {});
-  }, [adId, user]);
+  useEffect(() => { loadFavSet(); }, [user]);
 
   if (!adId) return null;
 

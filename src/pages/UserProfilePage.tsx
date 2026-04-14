@@ -683,8 +683,8 @@ export default function UserProfilePage() {
             {/* Кнопка действия */}
             {isOwner ? (
               <button onClick={() => setActiveTab("settings")}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[hsl(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0">
-                <Icon name="Pencil" size={15} />
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-[hsl(var(--primary))] text-[hsl(var(--primary))] text-sm font-semibold hover:bg-[hsl(var(--primary))] hover:text-white transition-all shrink-0">
+                <Icon name="Pencil" size={14} />
                 Редактировать профиль
               </button>
             ) : (
@@ -717,9 +717,79 @@ export default function UserProfilePage() {
           </nav>
         </div>
 
-        {/* ── Контент таба ────────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-6">
-          {/* Контент таба */}
+        {/* ── Контент: сайдбар + табы ──────────────────────────────────────── */}
+        <div className="flex gap-6 items-start">
+
+          {/* Левая колонка */}
+          <div className="hidden lg:flex flex-col gap-4 w-64 shrink-0">
+
+            {/* Данные профиля */}
+            <div className="bg-white rounded-2xl border border-border p-5 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Данные профиля</p>
+
+              {profile.city && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                    <Icon name="MapPin" size={14} className="text-[hsl(var(--accent))]" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wide">Город</p>
+                    <p className="text-sm font-medium">{profile.city}</p>
+                  </div>
+                </div>
+              )}
+
+              {profile.created_at && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                    <Icon name="Calendar" size={14} className="text-[hsl(var(--accent))]" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wide">На сайте с</p>
+                    <p className="text-sm font-medium">{new Date(profile.created_at).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                  <Icon name="Tag" size={14} className="text-[hsl(var(--accent))]" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wide">Объявлений</p>
+                  <p className="text-sm font-medium">{profile.ads_count}</p>
+                </div>
+              </div>
+
+              {profile.avg_rating && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                    <Icon name="Star" size={14} className="text-[hsl(var(--accent))]" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wide">Рейтинг</p>
+                    <div className="flex items-center gap-1.5">
+                      <Stars rating={profile.avg_rating} size={11} />
+                      <span className="text-sm font-medium">{profile.avg_rating}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {profile.about && (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wide mb-1">О себе</p>
+                  <p className="text-sm leading-relaxed line-clamp-4">{profile.about}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Пустой блок (зарезервирован под недавно просмотренные) */}
+            <div className="bg-white rounded-2xl border border-border p-5 min-h-[120px]" />
+
+          </div>
+
+          {/* Правая колонка: контент таба */}
           <div className="flex-1 min-w-0">
             {activeTab === "ads" && <AdsTab profile={profile} />}
             {activeTab === "about" && <AboutTab profile={profile} />}
@@ -729,6 +799,7 @@ export default function UserProfilePage() {
               <SettingsTab profile={profile} onUpdate={updates => setProfile(p => p ? { ...p, ...updates } : p)} />
             )}
           </div>
+
         </div>
       </main>
 

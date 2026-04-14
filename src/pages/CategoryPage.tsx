@@ -178,7 +178,7 @@ export default function CategoryPage() {
                   <div
                     key={ad.id}
                     className="group rounded-xl border border-border bg-white overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => navigate(`/?ad=${ad.id}`)}
+                    onClick={() => navigate(`/ad/${ad.id}`)}
                   >
                     <div className="relative aspect-[4/3] bg-[hsl(var(--muted))] overflow-hidden">
                       {photos.length > 0 ? (

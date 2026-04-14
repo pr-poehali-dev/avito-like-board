@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import Icon from "@/components/ui/icon";
 import CreateAd from "@/pages/CreateAd";
 import EditAd from "@/pages/EditAd";
-import AdDetail from "@/pages/AdDetail";
 import { toast } from "sonner";
 
 import {
@@ -67,8 +66,6 @@ export default function Index() {
   const [myAdsPickerAdId, setMyAdsPickerAdId] = useState<number | null>(null);
   // карусель фото в карточках
   const [carouselIndex, setCarouselIndex] = useState<Record<number, number>>({});
-  // просмотр объявления
-  const [viewAdId, setViewAdId] = useState<number | null>(null);
 
   // Auth
   const {
@@ -436,18 +433,6 @@ export default function Index() {
     );
   }
 
-  if (viewAdId !== null && addToFolderAdId === null) {
-    return (
-      <AdDetail
-        adId={viewAdId}
-        onBack={() => setViewAdId(null)}
-        onAddToFolder={(id) => openAddToFolder(id)}
-        isFavorited={favorites.includes(viewAdId)}
-        currentUserId={user?.id ?? null}
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[hsl(var(--background))] font-golos">
       <SiteHeader
@@ -486,7 +471,7 @@ export default function Index() {
             filtersOpen={filtersOpen}
             setFiltersOpen={setFiltersOpen}
             apiAds={apiAds}
-            setViewAdId={setViewAdId}
+            setViewAdId={(id) => navigate(`/ad/${id}`)}
             openAddToFolder={openAddToFolder}
             openNewAd={openNewAd}
             setSection={setSection}
@@ -524,7 +509,7 @@ export default function Index() {
             openNewAd={openNewAd}
             openAuth={openAuth}
             setEditAdId={(id) => setEditAdId(id)}
-            setViewAdId={setViewAdId}
+            setViewAdId={(id) => navigate(`/ad/${id}`)}
             toggleAdStatus={toggleAdStatus}
             createMyAdsFolder={createMyAdsFolder}
             deleteMyAdsFolder={deleteMyAdsFolder}
@@ -561,7 +546,7 @@ export default function Index() {
             renameFolder={renameFolder}
             deleteFolder={deleteFolder}
             toggleAdInFolder={toggleAdInFolder}
-            setViewAdId={setViewAdId}
+            setViewAdId={(id) => navigate(`/ad/${id}`)}
             openAddToFolder={openAddToFolder}
             favorites={favorites}
           />
@@ -587,7 +572,7 @@ export default function Index() {
             setUser={setUser}
             openAuth={openAuth}
             openNewAd={openNewAd}
-            setViewAdId={setViewAdId}
+            setViewAdId={(id) => navigate(`/ad/${id}`)}
             setEditAdId={(id) => setEditAdId(id)}
             toggleAdStatus={toggleAdStatus}
             saveProfile={saveProfile}

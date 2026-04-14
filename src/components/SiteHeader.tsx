@@ -261,55 +261,56 @@ export default function SiteHeader({
           {user ? (
             <div className="relative">
               <button onClick={() => setUserMenuOpen((v) => !v)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors">
-                <div className="w-7 h-7 bg-[hsl(var(--accent))] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden border-2 border-transparent hover:border-[hsl(var(--primary))] transition-all shrink-0">
+                <div className="w-full h-full bg-[hsl(var(--primary))] flex items-center justify-center text-white text-sm font-bold overflow-hidden">
                   {user.avatar_url
                     ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
                     : user.name[0].toUpperCase()}
                 </div>
-                <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
-                <Icon name={userMenuOpen ? "ChevronUp" : "ChevronDown"} size={14} className="text-[hsl(var(--muted-foreground))]" />
               </button>
               {userMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-white rounded-xl shadow-lg border border-border py-1.5 animate-fade-in">
-                    {/* Мини-шапка */}
-                    <div className="px-4 py-2.5 border-b border-border mb-1">
-                      <p className="text-sm font-semibold truncate">{user.name}</p>
-                      <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">{user.email}</p>
+                  <div className="absolute right-0 top-full mt-2 z-50 w-60 bg-white rounded-2xl shadow-xl border border-border overflow-hidden animate-fade-in">
+                    {/* Шапка профиля по макету NobleUI */}
+                    <div className="flex flex-col items-center pt-6 pb-4 px-4 border-b border-border bg-[hsl(var(--muted))]/40">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md mb-3 bg-[hsl(var(--primary))] flex items-center justify-center text-white text-xl font-bold shrink-0">
+                        {user.avatar_url
+                          ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                          : user.name[0].toUpperCase()}
+                      </div>
+                      <p className="font-semibold text-sm text-center leading-tight">{user.name}</p>
+                      {user.email && <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 text-center truncate w-full">{user.email}</p>}
                     </div>
-                    <button onClick={() => { handleNav("profile"); setUserMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
-                      <Icon name="User" size={15} className="text-[hsl(var(--muted-foreground))]" />Мой профиль
-                    </button>
-                    <button onClick={() => { handleNav("my-ads"); setUserMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
-                      <Icon name="FileText" size={15} className="text-[hsl(var(--muted-foreground))]" />Мои объявления
-                    </button>
-                    <button onClick={() => { handleNav("favorites"); setUserMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
-                      <Icon name="Heart" size={15} className="text-[hsl(var(--muted-foreground))]" />Избранное
-                    </button>
-                    <button onClick={() => { navigate("/chat"); setUserMenuOpen(false); }}
-                      className="w-full flex items-center justify-between gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
-                      <span className="flex items-center gap-2.5">
-                        <Icon name="MessageCircle" size={15} className="text-[hsl(var(--muted-foreground))]" />Сообщения
-                      </span>
-                      {unreadCount > 0 && (
-                        <span className="min-w-[18px] h-4.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">{unreadCount}</span>
-                      )}
-                    </button>
-                    <div className="my-1 border-t border-border" />
-                    <button onClick={() => { navigate("/admin"); setUserMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left">
-                      <Icon name="LayoutDashboard" size={15} className="text-[hsl(var(--muted-foreground))]" />Панель управления
-                    </button>
-                    <div className="my-1 border-t border-border" />
-                    <button onClick={() => { onLogout?.(); setUserMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 transition-colors text-left">
-                      <Icon name="LogOut" size={15} />Выйти
-                    </button>
+                    {/* Пункты меню */}
+                    <div className="py-1.5">
+                      <button onClick={() => { handleNav("profile"); setUserMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left text-[hsl(var(--foreground))]">
+                        <Icon name="User" size={16} className="text-[hsl(var(--muted-foreground))]" />Мой профиль
+                      </button>
+                      <button onClick={() => { handleNav("my-ads"); setUserMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left text-[hsl(var(--foreground))]">
+                        <Icon name="FileText" size={16} className="text-[hsl(var(--muted-foreground))]" />Мои объявления
+                      </button>
+                      <button onClick={() => { navigate("/chat"); setUserMenuOpen(false); }}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left text-[hsl(var(--foreground))]">
+                        <span className="flex items-center gap-3">
+                          <Icon name="MessageCircle" size={16} className="text-[hsl(var(--muted-foreground))]" />Сообщения
+                        </span>
+                        {unreadCount > 0 && (
+                          <span className="min-w-[18px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">{unreadCount}</span>
+                        )}
+                      </button>
+                      <button onClick={() => { navigate("/admin"); setUserMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left text-[hsl(var(--foreground))]">
+                        <Icon name="LayoutDashboard" size={16} className="text-[hsl(var(--muted-foreground))]" />Панель управления
+                      </button>
+                      <div className="my-1 mx-3 border-t border-border" />
+                      <button onClick={() => { onLogout?.(); setUserMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 transition-colors text-left">
+                        <Icon name="LogOut" size={16} />Выйти
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -317,7 +318,7 @@ export default function SiteHeader({
           ) : (
             <>
               <button onClick={onLogin} className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-[hsl(var(--muted))] transition-colors">Войти</button>
-              <button onClick={onRegister} className="px-4 py-2 rounded-lg text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Регистрация</button>
+              <button onClick={onRegister} className="px-4 py-2 rounded-lg text-sm font-semibold bg-[hsl(var(--primary))] text-white hover:opacity-90 transition-opacity">Регистрация</button>
             </>
           )}
         </div>

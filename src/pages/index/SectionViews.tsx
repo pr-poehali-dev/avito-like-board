@@ -664,44 +664,54 @@ export function ProfileSection({
       )}
       {user && (
         <>
-          {/* Обложка */}
-          <div className="relative w-full h-52 md:h-72 bg-gradient-to-br from-[hsl(var(--accent))] to-orange-300 overflow-hidden group">
+          {/* Обложка — стиль NobleUI */}
+          <div className="relative w-full h-52 md:h-64 bg-gradient-to-br from-[hsl(var(--primary))] to-blue-400 overflow-hidden">
             {(user.cover_url || coverPhoto) && (<img src={user.cover_url || coverPhoto || ""} alt="обложка" className="w-full h-full object-cover" />)}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             <label className="absolute top-3 right-3 cursor-pointer z-10">
               <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-black/60 transition-colors"><Icon name="Camera" size={13} />Обложка</div>
               <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setCoverPhoto(URL.createObjectURL(f)); const url = await uploadPhoto(f, "cover"); setUser((prev) => prev ? { ...prev, cover_url: url } : prev); }} />
             </label>
-            <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3 z-10">
-              <div className="flex items-end gap-3">
-                <label className="cursor-pointer group/av shrink-0">
-                  <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full border-3 border-white bg-[hsl(var(--accent))] flex items-center justify-center text-white text-2xl md:text-3xl font-bold shadow-lg overflow-hidden">
-                    {user.avatar_url ? <img src={user.avatar_url} alt="аватар" className="w-full h-full object-cover" /> : user.name[0].toUpperCase()}
-                    <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover/av:opacity-100 transition-opacity flex items-center justify-center"><Icon name="Camera" size={18} className="text-white" /></div>
-                  </div>
-                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadPhoto(f, "avatar"); setUser((prev) => prev ? { ...prev, avatar_url: url } : prev); }} />
-                </label>
-                <div className="pb-1">
-                  <h2 className="text-white font-bold text-lg md:text-xl drop-shadow leading-tight">{user.name}</h2>
-                  <div className="flex items-center gap-1.5 mt-0.5"><span className="w-2 h-2 rounded-full bg-green-400 inline-block shadow"></span><span className="text-xs text-green-300 font-medium">Онлайн</span></div>
-                  {user.city && <p className="text-white/70 text-xs mt-0.5 flex items-center gap-1"><Icon name="MapPin" size={10} />{user.city}</p>}
+          </div>
+
+          {/* Панель: аватар + имя + кнопки — как в NobleUI */}
+          <div className="bg-white px-6 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-border">
+            <div className="flex items-center gap-4 -mt-14">
+              <label className="cursor-pointer group/av shrink-0">
+                <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white bg-[hsl(var(--primary))] flex items-center justify-center text-white text-2xl font-bold shadow-md overflow-hidden">
+                  {user.avatar_url ? <img src={user.avatar_url} alt="аватар" className="w-full h-full object-cover" /> : user.name[0].toUpperCase()}
+                  <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover/av:opacity-100 transition-opacity flex items-center justify-center"><Icon name="Camera" size={18} className="text-white" /></div>
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadPhoto(f, "avatar"); setUser((prev) => prev ? { ...prev, avatar_url: url } : prev); }} />
+              </label>
+              <div className="mt-6">
+                <h2 className="font-bold text-lg leading-tight">{user.name}</h2>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                  <span className="text-xs text-[hsl(var(--muted-foreground))]">Онлайн</span>
+                  {user.city && <><span className="text-[hsl(var(--muted-foreground))]">·</span><span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-0.5"><Icon name="MapPin" size={11} />{user.city}</span></>}
                 </div>
               </div>
-              <button onClick={() => setSection("messages")} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 backdrop-blur-sm text-white text-sm font-semibold hover:bg-white/30 transition-colors border border-white/30 shrink-0 mb-1"><Icon name="MessageCircle" size={16} /><span className="hidden sm:inline">Сообщения</span></button>
             </div>
+            <button
+              onClick={() => setEditProfileOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[hsl(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
+            >
+              <Icon name="Pencil" size={15} />
+              Редактировать профиль
+            </button>
           </div>
 
-          {/* Статистика */}
-          <div className="grid grid-cols-3 divide-x divide-border bg-white border-b border-border">
-            {[{ label: "Объявлений", value: String(myAdsApi.length || 0) }, { label: "Просмотров", value: String(myAdsApi.reduce((s, a) => s + (a.views ?? 0), 0)) }, { label: "Отзывов", value: "0" }].map((s) => (
-              <div key={s.label} className="text-center py-4"><p className="text-xl font-bold">{s.value}</p><p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{s.label}</p></div>
-            ))}
-          </div>
-
-          {/* Вкладки */}
-          <div className="flex gap-1 px-4 py-2 bg-white border-b border-border">
-            {([["ads", "Объявления"], ["settings", "Настройки"]] as const).map(([tab, label]) => (
-              <button key={tab} onClick={() => setProfileTab(tab)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${profileTab === tab ? "bg-[hsl(var(--accent))] text-white" : "hover:bg-[hsl(var(--muted))]"}`}>{label}</button>
+          {/* Горизонтальные табы — стиль NobleUI */}
+          <div className="flex bg-white border-b border-border px-4 overflow-x-auto">
+            {([["ads", "Объявления", "Tag"], ["settings", "Настройки", "Settings"]] as const).map(([tab, label, icon]) => (
+              <button key={tab} onClick={() => setProfileTab(tab as "ads" | "settings")}
+                className={`flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  profileTab === tab
+                    ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]"
+                    : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                }`}>
+                <Icon name={icon} size={15} />{label}
+              </button>
             ))}
           </div>
 

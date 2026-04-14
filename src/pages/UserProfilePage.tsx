@@ -650,92 +650,75 @@ export default function UserProfilePage() {
 
       <main className="max-w-5xl mx-auto px-4 py-6">
 
-        {/* ── Шапка профиля ───────────────────────────────────────────────── */}
+        {/* ── Шапка профиля — стиль NobleUI ───────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-border overflow-hidden mb-6">
-          {/* Обложка */}
-          <div className="h-44 bg-gradient-to-r from-[hsl(var(--accent))] to-orange-400 relative overflow-hidden">
+          {/* Обложка — большая */}
+          <div className="h-52 md:h-64 bg-gradient-to-br from-[hsl(var(--primary))] to-blue-400 relative overflow-hidden">
             {profile.cover_url && <img src={profile.cover_url} alt="" className="w-full h-full object-cover" />}
           </div>
 
-          <div className="px-6 pb-6">
-            <div className="flex flex-wrap items-end justify-between gap-3 -mt-12 mb-4">
-              {/* Аватар */}
-              <Avatar profile={profile} />
-
-              {/* Кнопки действий */}
-              <div className="flex gap-2 flex-wrap">
-                {isOwner ? (
-                  <>
-                    <button onClick={() => setActiveTab("settings")}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium hover:bg-[hsl(var(--muted))] transition-colors">
-                      <Icon name="Settings" size={15} />
-                      Редактировать
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={startChat}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[hsl(var(--accent))] text-white text-sm font-semibold hover:opacity-90 transition-opacity">
-                      <Icon name="MessageCircle" size={15} />
-                      Написать
-                    </button>
-                  </>
-                )}
+          {/* Нижняя панель: аватар + имя + кнопка */}
+          <div className="px-6 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-border">
+            <div className="flex items-center gap-4 -mt-14">
+              {/* Аватар поверх обложки */}
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white bg-[hsl(var(--primary))] flex items-center justify-center text-white text-2xl font-bold shrink-0 overflow-hidden shadow-md">
+                {profile.avatar_url
+                  ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : profile.name[0]?.toUpperCase()}
               </div>
-            </div>
-
-            {/* Имя и мета */}
-            <div>
-              <h1 className="text-xl font-bold">{profile.name}</h1>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-[hsl(var(--muted-foreground))]">
-                {profile.city && (
-                  <span className="flex items-center gap-1"><Icon name="MapPin" size={13} />{profile.city}</span>
-                )}
-                {profile.created_at && (
-                  <span className="flex items-center gap-1"><Icon name="Calendar" size={13} />На сайте с {profile.created_at}</span>
-                )}
-                <span className="flex items-center gap-1"><Icon name="Tag" size={13} />{profile.ads_count} объявлений</span>
-                {profile.avg_rating && (
-                  <span className="flex items-center gap-1.5">
-                    <Stars rating={profile.avg_rating} size={13} />
-                    <span>{profile.avg_rating} ({profile.reviews_count})</span>
-                  </span>
-                )}
-              </div>
-              {profile.about && (
-                <p className="mt-3 text-sm leading-relaxed text-[hsl(var(--foreground))] max-w-2xl">{profile.about}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Табы + контент ──────────────────────────────────────────────── */}
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Боковые табы (десктоп) / горизонтальный скролл (мобайл) */}
-          <div className="md:w-52 shrink-0">
-            <nav className="flex md:flex-col gap-1 overflow-x-auto pb-1 md:pb-0">
-              {TABS.map(tab => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap md:w-full ${
-                    activeTab === tab.id
-                      ? "bg-[hsl(var(--accent))] text-white shadow-sm"
-                      : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
-                  }`}>
-                  <Icon name={tab.icon as "Tag"} size={16} />
-                  {tab.label}
-                  {tab.id === "reviews" && profile.reviews_count > 0 && (
-                    <span className={`ml-auto text-xs font-bold px-1.5 py-0.5 rounded-full ${activeTab === tab.id ? "bg-white/20 text-white" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]"}`}>
-                      {profile.reviews_count}
+              <div className="mt-4 md:mt-6">
+                <h1 className="text-xl font-bold leading-tight">{profile.name}</h1>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+                  {profile.city && <span className="flex items-center gap-1"><Icon name="MapPin" size={13} />{profile.city}</span>}
+                  {profile.avg_rating && (
+                    <span className="flex items-center gap-1.5">
+                      <Stars rating={profile.avg_rating} size={12} />
+                      <span className="text-xs">{profile.avg_rating}</span>
                     </span>
                   )}
-                  {tab.id === "settings" && (
-                    <Icon name="ChevronRight" size={14} className="ml-auto opacity-60" />
-                  )}
-                </button>
-              ))}
-            </nav>
+                </div>
+              </div>
+            </div>
+
+            {/* Кнопка действия */}
+            {isOwner ? (
+              <button onClick={() => setActiveTab("settings")}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[hsl(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0">
+                <Icon name="Pencil" size={15} />
+                Редактировать профиль
+              </button>
+            ) : (
+              <button onClick={startChat}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[hsl(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0">
+                <Icon name="MessageCircle" size={15} />
+                Написать сообщение
+              </button>
+            )}
           </div>
 
+          {/* Горизонтальные табы — прямо под шапкой, как в NobleUI */}
+          <nav className="flex overflow-x-auto px-4 py-1">
+            {TABS.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]"
+                    : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                }`}>
+                <Icon name={tab.icon as "Tag"} size={15} />
+                {tab.label}
+                {tab.id === "reviews" && profile.reviews_count > 0 && (
+                  <span className="ml-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]">
+                    {profile.reviews_count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* ── Контент таба ────────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-6">
           {/* Контент таба */}
           <div className="flex-1 min-w-0">
             {activeTab === "ads" && <AdsTab profile={profile} />}

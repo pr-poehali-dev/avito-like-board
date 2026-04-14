@@ -658,10 +658,10 @@ export default function UserProfilePage() {
           </div>
 
           {/* Нижняя панель: аватар + имя + кнопка */}
-          <div className="px-6 pb-4 pt-0 flex flex-wrap items-end justify-between gap-4 border-b border-border">
-            <div className="flex items-end gap-4 -mt-10">
+          <div className="px-6 pb-4 pt-0 flex flex-wrap items-end justify-between gap-4 border-b border-border relative">
+            <div className="flex items-end gap-4">
               {/* Аватар поверх обложки */}
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white bg-[hsl(var(--primary))] flex items-center justify-center text-white text-2xl font-bold shrink-0 overflow-hidden shadow-md">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white bg-[hsl(var(--primary))] flex items-center justify-center text-white text-2xl font-bold shrink-0 overflow-hidden shadow-md -mt-12 md:-mt-14">
                 {profile.avatar_url
                   ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                   : profile.name[0]?.toUpperCase()}

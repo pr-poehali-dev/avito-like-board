@@ -675,9 +675,9 @@ export function ProfileSection({
 
           {/* Панель: аватар + имя + кнопки — как в NobleUI */}
           <div className="bg-white px-6 pb-4 pt-0 flex flex-wrap items-end justify-between gap-4 border-b border-border">
-            <div className="flex items-end gap-4 -mt-10">
+            <div className="flex items-end gap-4">
               <label className="cursor-pointer group/av shrink-0">
-                <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white bg-[hsl(var(--primary))] flex items-center justify-center text-white text-2xl font-bold shadow-md overflow-hidden">
+                <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white bg-[hsl(var(--primary))] flex items-center justify-center text-white text-2xl font-bold shadow-md overflow-hidden -mt-12 md:-mt-14">
                   {user.avatar_url ? <img src={user.avatar_url} alt="аватар" className="w-full h-full object-cover" /> : user.name[0].toUpperCase()}
                   <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover/av:opacity-100 transition-opacity flex items-center justify-center"><Icon name="Camera" size={18} className="text-white" /></div>
                 </div>

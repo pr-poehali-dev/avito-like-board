@@ -12,6 +12,7 @@ export interface User {
   cover_url?: string | null;
   city?: string | null;
   about?: string | null;
+  is_admin?: boolean;
 }
 
 export interface Ad {

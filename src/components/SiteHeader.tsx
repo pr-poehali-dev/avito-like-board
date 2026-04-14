@@ -315,10 +315,12 @@ export default function SiteHeader({
                           <span className="min-w-[18px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">{unreadCount}</span>
                         )}
                       </button>
-                      <button onClick={() => { navigate("/admin"); setUserMenuOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left text-[hsl(var(--foreground))]">
-                        <Icon name="LayoutDashboard" size={16} className="text-[hsl(var(--muted-foreground))]" />Панель управления
-                      </button>
+                      {user.is_admin && (
+                        <button onClick={() => { navigate("/admin"); setUserMenuOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left text-[hsl(var(--foreground))]">
+                          <Icon name="LayoutDashboard" size={16} className="text-[hsl(var(--muted-foreground))]" />Панель управления
+                        </button>
+                      )}
                       <div className="my-1 mx-3 border-t border-border" />
                       <button onClick={() => { onLogout?.(); setUserMenuOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 transition-colors text-left">

@@ -169,7 +169,7 @@ def handler(event: dict, context) -> dict:
         conn = get_conn()
         cur = conn.cursor()
         cur.execute(
-            f"SELECT id, name, email FROM {SCHEMA}.users WHERE email = %s AND password_hash = %s",
+            f"SELECT id, name, email, avatar_url, cover_url, city, about, is_admin FROM {SCHEMA}.users WHERE email = %s AND password_hash = %s",
             (email, pw_hash)
         )
         row = cur.fetchone()
@@ -177,7 +177,7 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Неверный email или пароль"})}
 
-        user_id, name, user_email = row
+        user_id, name, user_email, avatar_url, cover_url, city, about, is_admin = row
         session_id = make_session_id()
         cur.execute(
             f"INSERT INTO {SCHEMA}.sessions (id, user_id) VALUES (%s, %s)",
@@ -191,7 +191,8 @@ def handler(event: dict, context) -> dict:
             "headers": CORS,
             "body": json.dumps({"ok": True, "session_id": session_id, "user": {
                 "id": user_id, "name": name, "email": user_email,
-                "avatar_url": None, "cover_url": None, "city": None, "about": None
+                "avatar_url": avatar_url, "cover_url": cover_url, "city": city, "about": about,
+                "is_admin": bool(is_admin)
             }})
         }
 
@@ -215,7 +216,7 @@ def handler(event: dict, context) -> dict:
             return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Сессия не найдена"})}
 
         cur.execute(
-            f"SELECT id, name, email, avatar_url, cover_url, city, about FROM {SCHEMA}.users WHERE id = %s",
+            f"SELECT id, name, email, avatar_url, cover_url, city, about, is_admin FROM {SCHEMA}.users WHERE id = %s",
             (row[0],)
         )
         u = cur.fetchone()
@@ -225,7 +226,8 @@ def handler(event: dict, context) -> dict:
             "headers": CORS,
             "body": json.dumps({"ok": True, "user": {
                 "id": u[0], "name": u[1], "email": u[2],
-                "avatar_url": u[3], "cover_url": u[4], "city": u[5], "about": u[6]
+                "avatar_url": u[3], "cover_url": u[4], "city": u[5], "about": u[6],
+                "is_admin": bool(u[7])
             }})
         }
 

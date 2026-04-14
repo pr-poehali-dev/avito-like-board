@@ -665,7 +665,7 @@ export function ProfileSection({
       {user && (
         <>
           {/* Обложка — стиль NobleUI */}
-          <div className="relative w-full h-52 md:h-64 bg-gradient-to-br from-[hsl(var(--primary))] to-blue-400 overflow-hidden">
+          <div className="relative w-full h-52 md:h-64 bg-gradient-to-br from-[hsl(var(--primary))] to-blue-400">
             {(user.cover_url || coverPhoto) && (<img src={user.cover_url || coverPhoto || ""} alt="обложка" className="w-full h-full object-cover" />)}
             <label className="absolute top-3 right-3 cursor-pointer z-10">
               <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-black/60 transition-colors"><Icon name="Camera" size={13} />Обложка</div>
@@ -674,8 +674,8 @@ export function ProfileSection({
           </div>
 
           {/* Панель: аватар + имя + кнопки — как в NobleUI */}
-          <div className="bg-white px-6 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-border">
-            <div className="flex items-center gap-4 -mt-14">
+          <div className="bg-white px-6 pb-4 pt-0 flex flex-wrap items-end justify-between gap-4 border-b border-border">
+            <div className="flex items-end gap-4 -mt-10">
               <label className="cursor-pointer group/av shrink-0">
                 <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white bg-[hsl(var(--primary))] flex items-center justify-center text-white text-2xl font-bold shadow-md overflow-hidden">
                   {user.avatar_url ? <img src={user.avatar_url} alt="аватар" className="w-full h-full object-cover" /> : user.name[0].toUpperCase()}
@@ -683,7 +683,7 @@ export function ProfileSection({
                 </div>
                 <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadPhoto(f, "avatar"); setUser((prev) => prev ? { ...prev, avatar_url: url } : prev); }} />
               </label>
-              <div className="mt-6">
+              <div className="pb-2">
                 <h2 className="font-bold text-lg leading-tight">{user.name}</h2>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>

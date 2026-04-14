@@ -651,22 +651,22 @@ export default function UserProfilePage() {
       <main className="max-w-5xl mx-auto px-4 py-6">
 
         {/* ── Шапка профиля — стиль NobleUI ───────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-border overflow-hidden mb-6">
+        <div className="bg-white rounded-2xl border border-border mb-6">
           {/* Обложка — большая */}
-          <div className="h-52 md:h-64 bg-gradient-to-br from-[hsl(var(--primary))] to-blue-400 relative overflow-hidden">
+          <div className="h-52 md:h-64 bg-gradient-to-br from-[hsl(var(--primary))] to-blue-400 relative overflow-hidden rounded-t-2xl">
             {profile.cover_url && <img src={profile.cover_url} alt="" className="w-full h-full object-cover" />}
           </div>
 
           {/* Нижняя панель: аватар + имя + кнопка */}
-          <div className="px-6 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-border">
-            <div className="flex items-center gap-4 -mt-14">
+          <div className="px-6 pb-4 pt-0 flex flex-wrap items-end justify-between gap-4 border-b border-border">
+            <div className="flex items-end gap-4 -mt-10">
               {/* Аватар поверх обложки */}
               <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white bg-[hsl(var(--primary))] flex items-center justify-center text-white text-2xl font-bold shrink-0 overflow-hidden shadow-md">
                 {profile.avatar_url
                   ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                   : profile.name[0]?.toUpperCase()}
               </div>
-              <div className="mt-4 md:mt-6">
+              <div className="pb-2">
                 <h1 className="text-xl font-bold leading-tight">{profile.name}</h1>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-[hsl(var(--muted-foreground))]">
                   {profile.city && <span className="flex items-center gap-1"><Icon name="MapPin" size={13} />{profile.city}</span>}

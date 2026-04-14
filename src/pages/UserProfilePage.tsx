@@ -5,7 +5,7 @@ import Icon from "@/components/ui/icon";
 import SiteHeader from "@/components/SiteHeader";
 import AuthModal from "./index/AuthModal";
 import { useAuth } from "@/hooks/useAuth";
-import { ADS_URL, CHAT_URL, PROFILE_URL, DbCategory, formatPrice } from "./index/types";
+import { ADS_URL, CHAT_URL, PROFILE_URL, FAV_URL, DbCategory, formatPrice } from "./index/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -76,7 +76,7 @@ function Avatar({ profile, size = "lg" }: { profile: Profile; size?: "sm" | "lg"
   );
 }
 
-function AdCard({ ad, isOwner, onOpen }: { ad: AdItem; isOwner: boolean; onOpen: () => void }) {
+function AdCard({ ad, isOwner, onOpen, isFavorited, onFavorite }: { ad: AdItem; isOwner: boolean; onOpen: () => void; isFavorited?: boolean; onFavorite?: (e: React.MouseEvent) => void }) {
   const photo = ad.photos?.[0];
   const statusLabel: Record<string, string> = { active: "Активно", archived: "Снято", moderation: "На модерации", draft: "Черновик" };
   const statusColor: Record<string, string> = { active: "bg-green-100 text-green-700", archived: "bg-gray-100 text-gray-500", moderation: "bg-yellow-100 text-yellow-700", draft: "bg-blue-100 text-blue-700" };
@@ -91,6 +91,14 @@ function AdCard({ ad, isOwner, onOpen }: { ad: AdItem; isOwner: boolean; onOpen:
           <span className={`absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColor[ad.status] || statusColor.draft}`}>
             {statusLabel[ad.status] || ad.status}
           </span>
+        )}
+        {!isOwner && onFavorite && (
+          <button
+            onClick={onFavorite}
+            className={`absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition-all hover:scale-110 ${isFavorited ? "text-red-500" : "text-[hsl(var(--muted-foreground))]"}`}
+          >
+            <Icon name="Heart" size={13} className={isFavorited ? "fill-red-500" : ""} />
+          </button>
         )}
       </div>
       <div className="p-3">
@@ -112,6 +120,20 @@ function AdsTab({ profile }: { profile: Profile }) {
   const [ads, setAds] = useState<AdItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("active");
+  const [favSet, setFavSet] = useState<Set<number>>(new Set());
+
+  const toggleFav = async (e: React.MouseEvent, adId: number) => {
+    e.stopPropagation();
+    const isFav = favSet.has(adId);
+    setFavSet(prev => { const s = new Set(prev); if (isFav) { s.delete(adId); } else { s.add(adId); } return s; });
+    fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: isFav ? "remove" : "add", ad_id: adId }),
+    }).catch(() => {
+      setFavSet(prev => { const s = new Set(prev); if (isFav) { s.add(adId); } else { s.delete(adId); } return s; });
+    });
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -156,7 +178,7 @@ function AdsTab({ profile }: { profile: Profile }) {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {ads.map(ad => (
-            <AdCard key={ad.id} ad={ad} isOwner={!!profile.is_owner} onOpen={() => navigate(`/ad/${ad.id}`)} />
+            <AdCard key={ad.id} ad={ad} isOwner={!!profile.is_owner} onOpen={() => navigate(`/ad/${ad.id}`)} isFavorited={favSet.has(ad.id)} onFavorite={(e) => toggleFav(e, ad.id)} />
           ))}
         </div>
       )}

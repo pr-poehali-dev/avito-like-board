@@ -683,9 +683,9 @@ export default function UserProfilePage() {
             {/* Кнопка действия */}
             {isOwner ? (
               <button onClick={() => setActiveTab("settings")}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-[hsl(var(--primary))] text-[hsl(var(--primary))] text-sm font-semibold hover:bg-[hsl(var(--primary))] hover:text-white transition-all shrink-0">
-                <Icon name="Pencil" size={14} />
-                Редактировать профиль
+                className="flex items-center gap-1.5 px-3 py-1.5 mb-2 rounded-lg border border-border text-xs font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--foreground))]/30 transition-all shrink-0">
+                <Icon name="Pencil" size={12} />
+                Редактировать
               </button>
             ) : (
               <button onClick={startChat}

@@ -1,19 +1,103 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import AdDetail from "./AdDetail";
+import SiteHeader from "@/components/SiteHeader";
+import AuthModal from "./index/AuthModal";
+import { useAuth } from "@/hooks/useAuth";
+import { ADS_URL, DbCategory, FAV_URL } from "./index/types";
+
+const sid = () => localStorage.getItem("session_id") || "";
 
 export default function AdPage() {
   const { adId } = useParams<{ adId: string }>();
   const navigate = useNavigate();
+  const auth = useAuth();
+  const { user, openAuth } = auth;
+
+  const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
+  const [adTitle, setAdTitle] = useState<string>("");
+  const [adCategory, setAdCategory] = useState<string>("");
+  const [isFavorited, setIsFavorited] = useState(false);
+
+  useEffect(() => {
+    fetch(ADS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "categories" }),
+    }).then(r => r.json()).then(d => { if (d.ok) setDbCategories(d.categories); }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!adId || !user) return;
+    fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: "check", ad_id: Number(adId) }),
+    }).then(r => r.json()).then(d => { if (d.ok) setIsFavorited(!!d.favorited); }).catch(() => {});
+  }, [adId, user]);
+
+  const handleAddToFolder = async (id: number) => {
+    if (!user) { openAuth("login"); return; }
+    const res = await fetch(FAV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
+      body: JSON.stringify({ action: isFavorited ? "remove" : "add", ad_id: id }),
+    }).then(r => r.json());
+    if (res.ok) setIsFavorited(f => !f);
+  };
 
   if (!adId) return null;
 
   return (
-    <AdDetail
-      adId={Number(adId)}
-      onBack={() => navigate(-1)}
-      onAddToFolder={() => {}}
-      isFavorited={false}
-      currentUserId={null}
-    />
+    <div className="min-h-screen bg-[hsl(var(--background))]">
+      <SiteHeader
+        dbCategories={dbCategories}
+        user={user}
+        onLogoClick={() => navigate("/")}
+        onNewAd={() => navigate("/")}
+        onLogin={() => openAuth("login")}
+        onRegister={() => openAuth("register")}
+        onLogout={auth.logout}
+      />
+
+      {/* Хлебные крошки */}
+      <div className="border-b border-border bg-white">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+          <Link to="/" className="hover:text-[hsl(var(--foreground))] transition-colors">Главная</Link>
+          <span>/</span>
+          {adCategory && (
+            <>
+              <span className="text-[hsl(var(--foreground))]">{adCategory}</span>
+              <span>/</span>
+            </>
+          )}
+          <span className="text-[hsl(var(--foreground))] truncate max-w-[200px]">{adTitle || "Объявление"}</span>
+        </div>
+      </div>
+
+      <AdDetail
+        adId={Number(adId)}
+        onBack={() => navigate(-1)}
+        onAddToFolder={handleAddToFolder}
+        isFavorited={isFavorited}
+        currentUserId={user?.id ?? null}
+        onAdLoaded={(title, category) => { setAdTitle(title); setAdCategory(category); }}
+      />
+
+      <AuthModal
+        authModal={auth.authModal} setAuthModal={auth.setAuthModal}
+        authMode={auth.authMode} setAuthMode={auth.setAuthMode}
+        authStep={auth.authStep} setAuthStep={auth.setAuthStep}
+        authName={auth.authName} setAuthName={auth.setAuthName}
+        authEmail={auth.authEmail} setAuthEmail={auth.setAuthEmail}
+        authPassword={auth.authPassword} setAuthPassword={auth.setAuthPassword}
+        authCode={auth.authCode} setAuthCode={auth.setAuthCode}
+        authError={auth.authError} setAuthError={auth.setAuthError}
+        authLoading={auth.authLoading}
+        resendTimer={auth.resendTimer}
+        submitAuth={auth.submitAuth}
+        sendCode={auth.sendCode}
+      />
+    </div>
   );
 }

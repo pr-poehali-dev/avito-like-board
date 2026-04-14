@@ -35,6 +35,15 @@
       "expectedStatus": 401,
       "bodyMatcher": "partial",
       "expectedBody": {"error": "Необходима авторизация"}
+    },
+    {
+      "name": "all_favorites без авторизации — 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "all_favorites"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Необходима авторизация"}
     }
   ]
 }

@@ -165,7 +165,14 @@ export default function Index() {
   useEffect(() => { loadCategories(); }, []);
   useEffect(() => { loadAds(1, false); }, [selectedCategory, selectedCity, priceFrom, priceTo, condition, searchQuery]);
   useEffect(() => { if (user) loadMyAds(); }, [user]);
-  useEffect(() => { if (section === "favorites" && user) loadFolders(); }, [section, user]);
+  useEffect(() => {
+    if (section === "favorites" && user) {
+      loadFolders();
+      // Автоматически показываем все избранные
+      setActiveFolderId(0);
+      loadFolderAds(0);
+    }
+  }, [section, user]);
   useEffect(() => {
     if (!user) { setFavorites([]); return; }
     fetch(FAV_URL, {
@@ -262,10 +269,14 @@ export default function Index() {
 
   const loadFolderAds = async (folderId: number) => {
     setFolderAdsLoading(true);
+    // folderId = 0 означает "все избранные" (включая без папки)
+    const body = folderId === 0
+      ? { action: "all_favorites" }
+      : { action: "folder_items", folder_id: folderId };
     const res = await fetch(FAV_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Session-Id": sid() },
-      body: JSON.stringify({ action: "folder_items", folder_id: folderId }),
+      body: JSON.stringify(body),
     });
     const d = await res.json();
     if (d.ok) setFolderAds(d.ads);

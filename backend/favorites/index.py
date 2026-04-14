@@ -179,6 +179,37 @@ def handler(event: dict, context) -> dict:
         conn.close()
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
+    # all_favorites — все избранные объявления пользователя (включая без папки)
+    if action == "all_favorites":
+        conn = get_conn()
+        cur = conn.cursor()
+        uid, err = require_auth(event, cur, conn)
+        if err:
+            return err
+        cur.execute(
+            f"""SELECT DISTINCT ON (a.id) a.id, a.title, a.price, a.category, a.city, a.condition,
+                       a.created_at, u.name as author, a.photos
+                FROM {SCHEMA}.favorite_items i
+                JOIN {SCHEMA}.favorite_folders f ON f.id = i.folder_id
+                JOIN {SCHEMA}.ads a ON a.id = i.ad_id
+                JOIN {SCHEMA}.users u ON u.id = a.user_id
+                WHERE f.user_id = %s AND f.folder_type = 'favorites'
+                ORDER BY a.id, i.created_at DESC""",
+            (uid,)
+        )
+        rows = cur.fetchall()
+        conn.close()
+        ads = [
+            {
+                "id": r[0], "title": r[1], "price": r[2],
+                "category": r[3], "city": r[4], "condition": r[5],
+                "date": r[6].strftime("%d.%m.%Y"), "author": r[7],
+                "photos": list(r[8]) if r[8] else []
+            }
+            for r in rows
+        ]
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "ads": ads})}
+
     # folder_items — объявления в папке
     if action == "folder_items":
         fid = qs.get("folder_id") or body.get("folder_id")

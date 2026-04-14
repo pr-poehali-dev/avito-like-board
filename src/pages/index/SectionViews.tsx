@@ -547,51 +547,36 @@ export function FavoritesSection({
             <button onClick={() => openAuth("login")} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity">Войти</button>
           </div>
         </div>
-      ) : activeFolderId !== null ? (
-        <>
-          <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => { setActiveFolderId(null); setFolderAds([]); }} className="p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"><Icon name="ArrowLeft" size={18} /></button>
-            <div>
-              <h2 className="text-xl font-bold">{favFolders.find((f) => f.id === activeFolderId)?.name}</h2>
-              <p className="text-xs text-[hsl(var(--muted-foreground))]">{folderAds.length} объявлений</p>
-            </div>
-          </div>
-          {folderAdsLoading ? (
-            <div className="text-center py-16 text-[hsl(var(--muted-foreground))]">Загрузка...</div>
-          ) : folderAds.length === 0 ? (
-            <div className="text-center py-16 text-[hsl(var(--muted-foreground))]"><div className="text-5xl mb-3">📂</div><p className="font-medium">Папка пуста</p><p className="text-sm mt-1">Добавляйте объявления через кнопку ♥ в карточке</p></div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {folderAds.map((ad) => (
-                <div key={ad.id} className="bg-white rounded-2xl border border-border overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group" onClick={() => setViewAdId(ad.id)}>
-                  <div className="aspect-[16/9] bg-[hsl(var(--muted))] relative overflow-hidden">
-                    {(ad.photos && ad.photos.length > 0) ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> : <div className="w-full h-full flex items-center justify-center text-5xl">📦</div>}
-                    <button onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }} className="absolute top-2.5 right-2.5 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow transition-transform hover:scale-110"><Icon name="Heart" size={14} className="text-red-500 fill-red-500" /></button>
-                    {ad.photos && ad.photos.length > 1 && (<span className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md">+{ad.photos.length - 1}</span>)}
-                  </div>
-                  <div className="p-4">
-                    <p className="font-semibold text-[hsl(var(--foreground))] text-sm leading-snug mb-2 line-clamp-2">{ad.title}</p>
-                    <p className="text-[hsl(var(--accent))] font-bold text-lg leading-none mb-3">{formatPrice(ad.price)}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1"><Icon name="MapPin" size={10} />{ad.city}</span>
-                      <span className="text-xs text-[hsl(var(--muted-foreground))]">{ad.date}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
       ) : (
         <>
           <div className="flex items-center justify-between mb-5">
-            <div><h2 className="text-2xl font-bold">Избранное</h2><p className="text-[hsl(var(--muted-foreground))] mt-0.5 text-sm">{favFolders.length} папок</p></div>
+            <div>
+              <h2 className="text-2xl font-bold">Избранное</h2>
+              <p className="text-[hsl(var(--muted-foreground))] mt-0.5 text-sm">{favFolders.length} папок</p>
+            </div>
           </div>
+
+          {/* Чипы фильтрации */}
           <div className="flex gap-2 flex-wrap mb-6 items-center">
+            {/* Все избранные */}
+            <button
+              onClick={() => { setActiveFolderId(0); loadFolderAds(0); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border transition-all ${activeFolderId === 0 ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]" : "border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--foreground))]"}`}
+            >
+              <Icon name="Heart" size={13} className={activeFolderId === 0 ? "fill-[hsl(var(--accent))]" : ""} />
+              Все
+            </button>
+
+            {/* Пользовательские папки */}
             {favFolders.map((folder) => (
               <div key={folder.id} className="relative group/chip flex items-center">
-                <button onClick={() => { setActiveFolderId(folder.id); loadFolderAds(folder.id); }} className="flex items-center gap-1.5 pl-3 pr-7 py-1.5 rounded-xl text-sm font-medium border border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all">
-                  <Icon name="Folder" size={13} className="text-[hsl(var(--accent))]" />{folder.name}<span className="text-xs opacity-60">{folder.count}</span>
+                <button
+                  onClick={() => { setActiveFolderId(folder.id); loadFolderAds(folder.id); }}
+                  className={`flex items-center gap-1.5 pl-3 pr-7 py-1.5 rounded-xl text-sm font-medium border transition-all ${activeFolderId === folder.id ? "border-[hsl(var(--accent))] bg-orange-50 text-[hsl(var(--accent))]" : "border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--foreground))]"}`}
+                >
+                  <Icon name="Folder" size={13} className="text-[hsl(var(--accent))]" />
+                  {folder.name}
+                  <span className="text-xs opacity-60">{folder.count}</span>
                 </button>
                 <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover/chip:opacity-100 transition-opacity">
                   <button onClick={() => { setRenamingFolder(folder); setRenameName(folder.name); }} className="w-4 h-4 rounded-full bg-gray-100 hover:bg-orange-100 hover:text-[hsl(var(--accent))] flex items-center justify-center" title="Переименовать"><Icon name="Pencil" size={8} /></button>
@@ -599,6 +584,8 @@ export function FavoritesSection({
                 </div>
               </div>
             ))}
+
+            {/* Создать папку */}
             {newFolderModal ? (
               <div className="flex items-center gap-1.5">
                 <input autoFocus value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") createFolder(); if (e.key === "Escape") setNewFolderModal(false); }} placeholder="Название" className="px-3 py-1.5 rounded-xl text-sm border border-[hsl(var(--accent))] outline-none w-32" />
@@ -606,10 +593,48 @@ export function FavoritesSection({
                 <button onClick={() => setNewFolderModal(false)} className="p-1.5 rounded-lg border border-border hover:bg-[hsl(var(--muted))]"><Icon name="X" size={13} /></button>
               </div>
             ) : (
-              <button onClick={() => { setNewFolderName(""); setNewFolderModal(true); }} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-all"><Icon name="FolderPlus" size={13} />Папка</button>
+              <button onClick={() => { setNewFolderName(""); setNewFolderModal(true); }} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-border hover:border-[hsl(var(--accent))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-all">
+                <Icon name="FolderPlus" size={13} />Папка
+              </button>
             )}
           </div>
-          {favFolders.length === 0 && !newFolderModal && (<div className="text-center py-20 text-[hsl(var(--muted-foreground))]"><div className="text-5xl mb-4">📁</div><p className="font-medium">Нет папок</p><p className="text-sm mt-1">Нажмите «Папка», чтобы создать первую</p></div>)}
+
+          {/* Список объявлений */}
+          {activeFolderId !== null && (
+            folderAdsLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => <div key={i} className="rounded-2xl bg-[hsl(var(--muted))] animate-pulse h-52" />)}
+              </div>
+            ) : folderAds.length === 0 ? (
+              <div className="text-center py-20 text-[hsl(var(--muted-foreground))]">
+                <div className="text-5xl mb-4">🤍</div>
+                <p className="font-medium">Нет избранных объявлений</p>
+                <p className="text-sm mt-1">Нажимайте ♥ на карточках, чтобы сохранять</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {folderAds.map((ad) => (
+                  <div key={ad.id} className="bg-white rounded-2xl border border-border overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group" onClick={() => setViewAdId(ad.id)}>
+                    <div className="aspect-[16/9] bg-[hsl(var(--muted))] relative overflow-hidden">
+                      {(ad.photos && ad.photos.length > 0) ? <img src={ad.photos[0]} alt={ad.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> : <div className="w-full h-full flex items-center justify-center text-5xl">📦</div>}
+                      <button onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }} className="absolute top-2.5 right-2.5 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow transition-transform hover:scale-110">
+                        <Icon name="Heart" size={14} className={favorites.includes(ad.id) ? "text-red-500 fill-red-500" : "text-[hsl(var(--muted-foreground))]"} />
+                      </button>
+                      {ad.photos && ad.photos.length > 1 && (<span className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md">+{ad.photos.length - 1}</span>)}
+                    </div>
+                    <div className="p-4">
+                      <p className="font-semibold text-[hsl(var(--foreground))] text-sm leading-snug mb-2 line-clamp-2">{ad.title}</p>
+                      <p className="text-[hsl(var(--accent))] font-bold text-lg leading-none mb-3">{formatPrice(ad.price)}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1"><Icon name="MapPin" size={10} />{ad.city}</span>
+                        <span className="text-xs text-[hsl(var(--muted-foreground))]">{ad.date}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
         </>
       )}
 

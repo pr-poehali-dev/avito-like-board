@@ -254,7 +254,7 @@ export default function ChatPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[hsl(var(--background))]">
-        <SiteHeader dbCategories={dbCategories} user={null} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} />
+        <SiteHeader dbCategories={dbCategories} user={null} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/listing/new")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} onNavMyAds={() => navigate("/?section=my-ads")} onNavFavorites={() => navigate("/?section=favorites")} />
         <div className="flex flex-col items-center justify-center py-32 gap-4">
           <Icon name="MessageCircle" size={52} className="text-[hsl(var(--muted-foreground))]" />
           <p className="text-lg font-semibold">Войдите, чтобы открыть чаты</p>
@@ -267,7 +267,7 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--background))] flex flex-col">
-      <SiteHeader dbCategories={dbCategories} user={user} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} onLogout={logout} />
+      <SiteHeader dbCategories={dbCategories} user={user} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/listing/new")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} onLogout={logout} onNavMyAds={() => navigate("/?section=my-ads")} onNavFavorites={() => navigate("/?section=favorites")} onNavProfile={() => user && navigate(`/user/${user.id}`)} />
 
       <div className="flex flex-1 max-w-6xl w-full mx-auto px-4 py-6 gap-4 min-h-0" style={{ height: "calc(100vh - 120px)" }}>
 

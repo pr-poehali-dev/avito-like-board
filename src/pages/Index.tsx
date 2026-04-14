@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import SiteHeader from "@/components/SiteHeader";
 import { useAuth } from "@/hooks/useAuth";
 import Icon from "@/components/ui/icon";
@@ -19,7 +19,11 @@ import {
 
 export default function Index() {
   const navigate = useNavigate();
-  const [section, setSection] = useState<Section>("home");
+  const [searchParams] = useSearchParams();
+  const [section, setSection] = useState<Section>(() => {
+    const s = searchParams.get("section");
+    return (s as Section) || "home";
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedCity, setSelectedCity] = useState("Все города");
@@ -28,6 +32,11 @@ export default function Index() {
   const [condition, setCondition] = useState("all");
   const [favorites, setFavorites] = useState<number[]>([2, 5]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    const s = searchParams.get("section");
+    if (s && s !== section) setSection(s as Section);
+  }, [searchParams]);
 
   // Categories from DB
   const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);

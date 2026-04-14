@@ -619,7 +619,7 @@ export default function UserProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[hsl(var(--background))]">
-        <SiteHeader dbCategories={dbCategories} user={user} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} onLogout={auth.logout} />
+        <SiteHeader dbCategories={dbCategories} user={user} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/listing/new")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} onLogout={auth.logout} onNavMyAds={() => navigate("/?section=my-ads")} onNavFavorites={() => navigate("/?section=favorites")} onNavMessages={() => navigate("/chat")} onNavProfile={() => user && navigate(`/user/${user.id}`)} />
         <div className="max-w-5xl mx-auto px-4 py-12 space-y-4">
           <div className="h-40 bg-[hsl(var(--muted))] animate-pulse rounded-2xl" />
           <div className="h-8 w-48 bg-[hsl(var(--muted))] animate-pulse rounded-lg" />
@@ -634,7 +634,7 @@ export default function UserProfilePage() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-[hsl(var(--background))]">
-        <SiteHeader dbCategories={dbCategories} user={user} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} onLogout={auth.logout} />
+        <SiteHeader dbCategories={dbCategories} user={user} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/listing/new")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} onLogout={auth.logout} onNavMyAds={() => navigate("/?section=my-ads")} onNavFavorites={() => navigate("/?section=favorites")} onNavMessages={() => navigate("/chat")} onNavProfile={() => user && navigate(`/user/${user.id}`)} />
         <div className="flex flex-col items-center justify-center py-32 gap-3 text-[hsl(var(--muted-foreground))]">
           <Icon name="UserX" size={48} />
           <p className="font-semibold text-lg">Пользователь не найден</p>
@@ -646,7 +646,7 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--background))]">
-      <SiteHeader dbCategories={dbCategories} user={user} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} onLogout={auth.logout} />
+      <SiteHeader dbCategories={dbCategories} user={user} onLogoClick={() => navigate("/")} onNewAd={() => navigate("/listing/new")} onLogin={() => openAuth("login")} onRegister={() => openAuth("register")} onLogout={auth.logout} onNavMyAds={() => navigate("/?section=my-ads")} onNavFavorites={() => navigate("/?section=favorites")} onNavMessages={() => navigate("/chat")} onNavProfile={() => user && navigate(`/user/${user.id}`)} />
 
       <main className="max-w-5xl mx-auto px-4 py-6">
 

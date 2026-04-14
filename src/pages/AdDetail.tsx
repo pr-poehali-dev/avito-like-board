@@ -41,7 +41,7 @@ interface AdDetailProps {
   onAddToFolder: (adId: number) => void;
   isFavorited?: boolean;
   currentUserId?: number | null;
-  onAdLoaded?: (title: string, category: string) => void;
+  onAdLoaded?: (title: string, category: string, categorySlug?: string) => void;
 }
 
 function formatPrice(price: number) {
@@ -66,7 +66,7 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
       .then((d) => {
         if (d.ok) {
           setAd(d.ad);
-          onAdLoaded?.(d.ad.title, CATEGORY_LABELS[d.ad.category] || d.ad.category);
+          onAdLoaded?.(d.ad.title, CATEGORY_LABELS[d.ad.category] || d.ad.category, d.ad.category);
         } else setError(d.error || "Объявление не найдено");
       })
       .catch(() => setError("Нет соединения"))

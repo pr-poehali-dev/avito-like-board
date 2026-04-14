@@ -17,7 +17,9 @@ export default function AdPage() {
   const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
   const [adTitle, setAdTitle] = useState<string>("");
   const [adCategory, setAdCategory] = useState<string>("");
+  const [adCategorySlug, setAdCategorySlug] = useState<string>("");
   const [isFavorited, setIsFavorited] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetch(ADS_URL, {
@@ -53,11 +55,17 @@ export default function AdPage() {
       <SiteHeader
         dbCategories={dbCategories}
         user={user}
+        searchQuery={searchQuery}
+        onSearchChange={(v) => { setSearchQuery(v); navigate(`/?q=${encodeURIComponent(v)}`); }}
         onLogoClick={() => navigate("/")}
-        onNewAd={() => navigate("/")}
+        onNewAd={() => navigate("/listing/new")}
         onLogin={() => openAuth("login")}
         onRegister={() => openAuth("register")}
         onLogout={auth.logout}
+        onNavProfile={() => user && navigate(`/user/${user.id}`)}
+        onNavMyAds={() => navigate("/?section=my-ads")}
+        onNavFavorites={() => navigate("/?section=favorites")}
+        onNavMessages={() => navigate("/chat")}
       />
 
       {/* Хлебные крошки */}
@@ -65,9 +73,15 @@ export default function AdPage() {
         <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
           <Link to="/" className="hover:text-[hsl(var(--foreground))] transition-colors">Главная</Link>
           <span>/</span>
-          {adCategory && (
+          {adCategory && adCategorySlug && (
             <>
-              <span className="text-[hsl(var(--foreground))]">{adCategory}</span>
+              <Link to={`/${adCategorySlug}`} className="hover:text-[hsl(var(--foreground))] transition-colors">{adCategory}</Link>
+              <span>/</span>
+            </>
+          )}
+          {adCategory && !adCategorySlug && (
+            <>
+              <span>{adCategory}</span>
               <span>/</span>
             </>
           )}
@@ -81,7 +95,7 @@ export default function AdPage() {
         onAddToFolder={handleAddToFolder}
         isFavorited={isFavorited}
         currentUserId={user?.id ?? null}
-        onAdLoaded={(title, category) => { setAdTitle(title); setAdCategory(category); }}
+        onAdLoaded={(title, category, categorySlug) => { setAdTitle(title); setAdCategory(category); setAdCategorySlug(categorySlug || ""); }}
       />
 
       <AuthModal

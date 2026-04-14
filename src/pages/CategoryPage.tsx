@@ -128,32 +128,36 @@ export default function CategoryPage() {
             </span>
           ))}
         </nav>
-        {/* Заголовок */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">{category?.name}</h1>
-          {adsTotal > 0 && (
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
-              Показано <span className="font-semibold text-[hsl(var(--foreground))]">{ads.length}</span> из <span className="font-semibold text-[hsl(var(--foreground))]">{adsTotal}</span> объявлений
-            </p>
-          )}
-        </div>
 
-        {/* Подкатегории */}
-        {subCategories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            {subCategories.map((sub) => (
-              <button
-                key={sub.id}
-                onClick={() => navigate(`/${slug}/${sub.slug}`)}
-                className="px-3 py-1.5 text-sm rounded-full border border-border bg-white hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] transition-colors"
-              >
-                {sub.name}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* ── ЛЕВАЯ ЧАСТЬ: список объявлений ── */}
+          <div className="flex-1 min-w-0">
+            {/* Заголовок */}
+            <div className="mb-4">
+              <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">{category?.name}</h1>
+              {adsTotal > 0 && (
+                <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
+                  Показано <span className="font-semibold text-[hsl(var(--foreground))]">{ads.length}</span> из <span className="font-semibold text-[hsl(var(--foreground))]">{adsTotal}</span> объявлений
+                </p>
+              )}
+            </div>
 
-        {/* Объявления */}
+            {/* Подкатегории */}
+            {subCategories.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {subCategories.map((sub) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => navigate(`/${slug}/${sub.slug}`)}
+                    className="px-3 py-1.5 text-sm rounded-full border border-border bg-white hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] transition-colors"
+                  >
+                    {sub.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Объявления */}
         {adsLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -229,6 +233,58 @@ export default function CategoryPage() {
             )}
           </>
         )}
+          </div>
+
+          {/* ── ПРАВЫЙ САЙДБАР: категории ── */}
+          <div className="lg:w-64 shrink-0 flex flex-col gap-3">
+
+            {/* Все категории */}
+            <div className="bg-white rounded-2xl border border-border overflow-hidden">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))] px-4 py-3 border-b border-border">Все категории</p>
+              <div className="divide-y divide-[hsl(var(--muted))]">
+                {dbCategories.filter((c) => !c.parent_id).map((root) => {
+                  const isActive = root.slug === slug;
+                  const children = dbCategories.filter((c) => c.parent_id === root.id);
+                  return (
+                    <div key={root.id}>
+                      <button
+                        onClick={() => navigate(`/${root.slug}`)}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors ${isActive ? "bg-orange-50 text-[hsl(var(--accent))] font-semibold" : "text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`}
+                      >
+                        <span>{root.name}</span>
+                        {root.ads_count > 0 && <span className="text-xs text-[hsl(var(--muted-foreground))]">{root.ads_count}</span>}
+                      </button>
+                      {isActive && children.length > 0 && (
+                        <div className="bg-[hsl(var(--muted))]/40">
+                          {children.map((child) => (
+                            <button
+                              key={child.id}
+                              onClick={() => navigate(`/${slug}/${child.slug}`)}
+                              className={`w-full flex items-center justify-between pl-7 pr-4 py-2 text-sm text-left transition-colors ${child.slug === subslug ? "text-[hsl(var(--accent))] font-medium" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"}`}
+                            >
+                              <span>{child.name}</span>
+                              {child.ads_count > 0 && <span className="text-xs">{child.ads_count}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Подать объявление */}
+            <button
+              onClick={() => navigate("/listing/new")}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[hsl(var(--accent))] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Icon name="Plus" size={16} />
+              Подать объявление
+            </button>
+
+          </div>
+        </div>
       </main>
 
       <AuthModal

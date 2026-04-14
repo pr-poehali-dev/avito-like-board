@@ -118,10 +118,20 @@ export default function SiteHeader({
       return;
     }
     if (id === "messages") { navigate("/chat"); return; }
+    if (id === "my-ads") {
+      if (onNavMyAds) onNavMyAds();
+      else if (onNavSection) onNavSection("my-ads");
+      else navigate("/?section=my-ads");
+      return;
+    }
+    if (id === "favorites") {
+      if (onNavFavorites) onNavFavorites();
+      else if (onNavSection) onNavSection("favorites");
+      else navigate("/?section=favorites");
+      return;
+    }
     if (onNavSection) { onNavSection(id); return; }
-    if (id === "my-ads" && onNavMyAds) onNavMyAds();
-    else if (id === "favorites" && onNavFavorites) onNavFavorites();
-    else navigate("/");
+    navigate("/");
   };
 
   return (
@@ -291,6 +301,10 @@ export default function SiteHeader({
                       <button onClick={() => { handleNav("my-ads"); setUserMenuOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left text-[hsl(var(--foreground))]">
                         <Icon name="FileText" size={16} className="text-[hsl(var(--muted-foreground))]" />Мои объявления
+                      </button>
+                      <button onClick={() => { handleNav("favorites"); setUserMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left text-[hsl(var(--foreground))]">
+                        <Icon name="Heart" size={16} className="text-[hsl(var(--muted-foreground))]" />Избранное
                       </button>
                       <button onClick={() => { navigate("/chat"); setUserMenuOpen(false); }}
                         className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-[hsl(var(--muted))] transition-colors text-left text-[hsl(var(--foreground))]">

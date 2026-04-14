@@ -156,16 +156,9 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
 
-      {/* Заголовок + избранное */}
-      <div className="flex items-start justify-between gap-4 mb-1">
+      {/* Заголовок */}
+      <div className="mb-1">
         <h1 className="text-xl md:text-2xl font-bold leading-tight">{ad.title}</h1>
-        <button
-          onClick={() => onAddToFolder(ad.id)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-sm font-medium transition-all shrink-0 ${isFavorited ? "border-red-300 bg-red-50 text-red-500" : "border-border text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] hover:bg-orange-50"}`}
-        >
-          <Icon name="Heart" size={14} className={isFavorited ? "fill-red-500" : ""} />
-          {isFavorited ? "В избранном" : "В избранное"}
-        </button>
       </div>
 
       {/* Мета */}
@@ -175,64 +168,85 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
         <span className="flex items-center gap-1"><Icon name="Eye" size={11} />{ad.views} просмотров</span>
       </div>
 
-      {/* Основной блок */}
-      <div className="flex flex-col lg:flex-row gap-6 mb-6">
+      {/* Основной layout: левая + правая */}
+      <div className="flex flex-col lg:flex-row gap-6">
 
-        {/* Левая часть: фото */}
-        <div className="flex-1 min-w-0">
-          {/* Главное фото */}
-          <div className="relative bg-[hsl(var(--muted))] rounded-2xl overflow-hidden aspect-[4/3] group">
-            {photos.length > 0 ? (
-              <>
-                <img src={photos[photoIdx]} alt={ad.title} className="w-full h-full object-cover" />
-                {photos.length > 1 && (
-                  <>
-                    <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Icon name="ChevronLeft" size={18} className="text-white" />
-                    </button>
-                    <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Icon name="ChevronRight" size={18} className="text-white" />
-                    </button>
-                    <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-lg">
-                      {photoIdx + 1} / {photos.length}
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Icon name="Image" size={52} className="text-[hsl(var(--muted-foreground))]" />
+        {/* ── ЛЕВАЯ КОЛОНКА: галерея + инфо ── */}
+        <div className="flex-1 min-w-0 flex flex-col gap-4">
+
+          {/* Галерея */}
+          <div className="bg-white rounded-2xl border border-border overflow-hidden">
+            <div className="relative bg-[hsl(var(--muted))] aspect-[4/3] group">
+              {photos.length > 0 ? (
+                <>
+                  <img src={photos[photoIdx]} alt={ad.title} className="w-full h-full object-cover" />
+                  {photos.length > 1 && (
+                    <>
+                      <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Icon name="ChevronLeft" size={18} className="text-white" />
+                      </button>
+                      <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Icon name="ChevronRight" size={18} className="text-white" />
+                      </button>
+                      <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-lg">
+                        {photoIdx + 1} / {photos.length}
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Icon name="Image" size={52} className="text-[hsl(var(--muted-foreground))]" />
+                </div>
+              )}
+            </div>
+            {photos.length > 1 && (
+              <div className="flex gap-2 p-3 overflow-x-auto">
+                {photos.map((url, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPhotoIdx(i)}
+                    className={`shrink-0 w-[72px] h-[72px] rounded-xl overflow-hidden border-2 transition-all ${i === photoIdx ? "border-[hsl(var(--accent))] opacity-100" : "border-transparent opacity-55 hover:opacity-90"}`}
+                  >
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Миниатюры */}
-          {photos.length > 1 && (
-            <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-              {photos.map((url, i) => (
-                <button
-                  key={i}
-                  onClick={() => setPhotoIdx(i)}
-                  className={`shrink-0 w-[72px] h-[72px] rounded-xl overflow-hidden border-2 transition-all ${i === photoIdx ? "border-[hsl(var(--accent))] opacity-100" : "border-transparent opacity-55 hover:opacity-90"}`}
-                >
-                  <img src={url} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
+          {/* Описание */}
+          {ad.description && (
+            <div className="bg-white rounded-2xl border border-border p-5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))] mb-3">Описание</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{ad.description}</p>
             </div>
           )}
+
+          {/* Параметры */}
+          <div className="bg-white rounded-2xl border border-border p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))] mb-3">Параметры</p>
+            <div className="divide-y divide-[hsl(var(--muted))]">
+              {params.map(({ label, value }) => (
+                <div key={label} className="flex justify-between items-center py-2.5">
+                  <span className="text-sm text-[hsl(var(--muted-foreground))]">{label}</span>
+                  <span className="text-sm font-medium">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
 
-        {/* Правая панель */}
+        {/* ── ПРАВАЯ КОЛОНКА: 3 блока ── */}
         <div className="lg:w-72 shrink-0 flex flex-col gap-3">
 
-          {/* Цена */}
+          {/* Блок 1: Цена + кнопки */}
           <div className="bg-white rounded-2xl border border-border p-5">
             <p className="text-3xl font-bold mb-1">{formatPrice(ad.price)}</p>
             <span className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium mt-1 ${ad.condition === "Новый" ? "bg-green-100 text-green-700" : "bg-orange-50 text-[hsl(var(--accent))]"}`}>
               {ad.condition}
             </span>
-
-            {/* Кнопки */}
             <div className="mt-4 flex flex-col gap-2">
               {phoneVisible && phone ? (
                 <a href={`tel:${phone}`} className="w-full flex items-center justify-center gap-2 bg-[hsl(var(--accent))] text-white py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
@@ -246,7 +260,6 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
                   {phoneLoading ? "Загрузка..." : "Показать номер"}
                 </button>
               )}
-
               {ad.author_id !== currentUserId && (
                 currentUserId ? (
                   <button onClick={startChat} disabled={startingChat}
@@ -265,7 +278,7 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
             </div>
           </div>
 
-          {/* Продавец */}
+          {/* Блок 2: Продавец */}
           <div className="bg-white rounded-2xl border border-border p-5">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))] mb-3">Продавец</p>
             <button onClick={() => navigate(`/user/${ad.author_id}`)} className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity mb-3">
@@ -279,69 +292,42 @@ export default function AdDetail({ adId, onBack, onAddToFolder, isFavorited = fa
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">Посмотреть профиль →</p>
               </div>
             </button>
-
+            {ad.author_reg_date && (
+              <p className="text-xs text-[hsl(var(--muted-foreground))] border-t border-border pt-3 flex items-center gap-1.5">
+                <Icon name="Calendar" size={12} />
+                Зарегистрирован с {new Date(ad.author_reg_date).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}
+              </p>
+            )}
             {ad.author_ads_count !== undefined && (
-              <div className="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))] border-t border-border pt-3">
+              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1.5 flex items-center gap-1.5">
                 <Icon name="Tag" size={12} />
-                <span>{ad.author_ads_count} объявлений</span>
-                {ad.author_reg_date && (
-                  <>
-                    <span>·</span>
-                    <span>с {new Date(ad.author_reg_date).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}</span>
-                  </>
-                )}
-              </div>
+                {ad.author_ads_count} объявлений
+              </p>
             )}
           </div>
 
-        </div>
-      </div>
-
-      {/* Местоположение */}
-      <div className="bg-white rounded-2xl border border-border p-5 mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))] mb-1">Местоположение</p>
-            <p className="text-sm font-medium">{ad.city}</p>
+          {/* Блок 3: Избранное + жалоба */}
+          <div className="bg-white rounded-2xl border border-border p-5 flex flex-col gap-2">
+            <button
+              onClick={() => onAddToFolder(ad.id)}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all ${isFavorited ? "border-red-300 bg-red-50 text-red-500" : "border-border text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] hover:bg-orange-50"}`}
+            >
+              <Icon name="Heart" size={15} className={isFavorited ? "fill-red-500" : ""} />
+              {isFavorited ? "В избранном" : "В избранное"}
+            </button>
+            <button
+              onClick={() => toast.info("Жалоба отправлена")}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border border-border text-[hsl(var(--muted-foreground))] hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all"
+            >
+              <Icon name="Flag" size={15} />
+              Пожаловаться
+            </button>
           </div>
-          <Icon name="MapPin" size={18} className="text-[hsl(var(--muted-foreground))]" />
+
         </div>
       </div>
 
-      {/* Описание */}
-      {ad.description && (
-        <div className="bg-white rounded-2xl border border-border p-5 mb-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))] mb-3">Описание</p>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{ad.description}</p>
-        </div>
-      )}
-
-      {/* Параметры */}
-      <div className="bg-white rounded-2xl border border-border p-5 mb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))] mb-3">Параметры</p>
-        <div className="divide-y divide-[hsl(var(--muted))]">
-          {params.map(({ label, value }) => (
-            <div key={label} className="flex justify-between items-center py-2.5">
-              <span className="text-sm text-[hsl(var(--muted-foreground))]">{label}</span>
-              <span className="text-sm font-medium">{value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Нижняя строка */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[hsl(var(--muted-foreground))] pb-8">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1"><Icon name="BookmarkCheck" size={12} />В избранном: 0</span>
-          <span className="flex items-center gap-1"><Icon name="Eye" size={12} />Просмотров: {ad.views}</span>
-          <span className="flex items-center gap-1"><Icon name="Calendar" size={12} />Размещено: {ad.created_at}</span>
-        </div>
-        <button onClick={() => toast.info("Жалоба отправлена")} className="flex items-center gap-1 hover:text-red-500 transition-colors">
-          <Icon name="Flag" size={12} />
-          Пожаловаться на объявление
-        </button>
-      </div>
-
+      <div className="pb-8" />
     </div>
   );
 }

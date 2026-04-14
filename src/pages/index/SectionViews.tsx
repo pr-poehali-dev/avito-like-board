@@ -206,14 +206,12 @@ export function HomeSection({
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-4xl">{ad.image || "📦"}</div>
                       )}
-                      <div className="absolute top-2 right-2 z-10">
-                        <CardMenu
-                          adId={ad.id}
-                          onOpen={() => setViewAdId(ad.id)}
-                          onFavorite={() => openAddToFolder(ad.id)}
-                          isFavorited={favorites.includes(ad.id)}
-                        />
-                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openAddToFolder(ad.id); }}
+                        className={`absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition-all hover:scale-110 ${favorites.includes(ad.id) ? "text-red-500" : "text-[hsl(var(--muted-foreground))]"}`}
+                      >
+                        <Icon name="Heart" size={13} className={favorites.includes(ad.id) ? "fill-red-500" : ""} />
+                      </button>
                     </div>
                     <div className="p-3">
                       <p className="font-semibold text-[hsl(var(--foreground))] text-sm leading-tight mb-1 line-clamp-2">{ad.title}</p>

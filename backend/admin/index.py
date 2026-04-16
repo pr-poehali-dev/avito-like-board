@@ -713,7 +713,7 @@ def handler(event: dict, context) -> dict:
         cur = conn.cursor()
         cur.execute(f"""SELECT id, name, short_name, description, account_deletion_policy,
                                can_view_offline, is_temporary, default_group_id,
-                               can_access_admin, can_edit_all_news
+                               can_access_admin, can_edit_all_news, can_post
                         FROM {SCHEMA}.user_groups ORDER BY id""")
         rows = cur.fetchall()
         conn.close()
@@ -721,7 +721,7 @@ def handler(event: dict, context) -> dict:
             {"id": r[0], "name": r[1], "short_name": r[2], "description": r[3],
              "account_deletion_policy": r[4], "can_view_offline": r[5],
              "is_temporary": r[6], "default_group_id": r[7],
-             "can_access_admin": r[8], "can_edit_all_news": r[9]}
+             "can_access_admin": r[8], "can_edit_all_news": r[9], "can_post": r[10]}
             for r in rows
         ]})
 
@@ -744,13 +744,14 @@ def handler(event: dict, context) -> dict:
         dgid = int(dgid) if dgid else None
         caa = bool(body.get("can_access_admin"))
         cean = bool(body.get("can_edit_all_news"))
+        cp = body.get("can_post") is not False and body.get("can_post") != False
         cur = conn.cursor()
         cur.execute(
             f"""INSERT INTO {SCHEMA}.user_groups
                 (name, short_name, account_deletion_policy, can_view_offline, is_temporary,
-                 default_group_id, can_access_admin, can_edit_all_news, updated_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
-            (name, short_name, adp, cvo, it, dgid, caa, cean)
+                 default_group_id, can_access_admin, can_edit_all_news, can_post, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
+            (name, short_name, adp, cvo, it, dgid, caa, cean, cp)
         )
         new_id = cur.fetchone()[0]
         conn.commit()
@@ -780,13 +781,14 @@ def handler(event: dict, context) -> dict:
         dgid = int(dgid) if dgid else None
         caa = bool(body.get("can_access_admin"))
         cean = bool(body.get("can_edit_all_news"))
+        cp = body.get("can_post") is not False and body.get("can_post") != False
         cur = conn.cursor()
         cur.execute(
             f"""UPDATE {SCHEMA}.user_groups SET name=%s, short_name=%s,
                 account_deletion_policy=%s, can_view_offline=%s, is_temporary=%s,
-                default_group_id=%s, can_access_admin=%s, can_edit_all_news=%s, updated_at=NOW()
+                default_group_id=%s, can_access_admin=%s, can_edit_all_news=%s, can_post=%s, updated_at=NOW()
                 WHERE id=%s""",
-            (name, short_name, adp, cvo, it, dgid, caa, cean, int(gid))
+            (name, short_name, adp, cvo, it, dgid, caa, cean, cp, int(gid))
         )
         conn.commit()
         conn.close()

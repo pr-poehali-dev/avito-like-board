@@ -1,0 +1,1 @@
+ALTER TABLE t_p72465170_avito_like_board.user_groups ADD COLUMN IF NOT EXISTS can_post boolean NOT NULL DEFAULT true;

@@ -29,6 +29,7 @@ interface Group {
   default_group_id: number | null;
   can_access_admin: boolean;
   can_edit_all_news: boolean;
+  can_post: boolean;
 }
 
 interface CustomField {
@@ -318,7 +319,7 @@ const GROUP_DEFAULTS: Omit<Group, "id"> = {
   name: "", short_name: "", description: "",
   account_deletion_policy: 1, can_view_offline: false,
   is_temporary: false, default_group_id: null,
-  can_access_admin: false, can_edit_all_news: false,
+  can_access_admin: false, can_edit_all_news: false, can_post: true,
 };
 
 function TabGroups({ groups, reload }: { groups: Group[]; reload: () => void }) {
@@ -385,7 +386,8 @@ function TabGroups({ groups, reload }: { groups: Group[]; reload: () => void }) 
                   <div className="flex flex-wrap gap-1">
                     {g.can_access_admin && <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Админ</span>}
                     {g.can_view_offline && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Офлайн</span>}
-                    {g.can_edit_all_news && <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Новости</span>}
+                    {g.can_edit_all_news && <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ред. объявления</span>}
+                    {!g.can_post && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">Нет публикаций</span>}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{g.is_temporary ? "Да" : "Нет"}</td>
@@ -421,7 +423,8 @@ function TabGroups({ groups, reload }: { groups: Group[]; reload: () => void }) 
               {([
                 ["can_access_admin", "Доступ в админку"],
                 ["can_view_offline", "Видеть офлайн"],
-                ["can_edit_all_news", "Редактировать новости"],
+                ["can_edit_all_news", "Редактировать объявления"],
+                ["can_post", "Разрешить публикации"],
                 ["is_temporary", "Временная группа"],
               ] as [keyof typeof form, string][]).map(([k, label]) => (
                 <label key={k} className="flex items-center gap-2 cursor-pointer">

@@ -31,7 +31,7 @@ def get_conn():
 
 
 def ok(data: dict):
-    return {"statusCode": 200, "headers": CORS, "body": json.dumps(data, default=str)}
+    return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, **data}, default=str)}
 
 
 def err(msg: str, code: int = 400):

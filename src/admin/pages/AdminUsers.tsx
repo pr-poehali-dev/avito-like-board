@@ -387,7 +387,7 @@ function TabGroups({ groups, reload }: { groups: Group[]; reload: () => void }) 
                     {g.can_access_admin && <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Админ</span>}
                     {g.can_view_offline && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Офлайн</span>}
                     {g.can_edit_all_news && <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ред. объявления</span>}
-                    {!g.can_post && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">Нет публикаций</span>}
+                    {!g.can_post && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">Запрет публикаций</span>}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{g.is_temporary ? "Да" : "Нет"}</td>

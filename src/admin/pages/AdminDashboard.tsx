@@ -128,7 +128,7 @@ export default function AdminDashboard() {
           adminApi.usersList({ limit: 5, offset: 0, sort: "created_at", order: "desc" }),
           adminApi.logs({ limit: 7 }),
         ]);
-        if (statsRes.ok) setStats(statsRes.stats || statsRes);
+        if (statsRes.ok) setStats(statsRes);
         if (adsRes.ok) setRecentAds(adsRes.ads || []);
         if (pendingRes.ok) setPendingAds(pendingRes.ads || []);
         if (usersRes.ok) setRecentUsers(usersRes.users || []);
